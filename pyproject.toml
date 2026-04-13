@@ -1,0 +1,20 @@
+[project]
+name = "worker-placement-game"
+version = "0.1.0"
+description = "Multiplayer worker placement board game with a music industry theme"
+requires-python = ">=3.12"
+dependencies = [
+    "arcade>=3.0",
+    "websockets>=12.0",
+    "pydantic>=2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
