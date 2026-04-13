@@ -9,11 +9,11 @@ from client.ui.card_renderer import CardRenderer
 
 # Board layout positions (proportional, relative to board area)
 _SPACE_LAYOUT: dict[str, tuple[float, float]] = {
-    "three_cups": (0.08, 0.7),
-    "grinning_lion_pub": (0.08, 0.5),
-    "the_arena": (0.08, 0.3),
-    "pool_of_tears": (0.22, 0.7),
-    "the_cathedral": (0.22, 0.5),
+    "merch_store": (0.08, 0.7),
+    "motown": (0.08, 0.5),
+    "guitar_center": (0.08, 0.3),
+    "talent_show": (0.22, 0.7),
+    "rhythm_pit": (0.22, 0.5),
     "castle_waterdeep": (0.22, 0.3),
     "the_garage_1": (0.38, 0.82),
     "the_garage_2": (0.52, 0.82),

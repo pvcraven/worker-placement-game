@@ -1,38 +1,38 @@
 {
   "permanent_spaces": [
     {
-      "space_id": "three_cups",
-      "name": "The Three Cups",
+      "space_id": "merch_store",
+      "name": "The Merch Store",
       "space_type": "permanent",
-      "reward": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 2},
+      "reward": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 4},
       "slots": 1
     },
     {
-      "space_id": "grinning_lion_pub",
-      "name": "The Grinning Lion Pub",
+      "space_id": "motown",
+      "name": "Motown",
       "space_type": "permanent",
       "reward": {"guitarists": 0, "bass_players": 2, "drummers": 0, "singers": 0, "coins": 0},
       "slots": 1
     },
     {
-      "space_id": "the_arena",
-      "name": "The Arena",
+      "space_id": "guitar_center",
+      "name": "Guitar Center",
       "space_type": "permanent",
       "reward": {"guitarists": 2, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
       "slots": 1
     },
     {
-      "space_id": "pool_of_tears",
-      "name": "The Pool of Tears",
+      "space_id": "talent_show",
+      "name": "Talent Show",
       "space_type": "permanent",
-      "reward": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 2, "coins": 0},
+      "reward": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 1, "coins": 0},
       "slots": 1
     },
     {
-      "space_id": "the_cathedral",
-      "name": "The Cathedral",
+      "space_id": "rhythm_pit",
+      "name": "The Rhythm Pit",
       "space_type": "permanent",
-      "reward": {"guitarists": 0, "bass_players": 0, "drummers": 2, "singers": 0, "coins": 0},
+      "reward": {"guitarists": 0, "bass_players": 0, "drummers": 1, "singers": 0, "coins": 0},
       "slots": 1
     },
     {

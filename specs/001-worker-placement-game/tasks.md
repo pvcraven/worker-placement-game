@@ -39,7 +39,7 @@
 - [x] T009 [P] Implement config file Pydantic schemas (ContractsConfig, IntrigueConfig, BuildingsConfig, ProducersConfig, BoardConfig, GameRulesConfig) in `server/models/config.py` per data-model.md
 - [x] T010 Implement config loader with validation (load all JSON configs, hard errors for structural issues, warnings for suspicious values) in `server/config_loader.py` per FR-026/FR-027/FR-028
 - [x] T011 Create `config/game_rules.json` with default game rules (8 rounds, worker scaling, timeouts, player limits) per spec.md
-- [x] T012 [P] Create `config/board.json` with 9 permanent action spaces (The Three Cups, Grinning Lion Pub, The Arena, Pool of Tears, The Cathedral, Cliffwatch Inn x3, Builder's Hall, Castle Waterdeep, The Garage x3) and building lot count per FR-029/FR-030/FR-031
+- [x] T012 [P] Create `config/board.json` with 9 permanent action spaces (The Merch Store, Motown, Guitar Center, Talent Show, The Rhythm Pit, Cliffwatch Inn x3, Builder's Hall, Castle Waterdeep, The Garage x3) and building lot count per FR-029/FR-030/FR-031
 - [x] T013 [P] Create `config/contracts.json` with 60 contract cards (34 easier ≤9 VP, 26 harder ≥10 VP) across 5 genres (Jazz, Pop, Soul, Funk, Rock) per FR-006
 - [x] T014 [P] Create `config/intrigue.json` with 50 intrigue cards (music-industry themed effects: gain resources, steal resources, all-player events, VP bonuses) per FR-011
 - [x] T015 [P] Create `config/buildings.json` with 24 building tiles (famous recording studios and music venues) per FR-012
@@ -79,7 +79,7 @@
 
 **Goal**: Players take turns placing workers on action spaces to collect resources. Core gameplay loop with turn rotation and round management.
 
-**Independent Test**: Start a game, players take turns placing workers on resource spaces (The Three Cups, Arena, etc.), receive correct resources, rounds advance after all workers placed.
+**Independent Test**: Start a game, players take turns placing workers on resource spaces (The Merch Store, Arena, etc.), receive correct resources, rounds advance after all workers placed.
 
 ### Implementation for User Story 2
 

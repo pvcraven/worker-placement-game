@@ -12,7 +12,7 @@ _GENRE_COLORS = {
     "rock": (220, 20, 60),      # Crimson
 }
 
-_CARD_WIDTH = 150
+_CARD_WIDTH = 190
 _CARD_HEIGHT = 200
 
 
