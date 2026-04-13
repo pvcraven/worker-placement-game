@@ -41,10 +41,15 @@ class PlaceWorkerRequest(BaseModel):
     space_id: str
 
 
-class PlaceWorkerGarageRequest(BaseModel):
-    action: Literal["place_worker_garage"] = "place_worker_garage"
+class PlaceWorkerBackstageRequest(BaseModel):
+    action: Literal["place_worker_backstage"] = "place_worker_backstage"
     slot_number: int = Field(ge=1, le=3)
     intrigue_card_id: str
+
+
+class SelectQuestCardRequest(BaseModel):
+    action: Literal["select_quest_card"] = "select_quest_card"
+    card_id: str
 
 
 class CompleteQuestRequest(BaseModel):
@@ -97,7 +102,8 @@ ClientMessage = Annotated[
         PlayerReadyRequest,
         StartGameRequest,
         PlaceWorkerRequest,
-        PlaceWorkerGarageRequest,
+        PlaceWorkerBackstageRequest,
+        SelectQuestCardRequest,
         CompleteQuestRequest,
         AcquireContractRequest,
         AcquireIntrigueRequest,
@@ -163,12 +169,33 @@ class WorkerPlacedResponse(BaseModel):
     next_player_id: str | None
 
 
-class WorkerPlacedGarageResponse(BaseModel):
-    action: Literal["worker_placed_garage"] = "worker_placed_garage"
+class WorkerPlacedBackstageResponse(BaseModel):
+    action: Literal["worker_placed_backstage"] = "worker_placed_backstage"
     player_id: str
     slot_number: int
     intrigue_card: dict
     intrigue_effect: dict
+    next_player_id: str | None
+
+
+class QuestCardSelectedResponse(BaseModel):
+    action: Literal["quest_card_selected"] = "quest_card_selected"
+    player_id: str
+    card_id: str
+    spot_number: int
+    bonus_reward: dict
+    next_player_id: str | None
+
+
+class FaceUpQuestsUpdatedResponse(BaseModel):
+    action: Literal["face_up_quests_updated"] = "face_up_quests_updated"
+    face_up_quests: list[dict]
+
+
+class QuestsResetResponse(BaseModel):
+    action: Literal["quests_reset"] = "quests_reset"
+    player_id: str
+    deck_reshuffled: bool = False
     next_player_id: str | None
 
 
@@ -199,7 +226,7 @@ class BuildingConstructedResponse(BaseModel):
 
 class ReassignmentPhaseStartResponse(BaseModel):
     action: Literal["reassignment_phase_start"] = "reassignment_phase_start"
-    garage_slots: list[dict]
+    backstage_slots: list[dict]
 
 
 class WorkerReassignedResponse(BaseModel):
@@ -281,7 +308,10 @@ ServerMessage = Annotated[
         PlayerReadyUpdateResponse,
         GameStartedResponse,
         WorkerPlacedResponse,
-        WorkerPlacedGarageResponse,
+        WorkerPlacedBackstageResponse,
+        QuestCardSelectedResponse,
+        FaceUpQuestsUpdatedResponse,
+        QuestsResetResponse,
         QuestCompletedResponse,
         ContractAcquiredResponse,
         BuildingConstructedResponse,

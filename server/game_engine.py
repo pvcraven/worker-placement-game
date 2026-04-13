@@ -7,19 +7,25 @@ import time
 from typing import TYPE_CHECKING
 
 from server.lobby import _filter_state_for_player
-from server.models.game import GameLog
-from shared.card_models import ResourceCost
+from server.models.game import ActionSpace, GameLog
+import random
+
+from shared.card_models import ContractCard, ResourceCost
 from shared.constants import BONUS_WORKER_ROUND, GamePhase
+from shared.constants import FACE_UP_QUEST_COUNT
 from shared.messages import (
     BonusWorkersGrantedResponse,
     ContractAcquiredResponse,
+    FaceUpQuestsUpdatedResponse,
     FinalPlayerScore,
     GameOverResponse,
+    QuestCardSelectedResponse,
     QuestCompletedResponse,
+    QuestsResetResponse,
     ReassignmentPhaseStartResponse,
     RoundEndResponse,
     TurnTimeoutResponse,
-    WorkerPlacedGarageResponse,
+    WorkerPlacedBackstageResponse,
     WorkerPlacedResponse,
     WorkerReassignedResponse,
 )
@@ -50,6 +56,17 @@ def _validate_turn(server, conn, state):
     return current is not None and current.player_id == conn.player_id
 
 
+def _draw_from_quest_deck(state) -> ContractCard | None:
+    """Draw a card from the quest deck, reshuffling discard if needed."""
+    if not state.board.quest_deck and state.board.quest_discard:
+        state.board.quest_deck = list(state.board.quest_discard)
+        state.board.quest_discard.clear()
+        random.shuffle(state.board.quest_deck)
+    if state.board.quest_deck:
+        return state.board.quest_deck.pop(0)
+    return None
+
+
 async def _advance_turn(server: GameServer, state) -> None:
     """Advance to the next player, or trigger end-of-round if all placed."""
     state.last_activity = time.time()
@@ -72,9 +89,9 @@ async def _advance_turn(server: GameServer, state) -> None:
 
 async def _end_placement_phase(server: GameServer, state) -> None:
     """Handle transition after all workers are placed."""
-    # Check for Garage reassignment
+    # Check for Backstage reassignment
     occupied_slots = [
-        s for s in state.board.garage_slots if s.occupied_by is not None
+        s for s in state.board.backstage_slots if s.occupied_by is not None
     ]
     if occupied_slots:
         state.phase = GamePhase.REASSIGNMENT
@@ -82,7 +99,7 @@ async def _end_placement_phase(server: GameServer, state) -> None:
         await server.broadcast_to_game(
             state.game_code,
             ReassignmentPhaseStartResponse(
-                garage_slots=[
+                backstage_slots=[
                     {"slot_number": s.slot_number, "player_id": s.occupied_by}
                     for s in occupied_slots
                 ]
@@ -104,7 +121,7 @@ async def _end_round(server: GameServer, state) -> None:
     # Clear board occupants
     for space in state.board.action_spaces.values():
         space.occupied_by = None
-    for slot in state.board.garage_slots:
+    for slot in state.board.backstage_slots:
         slot.occupied_by = None
         slot.intrigue_card_played = None
 
@@ -276,6 +293,13 @@ async def handle_place_worker(
     reward_dict = space.reward.model_dump()
     player.resources.add(space.reward)
 
+    # Handle Garage spots (quest selection)
+    if space.space_type == "garage":
+        await _handle_garage_placement(
+            server, state, player, space, msg.space_id
+        )
+        return
+
     # Handle special spaces
     if space.space_type == "castle":
         # Castle Waterdeep: first-player marker + 1 intrigue card
@@ -321,11 +345,215 @@ async def handle_place_worker(
 
 
 # ------------------------------------------------------------------
-# Garage placement handler
+# Garage placement handler (quest acquisition)
 # ------------------------------------------------------------------
 
 
-async def handle_place_worker_garage(
+async def _handle_garage_placement(
+    server: GameServer, state, player, space, space_id: str
+) -> None:
+    """Handle placement on a Garage action space."""
+    special = space.reward_special
+
+    if special == "reset_quests":
+        # Spot 3: discard all face-up, draw 4 new
+        deck_reshuffled = False
+        state.board.quest_discard.extend(
+            state.board.face_up_quests
+        )
+        state.board.face_up_quests.clear()
+
+        for _ in range(FACE_UP_QUEST_COUNT):
+            if (
+                not state.board.quest_deck
+                and state.board.quest_discard
+            ):
+                deck_reshuffled = True
+            card = _draw_from_quest_deck(state)
+            if card:
+                state.board.face_up_quests.append(card)
+
+        state.game_log.append(
+            GameLog(
+                round_number=state.current_round,
+                player_id=player.player_id,
+                action="place_worker",
+                details=(
+                    f"{player.display_name} placed worker on "
+                    f"{space.name} — quests reset"
+                ),
+                timestamp=time.time(),
+            )
+        )
+
+        await _advance_turn(server, state)
+        next_player = state.current_player()
+
+        await server.broadcast_to_game(
+            state.game_code,
+            QuestsResetResponse(
+                player_id=player.player_id,
+                deck_reshuffled=deck_reshuffled,
+                next_player_id=(
+                    next_player.player_id
+                    if next_player
+                    else None
+                ),
+            ),
+        )
+        await server.broadcast_to_game(
+            state.game_code,
+            FaceUpQuestsUpdatedResponse(
+                face_up_quests=[
+                    q.model_dump()
+                    for q in state.board.face_up_quests
+                ]
+            ),
+        )
+    else:
+        # Spots 1 & 2: player must select a quest card
+        state.game_log.append(
+            GameLog(
+                round_number=state.current_round,
+                player_id=player.player_id,
+                action="place_worker",
+                details=(
+                    f"{player.display_name} placed worker on "
+                    f"{space.name} — awaiting quest selection"
+                ),
+                timestamp=time.time(),
+            )
+        )
+
+        # Send worker_placed with garage info so client
+        # shows the quest selection dialog
+        await server.broadcast_to_game(
+            state.game_code,
+            WorkerPlacedResponse(
+                player_id=player.player_id,
+                space_id=space_id,
+                reward_granted={},
+                next_player_id=None,
+            ),
+        )
+
+
+async def handle_select_quest_card(
+    server: GameServer, conn: ClientConnection, msg
+) -> None:
+    """Handle quest card selection from face-up display."""
+    state = _get_game_state(server, conn)
+    if state is None:
+        await conn.send_error("GAME_NOT_FOUND", "Not in a game.")
+        return
+
+    player = state.get_player(conn.player_id)
+    if player is None:
+        await conn.send_error("INVALID_ACTION", "Player not found.")
+        return
+
+    # Find the card in face-up quests
+    card = None
+    for q in state.board.face_up_quests:
+        if q.id == msg.card_id:
+            card = q
+            break
+    if card is None:
+        await conn.send_error(
+            "INVALID_ACTION", "Card not in face-up display."
+        )
+        return
+
+    # Determine which garage spot the player is on
+    spot_special = None
+    for sid, sp in state.board.action_spaces.items():
+        if (
+            sp.space_type == "garage"
+            and sp.occupied_by == player.player_id
+        ):
+            spot_special = sp.reward_special
+            break
+
+    if spot_special is None:
+        await conn.send_error(
+            "INVALID_ACTION",
+            "You don't have a worker on a Garage spot.",
+        )
+        return
+
+    # Move card to player's hand
+    state.board.face_up_quests.remove(card)
+    player.contract_hand.append(card)
+
+    # Grant bonus based on spot
+    bonus_reward = {}
+    if spot_special == "quest_and_coins":
+        player.resources.coins += 2
+        bonus_reward = {"coins": 2}
+    elif spot_special == "quest_and_intrigue":
+        if state.board.intrigue_deck:
+            intrigue = state.board.intrigue_deck.pop(0)
+            player.intrigue_hand.append(intrigue)
+            bonus_reward = {
+                "intrigue_card": intrigue.model_dump()
+            }
+        else:
+            bonus_reward = {}
+
+    # Draw replacement card
+    replacement = _draw_from_quest_deck(state)
+    if replacement:
+        state.board.face_up_quests.append(replacement)
+
+    spot_num = 1 if spot_special == "quest_and_coins" else 2
+
+    state.game_log.append(
+        GameLog(
+            round_number=state.current_round,
+            player_id=player.player_id,
+            action="select_quest_card",
+            details=(
+                f"{player.display_name} selected "
+                f"'{card.name}' from The Garage"
+            ),
+            timestamp=time.time(),
+        )
+    )
+
+    await _advance_turn(server, state)
+    next_player = state.current_player()
+
+    await server.broadcast_to_game(
+        state.game_code,
+        QuestCardSelectedResponse(
+            player_id=player.player_id,
+            card_id=card.id,
+            spot_number=spot_num,
+            bonus_reward=bonus_reward,
+            next_player_id=(
+                next_player.player_id
+                if next_player
+                else None
+            ),
+        ),
+    )
+    await server.broadcast_to_game(
+        state.game_code,
+        FaceUpQuestsUpdatedResponse(
+            face_up_quests=[
+                q.model_dump()
+                for q in state.board.face_up_quests
+            ]
+        ),
+    )
+
+
+# ------------------------------------------------------------------
+# Backstage placement handler
+# ------------------------------------------------------------------
+
+
+async def handle_place_worker_backstage(
     server: GameServer, conn: ClientConnection, msg
 ) -> None:
     state = _get_game_state(server, conn)
@@ -351,12 +579,12 @@ async def handle_place_worker_garage(
 
     # Validate slot
     slot = None
-    for s in state.board.garage_slots:
+    for s in state.board.backstage_slots:
         if s.slot_number == msg.slot_number:
             slot = s
             break
     if slot is None or slot.occupied_by is not None:
-        await conn.send_error("SPACE_OCCUPIED", "That Garage slot is occupied.")
+        await conn.send_error("SPACE_OCCUPIED", "That Backstage slot is occupied.")
         return
 
     if player.available_workers <= 0:
@@ -377,8 +605,8 @@ async def handle_place_worker_garage(
         GameLog(
             round_number=state.current_round,
             player_id=player.player_id,
-            action="place_worker_garage",
-            details=f"{player.display_name} placed worker on Garage slot {msg.slot_number}, played {card.name}",
+            action="place_worker_backstage",
+            details=f"{player.display_name} placed worker on Backstage slot {msg.slot_number}, played {card.name}",
             timestamp=time.time(),
         )
     )
@@ -388,7 +616,7 @@ async def handle_place_worker_garage(
 
     await server.broadcast_to_game(
         state.game_code,
-        WorkerPlacedGarageResponse(
+        WorkerPlacedBackstageResponse(
             player_id=player.player_id,
             slot_number=msg.slot_number,
             intrigue_card={"id": card.id, "name": card.name, "description": card.description},
@@ -737,7 +965,7 @@ async def handle_reassign_worker(
 
     # Find the slot
     slot = None
-    for s in state.board.garage_slots:
+    for s in state.board.backstage_slots:
         if s.slot_number == msg.slot_number:
             slot = s
             break
@@ -791,7 +1019,7 @@ async def handle_reassign_worker(
             round_number=state.current_round,
             player_id=player.player_id,
             action="reassign_worker",
-            details=f"{player.display_name} reassigned from Garage slot {msg.slot_number} to {target.name}",
+            details=f"{player.display_name} reassigned from Backstage slot {msg.slot_number} to {target.name}",
             timestamp=time.time(),
         )
     )
@@ -831,6 +1059,6 @@ async def handle_choose_intrigue_target(
         await conn.send_error("INVALID_ACTION", "Invalid player.")
         return
 
-    # For now, targeted effects are resolved inline during Garage placement
+    # For now, targeted effects are resolved inline during Backstage placement
     # This handler is a placeholder for future interactive targeting flows
     await conn.send_error("INVALID_ACTION", "Targeting not implemented yet.")

@@ -51,7 +51,7 @@ python -m client.main
 2. Other players join using the code (2-5 players).
 3. Over 8 rounds, place workers on action spaces to collect musicians (guitarists, bass players, drummers, singers) and coins.
 4. Spend resources to complete contracts for victory points.
-5. Use the Garage to play intrigue cards and reassign workers for extra actions.
+5. Use Backstage to play intrigue cards and reassign workers for extra actions.
 6. Construct buildings to create new action spaces and earn owner bonuses.
 7. At game end, Producer card bonuses are revealed. Highest VP wins.
 

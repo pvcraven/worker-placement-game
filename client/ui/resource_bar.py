@@ -18,6 +18,31 @@ class ResourceBar:
 
     def __init__(self) -> None:
         self.resources: dict = {}
+        self._text_cache: dict[str, arcade.Text] = {}
+
+    def _text(
+        self,
+        key: str,
+        text: str,
+        x: float,
+        y: float,
+        color,
+        font_size: int,
+        **kwargs,
+    ) -> arcade.Text:
+        """Get or create a cached Text object."""
+        if key in self._text_cache:
+            t = self._text_cache[key]
+            t.text = text
+            t.x = x
+            t.y = y
+            t.color = color
+            return t
+        t = arcade.Text(
+            text, x, y, color, font_size=font_size, **kwargs,
+        )
+        self._text_cache[key] = t
+        return t
 
     def update_resources(self, resources: dict) -> None:
         self.resources = resources
@@ -44,24 +69,19 @@ class ResourceBar:
             )
 
             # Label and count
-            arcade.draw_text(
-                f"{label}: {val}",
+            self._text(
+                f"res_{key}", f"{label}: {val}",
                 cx - 15, cy,
-                arcade.color.WHITE,
-                font_size=16,
-                anchor_x="left",
-                anchor_y="center",
-                bold=True,
-            )
+                arcade.color.WHITE, 16,
+                anchor_x="left", anchor_y="center", bold=True,
+            ).draw()
 
         # VP display at the end
         vp_cx = x + section_w * (count + 0.5)
-        arcade.draw_text(
+        self._text(
+            "vp",
             f"VP: {self.resources.get('victory_points', 0)}",
             vp_cx - 30, y + h / 2,
-            arcade.color.YELLOW,
-            font_size=20,
-            anchor_x="left",
-            anchor_y="center",
-            bold=True,
-        )
+            arcade.color.YELLOW, 20,
+            anchor_x="left", anchor_y="center", bold=True,
+        ).draw()
