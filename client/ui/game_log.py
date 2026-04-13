@@ -14,6 +14,31 @@ class GameLogPanel:
     def __init__(self) -> None:
         self.entries: list[str] = []
         self.scroll_offset: int = 0
+        self._text_cache: dict[str, arcade.Text] = {}
+
+    def _text(
+        self,
+        key: str,
+        text: str,
+        x: float,
+        y: float,
+        color,
+        font_size: int,
+        **kwargs,
+    ) -> arcade.Text:
+        """Get or create a cached Text object, updating position and content."""
+        if key in self._text_cache:
+            t = self._text_cache[key]
+            t.text = text
+            t.x = x
+            t.y = y
+            t.color = color
+            return t
+        t = arcade.Text(
+            text, x, y, color, font_size=font_size, **kwargs,
+        )
+        self._text_cache[key] = t
+        return t
 
     def add_entry(self, text: str) -> None:
         self.entries.append(text)
@@ -30,14 +55,12 @@ class GameLogPanel:
         )
 
         # Title
-        arcade.draw_text(
-            "Game Log",
+        self._text(
+            "title", "Game Log",
             x + w / 2, y + h - 20,
-            arcade.color.WHITE,
-            font_size=16,
-            anchor_x="center",
-            bold=True,
-        )
+            arcade.color.WHITE, 16,
+            anchor_x="center", bold=True,
+        ).draw()
 
         # Log entries
         line_height = 22
@@ -50,9 +73,8 @@ class GameLogPanel:
             if len(text) > 38:
                 text = text[:36] + ".."
             ty = y + h - 50 - i * line_height
-            arcade.draw_text(
-                text,
+            self._text(
+                f"line_{i}", text,
                 x + 8, ty,
-                arcade.color.LIGHT_GRAY,
-                font_size=12,
-            )
+                arcade.color.LIGHT_GRAY, 12,
+            ).draw()

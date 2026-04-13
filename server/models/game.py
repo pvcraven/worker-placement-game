@@ -91,7 +91,7 @@ class ActionSpace(BaseModel):
 
     space_id: str
     name: str
-    space_type: str  # "permanent", "building", "garage", "castle", "cliffwatch"
+    space_type: str  # "permanent", "building", "garage", "backstage", "castle"
     occupied_by: str | None = None
     owner_id: str | None = None
     building_tile: BuildingTile | None = None
@@ -99,8 +99,8 @@ class ActionSpace(BaseModel):
     reward_special: str | None = None  # Non-resource effects
 
 
-class GarageSlot(BaseModel):
-    """A numbered slot in The Garage."""
+class BackstageSlot(BaseModel):
+    """A numbered slot in Backstage (intrigue play + reassignment)."""
 
     slot_number: int  # 1, 2, or 3
     occupied_by: str | None = None
@@ -111,7 +111,10 @@ class BoardState(BaseModel):
     """The full board state."""
 
     action_spaces: dict[str, ActionSpace] = Field(default_factory=dict)
-    garage_slots: list[GarageSlot] = Field(default_factory=list)
+    backstage_slots: list[BackstageSlot] = Field(default_factory=list)
+    face_up_quests: list[ContractCard] = Field(default_factory=list)
+    quest_deck: list[ContractCard] = Field(default_factory=list)
+    quest_discard: list[ContractCard] = Field(default_factory=list)
     building_lots: list[str] = Field(default_factory=list)
     constructed_buildings: list[str] = Field(default_factory=list)
     face_up_contracts: list[ContractCard] = Field(default_factory=list)

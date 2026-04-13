@@ -10,14 +10,14 @@ from typing import TYPE_CHECKING
 
 from server.models.game import (
     ActionSpace,
+    BackstageSlot,
     BoardState,
     GameLog,
-    GarageSlot,
     Player,
 )
 from shared.constants import (
+    BACKSTAGE_SLOTS,
     FACE_UP_QUEST_COUNT,
-    GARAGE_SLOTS,
     STARTING_WORKERS,
     GamePhase,
 )
@@ -228,9 +228,9 @@ def _initialize_game(state, config) -> None:
             reward_special=space_cfg.reward_special,
         )
 
-    # Garage slots
-    board.garage_slots = [
-        GarageSlot(slot_number=i) for i in range(1, GARAGE_SLOTS + 1)
+    # Backstage slots
+    board.backstage_slots = [
+        BackstageSlot(slot_number=i) for i in range(1, BACKSTAGE_SLOTS + 1)
     ]
 
     # Building lots
@@ -238,11 +238,11 @@ def _initialize_game(state, config) -> None:
         f"lot_{i}" for i in range(config.board.building_lot_count)
     ]
 
-    # Shuffle and deal cards
-    contract_deck = list(config.contracts)
-    random.shuffle(contract_deck)
-    board.face_up_contracts = contract_deck[:FACE_UP_QUEST_COUNT]
-    board.contract_deck = contract_deck[FACE_UP_QUEST_COUNT:]
+    # Shuffle and deal quest cards (face-up quests at The Garage)
+    quest_cards = list(config.contracts)
+    random.shuffle(quest_cards)
+    board.face_up_quests = quest_cards[:FACE_UP_QUEST_COUNT]
+    board.quest_deck = quest_cards[FACE_UP_QUEST_COUNT:]
 
     intrigue_deck = list(config.intrigue_cards)
     random.shuffle(intrigue_deck)
@@ -296,6 +296,9 @@ def _filter_state_for_player(state, player_id: str) -> dict:
     data["board"]["contract_deck"] = []
     data["board"]["intrigue_deck_count"] = len(data["board"]["intrigue_deck"])
     data["board"]["intrigue_deck"] = []
+    data["board"]["quest_deck_count"] = len(data["board"]["quest_deck"])
+    data["board"]["quest_deck"] = []
+    data["board"]["quest_discard"] = []
 
     return data
 

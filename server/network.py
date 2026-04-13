@@ -116,9 +116,13 @@ class GameServer:
         from server.game_engine import handle_place_worker
         await handle_place_worker(self, conn, msg)
 
-    async def _handle_place_worker_garage(self, conn, msg) -> None:
-        from server.game_engine import handle_place_worker_garage
-        await handle_place_worker_garage(self, conn, msg)
+    async def _handle_place_worker_backstage(self, conn, msg) -> None:
+        from server.game_engine import handle_place_worker_backstage
+        await handle_place_worker_backstage(self, conn, msg)
+
+    async def _handle_select_quest_card(self, conn, msg) -> None:
+        from server.game_engine import handle_select_quest_card
+        await handle_select_quest_card(self, conn, msg)
 
     async def _handle_complete_quest(self, conn, msg) -> None:
         from server.game_engine import handle_complete_quest

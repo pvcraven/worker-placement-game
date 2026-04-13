@@ -36,24 +36,24 @@
       "slots": 1
     },
     {
-      "space_id": "cliffwatch_inn_1",
-      "name": "Cliffwatch Inn (Slot 1)",
-      "space_type": "cliffwatch",
-      "reward_special": "acquire_contract_or_intrigue",
+      "space_id": "the_garage_1",
+      "name": "The Garage (Quest + Coins)",
+      "space_type": "garage",
+      "reward_special": "quest_and_coins",
       "slots": 1
     },
     {
-      "space_id": "cliffwatch_inn_2",
-      "name": "Cliffwatch Inn (Slot 2)",
-      "space_type": "cliffwatch",
-      "reward_special": "acquire_contract_or_intrigue",
+      "space_id": "the_garage_2",
+      "name": "The Garage (Quest + Intrigue)",
+      "space_type": "garage",
+      "reward_special": "quest_and_intrigue",
       "slots": 1
     },
     {
-      "space_id": "cliffwatch_inn_3",
-      "name": "Cliffwatch Inn (Slot 3)",
-      "space_type": "cliffwatch",
-      "reward_special": "acquire_contract_or_intrigue",
+      "space_id": "the_garage_3",
+      "name": "The Garage (Reset Quests)",
+      "space_type": "garage",
+      "reward_special": "reset_quests",
       "slots": 1
     },
     {
