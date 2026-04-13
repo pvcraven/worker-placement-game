@@ -41,7 +41,10 @@ class CardRenderer:
             t.color = color
             return t
         t = arcade.Text(
-            text, x, y, color, font_size=font_size, **kwargs,
+            text, x, y, color,
+            font_size=font_size,
+            font_name="Tahoma",
+            **kwargs,
         )
         cls._cache[key] = t
         return t
@@ -79,8 +82,8 @@ class CardRenderer:
         cls._text(
             f"{cache_key}_name", name,
             cx, cy + 78,
-            arcade.color.WHITE, 12,
-            anchor_x="center", anchor_y="center", bold=True,
+            arcade.color.WHITE, 13,
+            anchor_x="center", anchor_y="center",
         ).draw()
 
         # Genre tag

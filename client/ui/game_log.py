@@ -26,7 +26,7 @@ class GameLogPanel:
         font_size: int,
         **kwargs,
     ) -> arcade.Text:
-        """Get or create a cached Text object, updating position and content."""
+        """Get or create a cached Text object."""
         if key in self._text_cache:
             t = self._text_cache[key]
             t.text = text
@@ -35,7 +35,10 @@ class GameLogPanel:
             t.color = color
             return t
         t = arcade.Text(
-            text, x, y, color, font_size=font_size, **kwargs,
+            text, x, y, color,
+            font_size=font_size,
+            font_name="Tahoma",
+            **kwargs,
         )
         self._text_cache[key] = t
         return t

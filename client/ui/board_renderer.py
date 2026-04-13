@@ -71,7 +71,10 @@ class BoardRenderer:
             t.color = color
             return t
         t = arcade.Text(
-            text, x, y, color, font_size=font_size, **kwargs,
+            text, x, y, color,
+            font_size=font_size,
+            font_name="Tahoma",
+            **kwargs,
         )
         self._text_cache[key] = t
         return t

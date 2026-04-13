@@ -28,6 +28,7 @@ class GameWindow(arcade.Window):
             title="Record Label - Worker Placement Game",
             resizable=True,
             fullscreen=fullscreen,
+            antialiasing=False,
         )
         self.scale_x: float = width / DESIGN_WIDTH
         self.scale_y: float = height / DESIGN_HEIGHT

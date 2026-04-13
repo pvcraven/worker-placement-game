@@ -37,21 +37,21 @@
     },
     {
       "space_id": "the_garage_1",
-      "name": "The Garage (Quest + Coins)",
+      "name": "The Garage 1",
       "space_type": "garage",
       "reward_special": "quest_and_coins",
       "slots": 1
     },
     {
       "space_id": "the_garage_2",
-      "name": "The Garage (Quest + Intrigue)",
+      "name": "The Garage 2",
       "space_type": "garage",
       "reward_special": "quest_and_intrigue",
       "slots": 1
     },
     {
       "space_id": "the_garage_3",
-      "name": "The Garage (Reset Quests)",
+      "name": "The Garage 3",
       "space_type": "garage",
       "reward_special": "reset_quests",
       "slots": 1
@@ -65,7 +65,7 @@
     },
     {
       "space_id": "castle_waterdeep",
-      "name": "Castle Waterdeep",
+      "name": "Fastpass",
       "space_type": "castle",
       "reward_special": "first_player_marker_and_intrigue",
       "slots": 1
