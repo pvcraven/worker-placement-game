@@ -6,6 +6,26 @@ import arcade
 import arcade.gui
 
 
+_BTN_STYLE = {
+    "normal": arcade.gui.UIFlatButton.UIStyle(
+        font_size=18, font_name=("Arial",), font_color=arcade.color.WHITE,
+        bg=(44, 62, 80, 255), border=None, border_width=0,
+    ),
+    "hover": arcade.gui.UIFlatButton.UIStyle(
+        font_size=18, font_name=("Arial",), font_color=arcade.color.WHITE,
+        bg=(52, 73, 94, 255), border=(149, 165, 166, 255), border_width=2,
+    ),
+    "press": arcade.gui.UIFlatButton.UIStyle(
+        font_size=18, font_name=("Arial",), font_color=(44, 62, 80, 255),
+        bg=(236, 240, 241, 255), border=(149, 165, 166, 255), border_width=2,
+    ),
+    "disabled": arcade.gui.UIFlatButton.UIStyle(
+        font_size=18, font_name=("Arial",), font_color=(189, 195, 199, 255),
+        bg=(127, 140, 141, 255), border=None, border_width=0,
+    ),
+}
+
+
 class LobbyView(arcade.View):
     """Waiting room before the game starts."""
 
@@ -32,8 +52,9 @@ class LobbyView(arcade.View):
         # Title
         title = arcade.gui.UILabel(
             text="Game Lobby",
-            font_size=28,
+            font_size=40,
             text_color=arcade.color.WHITE,
+            bold=True,
             align="center",
         )
         v_box.add(title)
@@ -42,8 +63,9 @@ class LobbyView(arcade.View):
         code = getattr(self.window, "game_code", "???")
         code_label = arcade.gui.UILabel(
             text=f"Game Code: {code}",
-            font_size=20,
+            font_size=24,
             text_color=arcade.color.YELLOW,
+            bold=True,
             align="center",
         )
         v_box.add(code_label)
@@ -54,8 +76,9 @@ class LobbyView(arcade.View):
         # Player list label
         self.player_list_label = arcade.gui.UILabel(
             text="Waiting for players...",
-            font_size=14,
+            font_size=18,
             text_color=arcade.color.WHITE,
+            bold=True,
             multiline=True,
             width=400,
         )
@@ -65,21 +88,22 @@ class LobbyView(arcade.View):
         v_box.add(spacer2)
 
         # Ready button
-        self.ready_btn = arcade.gui.UIFlatButton(text="Ready", width=200, height=45)
+        self.ready_btn = arcade.gui.UIFlatButton(text="Ready", width=300, height=55, style=_BTN_STYLE)
         self.ready_btn.on_click = self._on_ready
         v_box.add(self.ready_btn)
         self._is_ready = False
 
         # Start button (host only)
-        self.start_btn = arcade.gui.UIFlatButton(text="Start Game", width=200, height=45)
+        self.start_btn = arcade.gui.UIFlatButton(text="Start Game", width=300, height=55, style=_BTN_STYLE)
         self.start_btn.on_click = self._on_start
         v_box.add(self.start_btn)
 
         # Status
         self.status_label = arcade.gui.UILabel(
             text="",
-            font_size=12,
+            font_size=16,
             text_color=arcade.color.YELLOW,
+            bold=True,
         )
         v_box.add(self.status_label)
 

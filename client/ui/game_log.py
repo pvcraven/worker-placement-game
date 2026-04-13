@@ -32,16 +32,16 @@ class GameLogPanel:
         # Title
         arcade.draw_text(
             "Game Log",
-            x + w / 2, y + h - 15,
+            x + w / 2, y + h - 20,
             arcade.color.WHITE,
-            font_size=12,
+            font_size=16,
             anchor_x="center",
             bold=True,
         )
 
         # Log entries
-        line_height = 16
-        max_lines = min(_VISIBLE_LINES, int((h - 40) / line_height))
+        line_height = 22
+        max_lines = min(_VISIBLE_LINES, int((h - 50) / line_height))
         start = self.scroll_offset
         end = min(start + max_lines, len(self.entries))
 
@@ -49,10 +49,10 @@ class GameLogPanel:
             text = self.entries[idx]
             if len(text) > 38:
                 text = text[:36] + ".."
-            ty = y + h - 40 - i * line_height
+            ty = y + h - 50 - i * line_height
             arcade.draw_text(
                 text,
                 x + 8, ty,
                 arcade.color.LIGHT_GRAY,
-                font_size=9,
+                font_size=12,
             )

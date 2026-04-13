@@ -48,9 +48,10 @@ class ResourceBar:
                 f"{label}: {val}",
                 cx - 15, cy,
                 arcade.color.WHITE,
-                font_size=13,
+                font_size=16,
                 anchor_x="left",
                 anchor_y="center",
+                bold=True,
             )
 
         # VP display at the end
@@ -59,7 +60,7 @@ class ResourceBar:
             f"VP: {self.resources.get('victory_points', 0)}",
             vp_cx - 30, y + h / 2,
             arcade.color.YELLOW,
-            font_size=15,
+            font_size=20,
             anchor_x="left",
             anchor_y="center",
             bold=True,

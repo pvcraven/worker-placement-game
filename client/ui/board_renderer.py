@@ -25,8 +25,8 @@ _GARAGE_LAYOUT: list[tuple[float, float]] = [
     (0.55, 0.50),  # Slot 3 -- intentionally offset from builders_hall
 ]
 
-_SPACE_WIDTH = 120
-_SPACE_HEIGHT = 55
+_SPACE_WIDTH = 170
+_SPACE_HEIGHT = 75
 
 # Colors for player tokens
 _PLAYER_COLORS = [
@@ -96,9 +96,9 @@ class BoardRenderer:
         # Board title
         arcade.draw_text(
             "THE BOARD",
-            x + w / 2, y + h - 15,
+            x + w / 2, y + h - 20,
             arcade.color.WHITE,
-            font_size=14,
+            font_size=20,
             anchor_x="center",
             bold=True,
         )
@@ -108,7 +108,7 @@ class BoardRenderer:
             "THE GARAGE",
             x + 0.55 * w, y + 0.90 * h,
             arcade.color.YELLOW,
-            font_size=11,
+            font_size=16,
             anchor_x="center",
             bold=True,
         )
@@ -140,15 +140,16 @@ class BoardRenderer:
         )
 
         name = data.get("name", space_id)
-        if len(name) > 18:
-            name = name[:16] + ".."
+        if len(name) > 22:
+            name = name[:20] + ".."
         arcade.draw_text(
             name,
-            cx, cy + 8,
+            cx, cy + 12,
             arcade.color.WHITE,
-            font_size=9,
+            font_size=13,
             anchor_x="center",
             anchor_y="center",
+            bold=True,
         )
 
         # Show reward hint
@@ -157,9 +158,9 @@ class BoardRenderer:
         if reward_str:
             arcade.draw_text(
                 reward_str,
-                cx, cy - 10,
+                cx, cy - 14,
                 arcade.color.LIGHT_GRAY,
-                font_size=8,
+                font_size=11,
                 anchor_x="center",
                 anchor_y="center",
             )
@@ -167,12 +168,12 @@ class BoardRenderer:
         # Worker token
         if occupied:
             color = self._player_color(occupied)
-            arcade.draw_circle_filled(cx + sw / 2 - 10, cy, 6, color)
+            arcade.draw_circle_filled(cx + sw / 2 - 14, cy, 9, color)
 
     def _draw_garage_slot(
         self, cx: float, cy: float, slot_num: int, data: dict
     ) -> None:
-        sw, sh = _SPACE_WIDTH, 45
+        sw, sh = _SPACE_WIDTH, 60
         space_id = f"garage_slot_{slot_num}"
         self._space_rects[space_id] = (cx - sw / 2, cy - sh / 2, sw, sh)
 
@@ -191,23 +192,24 @@ class BoardRenderer:
 
         arcade.draw_text(
             f"Slot {slot_num}",
-            cx, cy + 5,
+            cx, cy + 8,
             arcade.color.YELLOW,
-            font_size=9,
+            font_size=13,
             anchor_x="center",
             anchor_y="center",
+            bold=True,
         )
 
         if occupied:
             color = self._player_color(occupied)
-            arcade.draw_circle_filled(cx + sw / 2 - 10, cy, 6, color)
+            arcade.draw_circle_filled(cx + sw / 2 - 14, cy, 9, color)
             card = data.get("intrigue_card_played")
             if card:
                 arcade.draw_text(
-                    card.get("name", "")[:12],
-                    cx, cy - 10,
+                    card.get("name", "")[:16],
+                    cx, cy - 12,
                     arcade.color.LIGHT_GRAY,
-                    font_size=7,
+                    font_size=10,
                     anchor_x="center",
                 )
 

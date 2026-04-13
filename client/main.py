@@ -4,6 +4,12 @@ from __future__ import annotations
 
 import argparse
 
+import arcade.text
+
+# Fix DirectWrite font enumeration hang on some Windows systems by
+# setting a known-good default font before any UI elements are created.
+arcade.text.DEFAULT_FONT_NAMES = ("Arial",)
+
 from client.game_window import GameWindow
 from client.network_client import NetworkClient
 
