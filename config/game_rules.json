@@ -1,0 +1,15 @@
+{
+  "total_rounds": 8,
+  "bonus_worker_round": 5,
+  "turn_timeout_seconds": 60,
+  "game_preserve_timeout_seconds": 1800,
+  "face_up_quest_count": 5,
+  "starting_workers": {
+    "2": 4,
+    "3": 3,
+    "4": 2,
+    "5": 2
+  },
+  "min_players": 2,
+  "max_players": 5
+}

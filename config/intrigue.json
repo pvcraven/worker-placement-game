@@ -1,0 +1,404 @@
+{
+  "intrigue_cards": [
+    {
+      "id": "intrigue_001",
+      "name": "Private Plane",
+      "description": "Charter a private jet to rush your musicians to the studio.",
+      "effect_type": "gain_resources",
+      "effect_target": "self",
+      "effect_value": {"guitarists": 2, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0}
+    },
+    {
+      "id": "intrigue_002",
+      "name": "Open Mic Night",
+      "description": "Scout local talent at an open mic event. A hidden gem joins your roster.",
+      "effect_type": "gain_resources",
+      "effect_target": "self",
+      "effect_value": {"guitarists": 1, "bass_players": 0, "drummers": 0, "singers": 1, "coins": 0}
+    },
+    {
+      "id": "intrigue_003",
+      "name": "Battle of the Bands",
+      "description": "Host a battle of the bands and recruit the winners to your label.",
+      "effect_type": "gain_resources",
+      "effect_target": "self",
+      "effect_value": {"guitarists": 1, "bass_players": 1, "drummers": 1, "singers": 0, "coins": 0}
+    },
+    {
+      "id": "intrigue_004",
+      "name": "Rhythm Section Bootcamp",
+      "description": "Run an intensive workshop that produces a tight rhythm section.",
+      "effect_type": "gain_resources",
+      "effect_target": "self",
+      "effect_value": {"guitarists": 0, "bass_players": 1, "drummers": 1, "singers": 0, "coins": 0}
+    },
+    {
+      "id": "intrigue_005",
+      "name": "Vocal Coach Masterclass",
+      "description": "Hire a legendary vocal coach to train up new talent for your label.",
+      "effect_type": "gain_resources",
+      "effect_target": "self",
+      "effect_value": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 2, "coins": 0}
+    },
+    {
+      "id": "intrigue_006",
+      "name": "Garage Band Discovery",
+      "description": "Discover a promising garage band and sign them on the spot.",
+      "effect_type": "gain_resources",
+      "effect_target": "self",
+      "effect_value": {"guitarists": 1, "bass_players": 1, "drummers": 0, "singers": 0, "coins": 0}
+    },
+    {
+      "id": "intrigue_007",
+      "name": "Festival Lineup Shuffle",
+      "description": "A major festival cancellation frees up musicians looking for work.",
+      "effect_type": "gain_resources",
+      "effect_target": "self",
+      "effect_value": {"guitarists": 0, "bass_players": 0, "drummers": 2, "singers": 0, "coins": 0}
+    },
+    {
+      "id": "intrigue_008",
+      "name": "Reunion Tour Fallout",
+      "description": "A supergroup's reunion tour collapses. Scoop up the disillusioned musicians.",
+      "effect_type": "gain_resources",
+      "effect_target": "self",
+      "effect_value": {"guitarists": 1, "bass_players": 0, "drummers": 1, "singers": 1, "coins": 0}
+    },
+    {
+      "id": "intrigue_009",
+      "name": "Music School Graduates",
+      "description": "A fresh class of conservatory graduates is eager to prove themselves.",
+      "effect_type": "gain_resources",
+      "effect_target": "self",
+      "effect_value": {"guitarists": 1, "bass_players": 1, "drummers": 1, "singers": 1, "coins": 0}
+    },
+    {
+      "id": "intrigue_010",
+      "name": "Studio Session Call",
+      "description": "Put out an urgent studio session call and attract seasoned players.",
+      "effect_type": "gain_resources",
+      "effect_target": "self",
+      "effect_value": {"guitarists": 0, "bass_players": 2, "drummers": 0, "singers": 0, "coins": 0}
+    },
+    {
+      "id": "intrigue_011",
+      "name": "Talent Show Scouting",
+      "description": "Send scouts to a regional talent competition. They return with promising finds.",
+      "effect_type": "gain_resources",
+      "effect_target": "self",
+      "effect_value": {"guitarists": 0, "bass_players": 0, "drummers": 1, "singers": 1, "coins": 0}
+    },
+    {
+      "id": "intrigue_012",
+      "name": "Underground Scene",
+      "description": "Tap into the underground music scene and sign raw, hungry talent.",
+      "effect_type": "gain_resources",
+      "effect_target": "self",
+      "effect_value": {"guitarists": 2, "bass_players": 0, "drummers": 0, "singers": 1, "coins": 0}
+    },
+    {
+      "id": "intrigue_013",
+      "name": "Touring Band Breakup",
+      "description": "A touring band implodes mid-tour. Pick up the pieces for your roster.",
+      "effect_type": "gain_resources",
+      "effect_target": "self",
+      "effect_value": {"guitarists": 0, "bass_players": 1, "drummers": 1, "singers": 1, "coins": 0}
+    },
+    {
+      "id": "intrigue_014",
+      "name": "Celebrity Endorsement",
+      "description": "A famous producer recommends your label, attracting top-tier musicians.",
+      "effect_type": "gain_resources",
+      "effect_target": "self",
+      "effect_value": {"guitarists": 1, "bass_players": 0, "drummers": 0, "singers": 1, "coins": 1}
+    },
+    {
+      "id": "intrigue_015",
+      "name": "Church Choir Raid",
+      "description": "Recruit gifted vocalists from a renowned gospel choir.",
+      "effect_type": "gain_resources",
+      "effect_target": "self",
+      "effect_value": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 2, "coins": 1}
+    },
+    {
+      "id": "intrigue_016",
+      "name": "Instrument Trade Show",
+      "description": "Demo players at a trade show are looking for steady gigs. Sign them up.",
+      "effect_type": "gain_resources",
+      "effect_target": "self",
+      "effect_value": {"guitarists": 1, "bass_players": 1, "drummers": 0, "singers": 0, "coins": 1}
+    },
+    {
+      "id": "intrigue_017",
+      "name": "Side Project Poaching",
+      "description": "Lure musicians away from their low-priority side projects.",
+      "effect_type": "gain_resources",
+      "effect_target": "self",
+      "effect_value": {"guitarists": 0, "bass_players": 1, "drummers": 0, "singers": 1, "coins": 0}
+    },
+    {
+      "id": "intrigue_018",
+      "name": "Jam Session Recruitment",
+      "description": "Host a late-night jam session. The chemistry is perfect and new players sign on.",
+      "effect_type": "gain_resources",
+      "effect_target": "self",
+      "effect_value": {"guitarists": 1, "bass_players": 0, "drummers": 1, "singers": 0, "coins": 0}
+    },
+    {
+      "id": "intrigue_019",
+      "name": "Contract Buyout",
+      "description": "Buy out a rival's contract and steal their star guitarist.",
+      "effect_type": "steal_resources",
+      "effect_target": "choose_opponent",
+      "effect_value": {"guitarists": 1, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0}
+    },
+    {
+      "id": "intrigue_020",
+      "name": "Poach the Vocalist",
+      "description": "Offer a rival's lead singer a better deal. They can't refuse.",
+      "effect_type": "steal_resources",
+      "effect_target": "choose_opponent",
+      "effect_value": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 1, "coins": 0}
+    },
+    {
+      "id": "intrigue_021",
+      "name": "Hostile Takeover",
+      "description": "Leverage industry connections to poach key members from a rival label.",
+      "effect_type": "steal_resources",
+      "effect_target": "choose_opponent",
+      "effect_value": {"guitarists": 1, "bass_players": 0, "drummers": 0, "singers": 1, "coins": 0}
+    },
+    {
+      "id": "intrigue_022",
+      "name": "Sabotaged Soundcheck",
+      "description": "A rival's equipment mysteriously malfunctions, costing them dearly.",
+      "effect_type": "opponent_loses",
+      "effect_target": "choose_opponent",
+      "effect_value": {"guitarists": 0, "bass_players": 0, "drummers": 1, "singers": 0, "coins": 2}
+    },
+    {
+      "id": "intrigue_023",
+      "name": "Leaked Scandal",
+      "description": "Leak an embarrassing story about a rival to the tabloids. They lose credibility and resources.",
+      "effect_type": "opponent_loses",
+      "effect_target": "choose_opponent",
+      "effect_value": {"guitarists": 0, "bass_players": 1, "drummers": 0, "singers": 0, "coins": 1}
+    },
+    {
+      "id": "intrigue_024",
+      "name": "Exclusive Distribution Deal",
+      "description": "Lock a rival out of a key distribution channel, draining their funds.",
+      "effect_type": "opponent_loses",
+      "effect_target": "choose_opponent",
+      "effect_value": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 3}
+    },
+    {
+      "id": "intrigue_025",
+      "name": "Rhythm Section Raid",
+      "description": "Offer irresistible contracts to a rival's rhythm section.",
+      "effect_type": "steal_resources",
+      "effect_target": "choose_opponent",
+      "effect_value": {"guitarists": 0, "bass_players": 1, "drummers": 1, "singers": 0, "coins": 0}
+    },
+    {
+      "id": "intrigue_026",
+      "name": "Legal Dispute",
+      "description": "Tie up a rival in a costly legal battle over songwriting credits.",
+      "effect_type": "opponent_loses",
+      "effect_target": "choose_opponent",
+      "effect_value": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 1, "coins": 2}
+    },
+    {
+      "id": "intrigue_027",
+      "name": "Platinum Record Bonus",
+      "description": "One of your albums goes platinum. The label rakes in the royalties.",
+      "effect_type": "gain_coins",
+      "effect_target": "self",
+      "effect_value": {"coins": 4}
+    },
+    {
+      "id": "intrigue_028",
+      "name": "Sold-Out Arena Tour",
+      "description": "Your headliner sells out a nationwide arena tour. Revenue pours in.",
+      "effect_type": "gain_coins",
+      "effect_target": "self",
+      "effect_value": {"coins": 3}
+    },
+    {
+      "id": "intrigue_029",
+      "name": "Streaming Royalties Surge",
+      "description": "A viral playlist feature sends your streaming numbers through the roof.",
+      "effect_type": "gain_coins",
+      "effect_target": "self",
+      "effect_value": {"coins": 2}
+    },
+    {
+      "id": "intrigue_030",
+      "name": "Merchandise Windfall",
+      "description": "Limited-edition merch sells out in minutes. The profits are substantial.",
+      "effect_type": "gain_coins",
+      "effect_target": "self",
+      "effect_value": {"coins": 3}
+    },
+    {
+      "id": "intrigue_031",
+      "name": "Sync Licensing Deal",
+      "description": "A hit TV show licenses one of your tracks. The sync fees are generous.",
+      "effect_type": "gain_coins",
+      "effect_target": "self",
+      "effect_value": {"coins": 2}
+    },
+    {
+      "id": "intrigue_032",
+      "name": "Corporate Sponsorship",
+      "description": "A major brand signs a sponsorship deal with your top artist.",
+      "effect_type": "gain_coins",
+      "effect_target": "self",
+      "effect_value": {"coins": 4}
+    },
+    {
+      "id": "intrigue_033",
+      "name": "Grammy Award Winner",
+      "description": "One of your artists wins a Grammy, bringing prestige to the label.",
+      "effect_type": "vp_bonus",
+      "effect_target": "self",
+      "effect_value": {"victory_points": 3}
+    },
+    {
+      "id": "intrigue_034",
+      "name": "Hall of Fame Induction",
+      "description": "A legendary artist on your roster is inducted into the Hall of Fame.",
+      "effect_type": "vp_bonus",
+      "effect_target": "self",
+      "effect_value": {"victory_points": 3}
+    },
+    {
+      "id": "intrigue_035",
+      "name": "Critical Acclaim",
+      "description": "Your latest release receives universal critical acclaim, boosting your reputation.",
+      "effect_type": "vp_bonus",
+      "effect_target": "self",
+      "effect_value": {"victory_points": 2}
+    },
+    {
+      "id": "intrigue_036",
+      "name": "Viral Music Video",
+      "description": "A music video goes viral overnight, putting your label on the map.",
+      "effect_type": "vp_bonus",
+      "effect_target": "self",
+      "effect_value": {"victory_points": 2}
+    },
+    {
+      "id": "intrigue_037",
+      "name": "Lifetime Achievement Award",
+      "description": "Your label receives an industry lifetime achievement honor.",
+      "effect_type": "vp_bonus",
+      "effect_target": "self",
+      "effect_value": {"victory_points": 2}
+    },
+    {
+      "id": "intrigue_038",
+      "name": "Demo Tape Discovery",
+      "description": "Unearth a stack of promising demo tapes from unsigned artists.",
+      "effect_type": "draw_contracts",
+      "effect_target": "self",
+      "effect_value": {"count": 2}
+    },
+    {
+      "id": "intrigue_039",
+      "name": "A&R Department Expansion",
+      "description": "Expand your A&R team to uncover more signing opportunities.",
+      "effect_type": "draw_contracts",
+      "effect_target": "self",
+      "effect_value": {"count": 3}
+    },
+    {
+      "id": "intrigue_040",
+      "name": "Industry Networking Event",
+      "description": "Attend an exclusive industry gala and discover new business opportunities.",
+      "effect_type": "draw_contracts",
+      "effect_target": "self",
+      "effect_value": {"count": 2}
+    },
+    {
+      "id": "intrigue_041",
+      "name": "Music Conference",
+      "description": "Send your team to a major music conference. They return with new leads.",
+      "effect_type": "draw_contracts",
+      "effect_target": "self",
+      "effect_value": {"count": 2}
+    },
+    {
+      "id": "intrigue_042",
+      "name": "Manager's Rolodex",
+      "description": "A retiring manager hands over their legendary contacts list.",
+      "effect_type": "draw_contracts",
+      "effect_target": "self",
+      "effect_value": {"count": 3}
+    },
+    {
+      "id": "intrigue_043",
+      "name": "Backstage Connections",
+      "description": "Work the backstage scene and pick up insider tips and schemes.",
+      "effect_type": "draw_intrigue",
+      "effect_target": "self",
+      "effect_value": {"count": 2}
+    },
+    {
+      "id": "intrigue_044",
+      "name": "Industry Gossip",
+      "description": "Your publicist feeds you juicy industry gossip that opens new angles.",
+      "effect_type": "draw_intrigue",
+      "effect_target": "self",
+      "effect_value": {"count": 2}
+    },
+    {
+      "id": "intrigue_045",
+      "name": "Paparazzi Intel",
+      "description": "Paparazzi tips reveal opportunities and rivalries you can exploit.",
+      "effect_type": "draw_intrigue",
+      "effect_target": "self",
+      "effect_value": {"count": 3}
+    },
+    {
+      "id": "intrigue_046",
+      "name": "Label Mole",
+      "description": "A mole inside a rival label feeds you valuable strategic information.",
+      "effect_type": "draw_intrigue",
+      "effect_target": "self",
+      "effect_value": {"count": 2}
+    },
+    {
+      "id": "intrigue_047",
+      "name": "Charity Concert",
+      "description": "All labels participate in a charity mega-concert. Everyone benefits from the goodwill.",
+      "effect_type": "all_players_gain",
+      "effect_target": "all",
+      "effect_value": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 1, "coins": 1}
+    },
+    {
+      "id": "intrigue_048",
+      "name": "Music Industry Boom",
+      "description": "A booming economy lifts all labels. Everyone sees increased revenue.",
+      "effect_type": "all_players_gain",
+      "effect_target": "all",
+      "effect_value": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 2}
+    },
+    {
+      "id": "intrigue_049",
+      "name": "New Genre Explosion",
+      "description": "A new genre takes the world by storm, attracting fresh talent to every label.",
+      "effect_type": "all_players_gain",
+      "effect_target": "all",
+      "effect_value": {"guitarists": 1, "bass_players": 0, "drummers": 1, "singers": 0, "coins": 0}
+    },
+    {
+      "id": "intrigue_050",
+      "name": "Government Arts Grant",
+      "description": "A generous government arts grant funds the entire music industry.",
+      "effect_type": "all_players_gain",
+      "effect_target": "all",
+      "effect_value": {"guitarists": 0, "bass_players": 1, "drummers": 0, "singers": 0, "coins": 1}
+    }
+  ]
+}

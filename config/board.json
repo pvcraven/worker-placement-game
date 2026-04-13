@@ -1,0 +1,75 @@
+{
+  "permanent_spaces": [
+    {
+      "space_id": "three_cups",
+      "name": "The Three Cups",
+      "space_type": "permanent",
+      "reward": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 2},
+      "slots": 1
+    },
+    {
+      "space_id": "grinning_lion_pub",
+      "name": "The Grinning Lion Pub",
+      "space_type": "permanent",
+      "reward": {"guitarists": 0, "bass_players": 2, "drummers": 0, "singers": 0, "coins": 0},
+      "slots": 1
+    },
+    {
+      "space_id": "the_arena",
+      "name": "The Arena",
+      "space_type": "permanent",
+      "reward": {"guitarists": 2, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
+      "slots": 1
+    },
+    {
+      "space_id": "pool_of_tears",
+      "name": "The Pool of Tears",
+      "space_type": "permanent",
+      "reward": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 2, "coins": 0},
+      "slots": 1
+    },
+    {
+      "space_id": "the_cathedral",
+      "name": "The Cathedral",
+      "space_type": "permanent",
+      "reward": {"guitarists": 0, "bass_players": 0, "drummers": 2, "singers": 0, "coins": 0},
+      "slots": 1
+    },
+    {
+      "space_id": "cliffwatch_inn_1",
+      "name": "Cliffwatch Inn (Slot 1)",
+      "space_type": "cliffwatch",
+      "reward_special": "acquire_contract_or_intrigue",
+      "slots": 1
+    },
+    {
+      "space_id": "cliffwatch_inn_2",
+      "name": "Cliffwatch Inn (Slot 2)",
+      "space_type": "cliffwatch",
+      "reward_special": "acquire_contract_or_intrigue",
+      "slots": 1
+    },
+    {
+      "space_id": "cliffwatch_inn_3",
+      "name": "Cliffwatch Inn (Slot 3)",
+      "space_type": "cliffwatch",
+      "reward_special": "acquire_contract_or_intrigue",
+      "slots": 1
+    },
+    {
+      "space_id": "builders_hall",
+      "name": "Builder's Hall",
+      "space_type": "builders_hall",
+      "reward_special": "purchase_building",
+      "slots": 1
+    },
+    {
+      "space_id": "castle_waterdeep",
+      "name": "Castle Waterdeep",
+      "space_type": "castle",
+      "reward_special": "first_player_marker_and_intrigue",
+      "slots": 1
+    }
+  ],
+  "building_lot_count": 10
+}

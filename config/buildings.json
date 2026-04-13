@@ -1,0 +1,244 @@
+{
+  "buildings": [
+    {
+      "id": "building_001",
+      "name": "Abbey Road Studios",
+      "description": "The iconic London studio where The Beatles recorded most of their albums, cementing it as the most famous recording studio in the world.",
+      "cost_coins": 6,
+      "visitor_reward": {"guitarists": 1, "bass_players": 1, "drummers": 1, "singers": 0, "coins": 0},
+      "visitor_reward_special": null,
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 2},
+      "owner_bonus_special": null
+    },
+    {
+      "id": "building_002",
+      "name": "The Troubadour",
+      "description": "The legendary West Hollywood club that launched the careers of Elton John, James Taylor, and Joni Mitchell during the 1960s and 70s.",
+      "cost_coins": 4,
+      "visitor_reward": {"guitarists": 1, "bass_players": 0, "drummers": 0, "singers": 1, "coins": 0},
+      "visitor_reward_special": null,
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 1},
+      "owner_bonus_special": null
+    },
+    {
+      "id": "building_003",
+      "name": "Electric Lady Studios",
+      "description": "Jimi Hendrix's custom-built Greenwich Village studio, designed to feel like an underwater paradise and still producing hits today.",
+      "cost_coins": 7,
+      "visitor_reward": {"guitarists": 2, "bass_players": 0, "drummers": 1, "singers": 0, "coins": 0},
+      "visitor_reward_special": null,
+      "owner_bonus": {"guitarists": 1, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
+      "owner_bonus_special": null
+    },
+    {
+      "id": "building_004",
+      "name": "FAME Studios",
+      "description": "The Muscle Shoals, Alabama studio where Aretha Franklin, Etta James, and Wilson Pickett recorded some of the greatest soul music ever made.",
+      "cost_coins": 5,
+      "visitor_reward": {"guitarists": 0, "bass_players": 1, "drummers": 0, "singers": 1, "coins": 0},
+      "visitor_reward_special": "draw_contract",
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 1, "coins": 0},
+      "owner_bonus_special": null
+    },
+    {
+      "id": "building_005",
+      "name": "Sun Studio",
+      "description": "The Memphis birthplace of rock and roll where Elvis Presley, Johnny Cash, and Jerry Lee Lewis made their first recordings.",
+      "cost_coins": 5,
+      "visitor_reward": {"guitarists": 1, "bass_players": 0, "drummers": 0, "singers": 1, "coins": 1},
+      "visitor_reward_special": null,
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 1},
+      "owner_bonus_special": null
+    },
+    {
+      "id": "building_006",
+      "name": "CBGB",
+      "description": "The grimy Bowery club that gave birth to American punk rock, hosting early performances by The Ramones, Blondie, and Talking Heads.",
+      "cost_coins": 3,
+      "visitor_reward": {"guitarists": 1, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 1},
+      "visitor_reward_special": null,
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 1},
+      "owner_bonus_special": null
+    },
+    {
+      "id": "building_007",
+      "name": "The Cavern Club",
+      "description": "The underground Liverpool venue where The Beatles played nearly 300 shows before achieving worldwide fame.",
+      "cost_coins": 4,
+      "visitor_reward": {"guitarists": 1, "bass_players": 1, "drummers": 0, "singers": 0, "coins": 0},
+      "visitor_reward_special": null,
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 1},
+      "owner_bonus_special": null
+    },
+    {
+      "id": "building_008",
+      "name": "Motown Hitsville U.S.A.",
+      "description": "Berry Gordy's converted Detroit house where The Supremes, Stevie Wonder, and Marvin Gaye defined the sound of a generation.",
+      "cost_coins": 6,
+      "visitor_reward": {"guitarists": 0, "bass_players": 1, "drummers": 1, "singers": 1, "coins": 0},
+      "visitor_reward_special": null,
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 1, "coins": 0},
+      "owner_bonus_special": null
+    },
+    {
+      "id": "building_009",
+      "name": "Chess Records Studio",
+      "description": "The Chicago studio that shaped the sound of electric blues and early rock through artists like Muddy Waters, Chuck Berry, and Howlin' Wolf.",
+      "cost_coins": 4,
+      "visitor_reward": {"guitarists": 1, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 1},
+      "visitor_reward_special": "draw_intrigue",
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 1},
+      "owner_bonus_special": null
+    },
+    {
+      "id": "building_010",
+      "name": "The Fillmore",
+      "description": "Bill Graham's San Francisco concert hall that became the epicenter of the psychedelic rock movement in the 1960s.",
+      "cost_coins": 5,
+      "visitor_reward": {"guitarists": 1, "bass_players": 0, "drummers": 1, "singers": 0, "coins": 0},
+      "visitor_reward_special": null,
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 1, "singers": 0, "coins": 0},
+      "owner_bonus_special": null
+    },
+    {
+      "id": "building_011",
+      "name": "Hansa Studios",
+      "description": "The Berlin studio by the Wall where David Bowie recorded his iconic Berlin trilogy and U2 crafted Achtung Baby.",
+      "cost_coins": 6,
+      "visitor_reward": {"guitarists": 1, "bass_players": 0, "drummers": 0, "singers": 1, "coins": 1},
+      "visitor_reward_special": null,
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 1},
+      "owner_bonus_special": null
+    },
+    {
+      "id": "building_012",
+      "name": "The Apollo Theater",
+      "description": "Harlem's world-famous stage whose Amateur Night launched James Brown, Ella Fitzgerald, and countless other Black artists to stardom.",
+      "cost_coins": 7,
+      "visitor_reward": {"guitarists": 0, "bass_players": 0, "drummers": 1, "singers": 2, "coins": 0},
+      "visitor_reward_special": null,
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 2},
+      "owner_bonus_special": null
+    },
+    {
+      "id": "building_013",
+      "name": "Sunset Sound",
+      "description": "The Hollywood studio where The Doors, Led Zeppelin, and Van Halen each recorded career-defining albums.",
+      "cost_coins": 5,
+      "visitor_reward": {"guitarists": 1, "bass_players": 0, "drummers": 1, "singers": 0, "coins": 0},
+      "visitor_reward_special": null,
+      "owner_bonus": {"guitarists": 1, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
+      "owner_bonus_special": null
+    },
+    {
+      "id": "building_014",
+      "name": "The Ryman Auditorium",
+      "description": "Nashville's Mother Church of Country Music and original home of the Grand Ole Opry, revered for its perfect acoustics.",
+      "cost_coins": 6,
+      "visitor_reward": {"guitarists": 1, "bass_players": 0, "drummers": 0, "singers": 1, "coins": 1},
+      "visitor_reward_special": null,
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 1, "coins": 0},
+      "owner_bonus_special": null
+    },
+    {
+      "id": "building_015",
+      "name": "Compass Point Studios",
+      "description": "The legendary Nassau, Bahamas studio founded by Chris Blackwell where AC/DC, Iron Maiden, and Grace Jones recorded landmark albums.",
+      "cost_coins": 8,
+      "visitor_reward": {"guitarists": 1, "bass_players": 1, "drummers": 1, "singers": 1, "coins": 0},
+      "visitor_reward_special": null,
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 2},
+      "owner_bonus_special": null
+    },
+    {
+      "id": "building_016",
+      "name": "The 100 Club",
+      "description": "The Oxford Street venue that hosted the first international punk festival in 1976, featuring the Sex Pistols and The Clash.",
+      "cost_coins": 3,
+      "visitor_reward": {"guitarists": 0, "bass_players": 1, "drummers": 0, "singers": 0, "coins": 1},
+      "visitor_reward_special": null,
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 1},
+      "owner_bonus_special": null
+    },
+    {
+      "id": "building_017",
+      "name": "RCA Studio B",
+      "description": "Nashville's oldest surviving recording studio where Elvis Presley recorded over 200 songs and the Nashville Sound was born.",
+      "cost_coins": 4,
+      "visitor_reward": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 1, "coins": 1},
+      "visitor_reward_special": "draw_contract",
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 1},
+      "owner_bonus_special": null
+    },
+    {
+      "id": "building_018",
+      "name": "The Whisky a Go Go",
+      "description": "The Sunset Strip club that launched The Doors as its house band and became a proving ground for hard rock and metal acts.",
+      "cost_coins": 3,
+      "visitor_reward": {"guitarists": 1, "bass_players": 0, "drummers": 0, "singers": 1, "coins": 0},
+      "visitor_reward_special": null,
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 1},
+      "owner_bonus_special": null
+    },
+    {
+      "id": "building_019",
+      "name": "Trident Studios",
+      "description": "The Soho studio where Bowie recorded Ziggy Stardust, Queen laid down Bohemian Rhapsody, and the first Bechstein piano tracks were cut.",
+      "cost_coins": 7,
+      "visitor_reward": {"guitarists": 0, "bass_players": 1, "drummers": 1, "singers": 1, "coins": 0},
+      "visitor_reward_special": "draw_intrigue",
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 1},
+      "owner_bonus_special": null
+    },
+    {
+      "id": "building_020",
+      "name": "Red Rocks Amphitheatre",
+      "description": "The natural sandstone amphitheatre near Denver whose unmatched acoustics and dramatic setting have hosted legendary live recordings.",
+      "cost_coins": 8,
+      "visitor_reward": {"guitarists": 1, "bass_players": 1, "drummers": 1, "singers": 0, "coins": 1},
+      "visitor_reward_special": null,
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 1, "coins": 0},
+      "owner_bonus_special": null
+    },
+    {
+      "id": "building_021",
+      "name": "J&M Recording Studio",
+      "description": "Cosimo Matassa's tiny New Orleans studio where Little Richard, Fats Domino, and Ray Charles forged the blueprint for rock and R&B.",
+      "cost_coins": 2,
+      "visitor_reward": {"guitarists": 0, "bass_players": 0, "drummers": 1, "singers": 0, "coins": 0},
+      "visitor_reward_special": null,
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 1},
+      "owner_bonus_special": null
+    },
+    {
+      "id": "building_022",
+      "name": "The Bluebird Cafe",
+      "description": "The intimate Nashville listening room where Garth Brooks was discovered and songwriters share works-in-progress with rapt audiences.",
+      "cost_coins": 2,
+      "visitor_reward": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 1, "coins": 0},
+      "visitor_reward_special": "draw_contract",
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 1},
+      "owner_bonus_special": null
+    },
+    {
+      "id": "building_023",
+      "name": "Criteria Studios",
+      "description": "The Miami studio where Eric Clapton recorded Layla, the Bee Gees cut Saturday Night Fever, and Fleetwood Mac tracked Rumours sessions.",
+      "cost_coins": 6,
+      "visitor_reward": {"guitarists": 1, "bass_players": 1, "drummers": 0, "singers": 0, "coins": 1},
+      "visitor_reward_special": null,
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 1},
+      "owner_bonus_special": null
+    },
+    {
+      "id": "building_024",
+      "name": "First Avenue",
+      "description": "The legendary Minneapolis nightclub where Prince filmed Purple Rain and which remains a vital launching pad for indie artists.",
+      "cost_coins": 3,
+      "visitor_reward": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 2},
+      "visitor_reward_special": "draw_intrigue",
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 1},
+      "owner_bonus_special": null
+    }
+  ]
+}

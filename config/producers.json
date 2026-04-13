@@ -1,0 +1,81 @@
+{
+  "producers": [
+    {
+      "id": "producer_001",
+      "name": "Quincy Jones",
+      "description": "Legendary producer known for Jazz and Pop crossovers. Bonus VP for Jazz and Pop contracts.",
+      "bonus_genres": ["jazz", "pop"],
+      "bonus_vp_per_contract": 4
+    },
+    {
+      "id": "producer_002",
+      "name": "Rick Rubin",
+      "description": "Genre-defying producer with a love for Rock and Funk. Bonus VP for Rock and Funk contracts.",
+      "bonus_genres": ["rock", "funk"],
+      "bonus_vp_per_contract": 4
+    },
+    {
+      "id": "producer_003",
+      "name": "Dr. Dre",
+      "description": "West coast icon bridging Funk and Soul. Bonus VP for Funk and Soul contracts.",
+      "bonus_genres": ["funk", "soul"],
+      "bonus_vp_per_contract": 4
+    },
+    {
+      "id": "producer_004",
+      "name": "Nile Rodgers",
+      "description": "Disco and Funk maestro with Pop sensibility. Bonus VP for Funk and Pop contracts.",
+      "bonus_genres": ["funk", "pop"],
+      "bonus_vp_per_contract": 4
+    },
+    {
+      "id": "producer_005",
+      "name": "Berry Gordy",
+      "description": "Motown founder with ears for Soul and Pop. Bonus VP for Soul and Pop contracts.",
+      "bonus_genres": ["soul", "pop"],
+      "bonus_vp_per_contract": 4
+    },
+    {
+      "id": "producer_006",
+      "name": "Teo Macero",
+      "description": "Jazz innovator who shaped fusion. Bonus VP for Jazz and Soul contracts.",
+      "bonus_genres": ["jazz", "soul"],
+      "bonus_vp_per_contract": 4
+    },
+    {
+      "id": "producer_007",
+      "name": "George Martin",
+      "description": "The fifth Beatle, master of Rock and Pop. Bonus VP for Rock and Pop contracts.",
+      "bonus_genres": ["rock", "pop"],
+      "bonus_vp_per_contract": 4
+    },
+    {
+      "id": "producer_008",
+      "name": "Herbie Hancock",
+      "description": "Jazz pianist who embraced Funk. Bonus VP for Jazz and Funk contracts.",
+      "bonus_genres": ["jazz", "funk"],
+      "bonus_vp_per_contract": 4
+    },
+    {
+      "id": "producer_009",
+      "name": "Phil Spector",
+      "description": "Wall of Sound creator, bridging Rock and Soul. Bonus VP for Rock and Soul contracts.",
+      "bonus_genres": ["rock", "soul"],
+      "bonus_vp_per_contract": 4
+    },
+    {
+      "id": "producer_010",
+      "name": "Rudy Van Gelder",
+      "description": "Legendary recording engineer for Jazz and Rock. Bonus VP for Jazz and Rock contracts.",
+      "bonus_genres": ["jazz", "rock"],
+      "bonus_vp_per_contract": 4
+    },
+    {
+      "id": "producer_011",
+      "name": "Sylvia Robinson",
+      "description": "Pioneer of Soul and Funk recordings. Bonus VP for Soul and Funk contracts.",
+      "bonus_genres": ["soul", "funk"],
+      "bonus_vp_per_contract": 4
+    }
+  ]
+}
