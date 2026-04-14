@@ -17,11 +17,13 @@ from server.models.game import (
 )
 from shared.constants import (
     BACKSTAGE_SLOTS,
+    FACE_UP_BUILDING_COUNT,
     FACE_UP_QUEST_COUNT,
     STARTING_WORKERS,
     GamePhase,
 )
 from shared.messages import (
+    BuildingMarketUpdateResponse,
     GameCreatedResponse,
     GameStartedResponse,
     LobbyPlayerInfo,
@@ -198,6 +200,17 @@ async def start_game(server: GameServer, conn: ClientConnection, msg) -> None:
             GameStartedResponse(game_state=filtered),
         )
 
+    # Broadcast initial building market
+    await server.broadcast_to_game(
+        state.game_code,
+        BuildingMarketUpdateResponse(
+            face_up_buildings=[
+                b.model_dump() for b in state.board.face_up_buildings
+            ],
+            deck_remaining=len(state.board.building_deck),
+        ),
+    )
+
     logger.info("Game %s started with %d players", state.game_code, len(state.players))
 
 
@@ -248,9 +261,13 @@ def _initialize_game(state, config) -> None:
     random.shuffle(intrigue_deck)
     board.intrigue_deck = intrigue_deck
 
-    building_supply = list(config.buildings)
-    random.shuffle(building_supply)
-    board.building_supply = building_supply
+    all_buildings = list(config.buildings)
+    random.shuffle(all_buildings)
+    face_up = all_buildings[:FACE_UP_BUILDING_COUNT]
+    for b in face_up:
+        b.accumulated_vp = 1
+    board.face_up_buildings = face_up
+    board.building_deck = all_buildings[FACE_UP_BUILDING_COUNT:]
 
     state.board = board
 
@@ -299,6 +316,8 @@ def _filter_state_for_player(state, player_id: str) -> dict:
     data["board"]["quest_deck_count"] = len(data["board"]["quest_deck"])
     data["board"]["quest_deck"] = []
     data["board"]["quest_discard"] = []
+    data["board"]["building_deck_count"] = len(data["board"]["building_deck"])
+    data["board"]["building_deck"] = []
 
     return data
 

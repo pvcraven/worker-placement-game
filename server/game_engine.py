@@ -15,6 +15,7 @@ from shared.constants import BONUS_WORKER_ROUND, GamePhase
 from shared.constants import FACE_UP_QUEST_COUNT
 from shared.messages import (
     BonusWorkersGrantedResponse,
+    BuildingMarketUpdateResponse,
     ContractAcquiredResponse,
     FaceUpQuestsUpdatedResponse,
     FinalPlayerScore,
@@ -157,6 +158,10 @@ async def _end_round(server: GameServer, state) -> None:
             ),
         )
 
+    # Increment VP on face-up buildings
+    for building in state.board.face_up_buildings:
+        building.accumulated_vp += 1
+
     # Set turn order based on first-player marker
     first_pid = state.board.first_player_id
     if first_pid:
@@ -175,6 +180,9 @@ async def _end_round(server: GameServer, state) -> None:
             bonus_worker_granted=bonus_granted,
         ),
     )
+
+    # Broadcast updated building market with incremented VP
+    await _broadcast_building_market(server, state)
 
 
 async def _end_game(server: GameServer, state) -> None:
@@ -856,6 +864,24 @@ async def handle_acquire_intrigue(
 
 
 # ------------------------------------------------------------------
+# Building market helpers
+# ------------------------------------------------------------------
+
+
+async def _broadcast_building_market(server: GameServer, state) -> None:
+    """Send current face-up building market state to all clients."""
+    await server.broadcast_to_game(
+        state.game_code,
+        BuildingMarketUpdateResponse(
+            face_up_buildings=[
+                b.model_dump() for b in state.board.face_up_buildings
+            ],
+            deck_remaining=len(state.board.building_deck),
+        ),
+    )
+
+
+# ------------------------------------------------------------------
 # Building purchase handler
 # ------------------------------------------------------------------
 
@@ -875,9 +901,9 @@ async def handle_purchase_building(
         await conn.send_error("INVALID_ACTION", "Player not found.")
         return
 
-    # Find building in supply
+    # Find building in face-up market
     building = None
-    for b in state.board.building_supply:
+    for b in state.board.face_up_buildings:
         if b.id == msg.building_id:
             building = b
             break
@@ -889,15 +915,25 @@ async def handle_purchase_building(
         await conn.send_error("INSUFFICIENT_RESOURCES", "Not enough Coins.")
         return
 
-    lot_id = f"lot_{msg.lot_index}"
-    if lot_id not in state.board.building_lots:
-        await conn.send_error("INVALID_ACTION", "No empty lot at that index.")
+    if not state.board.building_lots:
+        await conn.send_error("INVALID_ACTION", "No empty building lots available.")
         return
 
-    # Purchase
+    # Auto-assign next available lot
+    lot_id = state.board.building_lots[0]
+    lot_index = int(lot_id.split("_")[1])
+
+    # Purchase: deduct coins, award VP
     player.resources.coins -= building.cost_coins
-    state.board.building_supply.remove(building)
+    player.victory_points += building.accumulated_vp
+    state.board.face_up_buildings.remove(building)
     state.board.building_lots.remove(lot_id)
+
+    # Draw replacement from deck
+    if state.board.building_deck:
+        replacement = state.board.building_deck.pop(0)
+        replacement.accumulated_vp = 1
+        state.board.face_up_buildings.append(replacement)
 
     # Create new action space
     space_id = f"building_{building.id}"
@@ -917,7 +953,10 @@ async def handle_purchase_building(
             round_number=state.current_round,
             player_id=player.player_id,
             action="purchase_building",
-            details=f"{player.display_name} built {building.name}",
+            details=(
+                f"{player.display_name} built {building.name}"
+                f" (+{building.accumulated_vp} VP)"
+            ),
             timestamp=time.time(),
         )
     )
@@ -928,10 +967,13 @@ async def handle_purchase_building(
             player_id=player.player_id,
             building_id=building.id,
             building_name=building.name,
-            lot_index=msg.lot_index,
+            lot_index=lot_index,
             new_space_id=space_id,
         ),
     )
+
+    # Broadcast updated market
+    await _broadcast_building_market(server, state)
 
 
 # ------------------------------------------------------------------

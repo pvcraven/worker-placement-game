@@ -51,6 +51,7 @@ class BuildingTile(BaseModel):
     visitor_reward_special: str | None = None
     owner_bonus: ResourceCost
     owner_bonus_special: str | None = None
+    accumulated_vp: int = 0
 
 
 class ProducerCard(BaseModel):

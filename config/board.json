@@ -57,9 +57,9 @@
       "slots": 1
     },
     {
-      "space_id": "builders_hall",
-      "name": "Builder's Hall",
-      "space_type": "builders_hall",
+      "space_id": "real_estate_listings",
+      "name": "Real Estate Listings",
+      "space_type": "real_estate_listings",
       "reward_special": "purchase_building",
       "slots": 1
     },

@@ -120,7 +120,8 @@ class BoardState(BaseModel):
     face_up_contracts: list[ContractCard] = Field(default_factory=list)
     contract_deck: list[ContractCard] = Field(default_factory=list)
     intrigue_deck: list[IntrigueCard] = Field(default_factory=list)
-    building_supply: list[BuildingTile] = Field(default_factory=list)
+    building_deck: list[BuildingTile] = Field(default_factory=list)
+    face_up_buildings: list[BuildingTile] = Field(default_factory=list)
     first_player_id: str | None = None
 
 

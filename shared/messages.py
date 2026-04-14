@@ -70,7 +70,6 @@ class AcquireIntrigueRequest(BaseModel):
 class PurchaseBuildingRequest(BaseModel):
     action: Literal["purchase_building"] = "purchase_building"
     building_id: str
-    lot_index: int = Field(ge=0)
 
 
 class ReassignWorkerRequest(BaseModel):
@@ -224,6 +223,12 @@ class BuildingConstructedResponse(BaseModel):
     new_space_id: str
 
 
+class BuildingMarketUpdateResponse(BaseModel):
+    action: Literal["building_market_update"] = "building_market_update"
+    face_up_buildings: list[dict]
+    deck_remaining: int
+
+
 class ReassignmentPhaseStartResponse(BaseModel):
     action: Literal["reassignment_phase_start"] = "reassignment_phase_start"
     backstage_slots: list[dict]
@@ -315,6 +320,7 @@ ServerMessage = Annotated[
         QuestCompletedResponse,
         ContractAcquiredResponse,
         BuildingConstructedResponse,
+        BuildingMarketUpdateResponse,
         ReassignmentPhaseStartResponse,
         WorkerReassignedResponse,
         RoundEndResponse,
