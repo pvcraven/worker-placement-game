@@ -322,10 +322,28 @@ async def handle_place_worker(
             player.intrigue_hand.append(card)
 
     # Owner bonus for buildings
+    owner_bonus_info = {}
     if space.space_type == "building" and space.owner_id:
         owner = state.get_player(space.owner_id)
         if owner and owner.player_id != player.player_id and space.building_tile:
             owner.resources.add(space.building_tile.owner_bonus)
+            owner_bonus_info = {
+                "owner_id": owner.player_id,
+                "owner_name": owner.display_name,
+                "bonus": space.building_tile.owner_bonus.model_dump(),
+            }
+            state.game_log.append(
+                GameLog(
+                    round_number=state.current_round,
+                    player_id=owner.player_id,
+                    action="owner_bonus",
+                    details=(
+                        f"{owner.display_name} received owner bonus from"
+                        f" {player.display_name} visiting {space.name}"
+                    ),
+                    timestamp=time.time(),
+                )
+            )
 
     state.game_log.append(
         GameLog(
@@ -347,6 +365,7 @@ async def handle_place_worker(
             player_id=player.player_id,
             space_id=msg.space_id,
             reward_granted=reward_dict,
+            owner_bonus=owner_bonus_info,
             next_player_id=next_player.player_id if next_player else None,
         ),
     )
@@ -969,6 +988,8 @@ async def handle_purchase_building(
             building_name=building.name,
             lot_index=lot_index,
             new_space_id=space_id,
+            visitor_reward=building.visitor_reward.model_dump(),
+            owner_id=player.player_id,
         ),
     )
 
@@ -1039,10 +1060,28 @@ async def handle_reassign_worker(
     player.completed_quest_this_turn = False  # Reset for reassignment action
 
     # Owner bonus for buildings
+    owner_bonus_info = {}
     if target.space_type == "building" and target.owner_id:
         owner = state.get_player(target.owner_id)
         if owner and owner.player_id != player.player_id and target.building_tile:
             owner.resources.add(target.building_tile.owner_bonus)
+            owner_bonus_info = {
+                "owner_id": owner.player_id,
+                "owner_name": owner.display_name,
+                "bonus": target.building_tile.owner_bonus.model_dump(),
+            }
+            state.game_log.append(
+                GameLog(
+                    round_number=state.current_round,
+                    player_id=owner.player_id,
+                    action="owner_bonus",
+                    details=(
+                        f"{owner.display_name} received owner bonus from"
+                        f" {player.display_name} visiting {target.name}"
+                    ),
+                    timestamp=time.time(),
+                )
+            )
 
     # Handle Castle Waterdeep special
     if target.space_type == "castle":
@@ -1073,6 +1112,7 @@ async def handle_reassign_worker(
             from_slot=msg.slot_number,
             to_space_id=msg.target_space_id,
             reward_granted=reward_dict,
+            owner_bonus=owner_bonus_info,
         ),
     )
 

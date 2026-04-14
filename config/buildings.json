@@ -204,8 +204,8 @@
       "id": "building_021",
       "name": "J&M Recording Studio",
       "description": "Cosimo Matassa's tiny New Orleans studio where Little Richard, Fats Domino, and Ray Charles forged the blueprint for rock and R&B.",
-      "cost_coins": 2,
-      "visitor_reward": {"guitarists": 0, "bass_players": 0, "drummers": 1, "singers": 0, "coins": 0},
+      "cost_coins": 3,
+      "visitor_reward": {"guitarists": 0, "bass_players": 0, "drummers": 1, "singers": 0, "coins": 1},
       "visitor_reward_special": null,
       "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 1},
       "owner_bonus_special": null
@@ -214,8 +214,8 @@
       "id": "building_022",
       "name": "The Bluebird Cafe",
       "description": "The intimate Nashville listening room where Garth Brooks was discovered and songwriters share works-in-progress with rapt audiences.",
-      "cost_coins": 2,
-      "visitor_reward": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 1, "coins": 0},
+      "cost_coins": 3,
+      "visitor_reward": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 1, "coins": 1},
       "visitor_reward_special": "draw_contract",
       "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 1},
       "owner_bonus_special": null

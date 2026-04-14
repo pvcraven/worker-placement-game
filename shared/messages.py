@@ -165,6 +165,7 @@ class WorkerPlacedResponse(BaseModel):
     player_id: str
     space_id: str
     reward_granted: dict
+    owner_bonus: dict = Field(default_factory=dict)
     next_player_id: str | None
 
 
@@ -221,6 +222,8 @@ class BuildingConstructedResponse(BaseModel):
     building_name: str
     lot_index: int
     new_space_id: str
+    visitor_reward: dict = Field(default_factory=dict)
+    owner_id: str = ""
 
 
 class BuildingMarketUpdateResponse(BaseModel):
@@ -240,6 +243,7 @@ class WorkerReassignedResponse(BaseModel):
     from_slot: int
     to_space_id: str
     reward_granted: dict
+    owner_bonus: dict = Field(default_factory=dict)
 
 
 class RoundEndResponse(BaseModel):

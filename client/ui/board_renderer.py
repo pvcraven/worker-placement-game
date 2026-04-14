@@ -8,17 +8,18 @@ from client.ui.card_renderer import CardRenderer
 
 
 # Board layout positions (proportional, relative to board area)
+# All permanent spaces in a single left column; second column reserved for buildings
 _SPACE_LAYOUT: dict[str, tuple[float, float]] = {
-    "merch_store": (0.08, 0.7),
-    "motown": (0.08, 0.5),
-    "guitar_center": (0.08, 0.3),
-    "talent_show": (0.22, 0.7),
-    "rhythm_pit": (0.22, 0.5),
-    "castle_waterdeep": (0.22, 0.3),
+    "merch_store": (0.08, 0.85),
+    "motown": (0.08, 0.75),
+    "guitar_center": (0.08, 0.65),
+    "talent_show": (0.08, 0.55),
+    "rhythm_pit": (0.08, 0.45),
+    "castle_waterdeep": (0.08, 0.35),
+    "real_estate_listings": (0.08, 0.25),
     "the_garage_1": (0.38, 0.82),
     "the_garage_2": (0.52, 0.82),
     "the_garage_3": (0.66, 0.82),
-    "builders_hall": (0.08, 0.12),
 }
 
 _BACKSTAGE_LAYOUT: list[tuple[float, float]] = [
@@ -50,6 +51,8 @@ class BoardRenderer:
             str, tuple[float, float, float, float]
         ] = {}
         self._building_spaces: list[dict] = []
+        self._face_up_buildings: list[dict] = []
+        self._deck_remaining: int = 0
         self._text_cache: dict[str, arcade.Text] = {}
 
     def _text(
@@ -84,6 +87,12 @@ class BoardRenderer:
     ) -> None:
         self.board_data = board
         self.players = players
+
+    def update_building_market(
+        self, face_up_buildings: list[dict], deck_remaining: int,
+    ) -> None:
+        self._face_up_buildings = face_up_buildings
+        self._deck_remaining = deck_remaining
 
     def draw(
         self, x: float, y: float, w: float, h: float
@@ -157,16 +166,16 @@ class BoardRenderer:
                     200,
                 )
 
-        # Draw constructed buildings
-        building_start_x = 0.70
+        # Draw constructed buildings (second column, freed by single-column layout)
+        building_start_x = 0.22
         for i, space_id in enumerate(
             self.board_data.get("constructed_buildings", [])
         ):
             space_data = spaces.get(space_id, {})
-            row = i % 5
-            col = i // 5
-            cx = x + (building_start_x + col * 0.15) * w
-            cy = y + (0.8 - row * 0.15) * h
+            row = i % 7
+            col = i // 7
+            cx = x + (building_start_x + col * 0.14) * w
+            cy = y + (0.85 - row * 0.10) * h
             self._draw_space(
                 cx, cy, space_id, space_data, is_building=True
             )
@@ -186,6 +195,32 @@ class BoardRenderer:
             arcade.color.YELLOW, 16,
             anchor_x="center", bold=True,
         ).draw()
+
+        # Draw face-up building market
+        if self._face_up_buildings:
+            market_x = x + 0.08 * w
+            market_y = y + 0.10 * h
+            deck_text = f"Building Market ({self._deck_remaining} in deck)"
+            self._text(
+                "market_label", deck_text,
+                market_x, market_y + 30,
+                arcade.color.LIGHT_GREEN, 12,
+                anchor_x="center", bold=True,
+            ).draw()
+            for i, bld in enumerate(self._face_up_buildings):
+                bx = market_x + (i + 1) * 0.14 * w
+                name = bld.get("name", "?")
+                if len(name) > 16:
+                    name = name[:14] + ".."
+                cost = bld.get("cost_coins", 0)
+                vp = bld.get("accumulated_vp", 0)
+                label = f"{name} {cost}$ {vp}VP"
+                self._text(
+                    f"market_bld_{i}", label,
+                    bx, market_y,
+                    arcade.color.LIGHT_GREEN, 11,
+                    anchor_x="center",
+                ).draw()
 
     def _draw_space(
         self,
