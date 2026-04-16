@@ -648,14 +648,13 @@ class GameView(arcade.View):
             draw_fn = CardRenderer.draw_intrigue
             hand_prefix = "hand_intrigue"
 
-        # Semi-transparent background
         panel_w = min(w - 40, 700)
         panel_h = 260
         panel_x = w / 2
         panel_y = h / 2
         arcade.draw_rect_filled(
             arcade.rect.XYWH(panel_x, panel_y, panel_w, panel_h),
-            (0, 0, 0, 200),
+            (0, 0, 0),
         )
         arcade.draw_rect_outline(
             arcade.rect.XYWH(panel_x, panel_y, panel_w, panel_h),
@@ -693,15 +692,15 @@ class GameView(arcade.View):
         buildings = self._face_up_buildings
         deck_count = self._building_deck_remaining
 
-        panel_w = min(w - 40, 750)
-        panel_h = min(h - 80, 500)
+        panel_w = min(w - 40, 900)
+        panel_h = min(h - 80, 360)
         panel_x = w / 2
         panel_y = h / 2
         arcade.draw_rect_filled(
             arcade.rect.XYWH(
                 panel_x, panel_y, panel_w, panel_h,
             ),
-            (0, 0, 0, 210),
+            (0, 0, 0),
         )
         arcade.draw_rect_outline(
             arcade.rect.XYWH(
@@ -751,8 +750,6 @@ class GameView(arcade.View):
             cost = bld.get("cost_coins", 0)
             vp = bld.get("accumulated_vp", 0)
             desc = bld.get("description", "")
-            if len(desc) > 40:
-                desc = desc[:38] + ".."
 
             vis = bld.get("visitor_reward", {})
             own = bld.get("owner_bonus", {})
@@ -787,13 +784,6 @@ class GameView(arcade.View):
                     False, -88,
                 ))
 
-            if desc:
-                lines.append((
-                    f"bm_{i}_desc", desc,
-                    arcade.color.LIGHT_GRAY, 10,
-                    False, -108,
-                ))
-
             for (key, text, color, size,
                  bold, y_off) in lines:
                 self._text(
@@ -804,6 +794,29 @@ class GameView(arcade.View):
                     anchor_y="center",
                     bold=bold,
                 ).draw()
+
+            if desc:
+                desc_w = int(col_w * 0.9)
+                desc_key = f"bm_{i}_desc"
+                if desc_key in self._text_cache:
+                    t = self._text_cache[desc_key]
+                    t.text = desc
+                    t.x = cx
+                    t.y = top_y - 108
+                    t.color = arcade.color.LIGHT_GRAY
+                else:
+                    t = arcade.Text(
+                        desc, cx, top_y - 108,
+                        arcade.color.LIGHT_GRAY,
+                        font_size=9,
+                        font_name="Tahoma",
+                        anchor_x="center",
+                        anchor_y="top",
+                        multiline=True,
+                        width=desc_w,
+                    )
+                    self._text_cache[desc_key] = t
+                t.draw()
 
     @staticmethod
     def _resource_str(res: dict) -> str:
