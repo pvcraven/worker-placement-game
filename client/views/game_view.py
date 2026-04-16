@@ -30,6 +30,7 @@ class GameView(arcade.View):
         self._building_deck_remaining: int = 0
         self._show_quests_hand = False
         self._show_intrigue_hand = False
+        self._show_building_market = False
         self._text_cache: dict[str, arcade.Text] = {}
 
     def on_show_view(self) -> None:
@@ -57,12 +58,17 @@ class GameView(arcade.View):
             text="My Intrigue", width=120, height=32,
         )
         intrigue_btn.on_click = lambda _: self._toggle_intrigue()
+        market_btn = arcade.gui.UIFlatButton(
+            text="Real Estate Listings", width=160, height=32,
+        )
+        market_btn.on_click = lambda _: self._toggle_building_market()
 
         btn_row = arcade.gui.UIBoxLayout(
             vertical=False, space_between=8,
         )
         btn_row.add(quests_btn)
         btn_row.add(intrigue_btn)
+        btn_row.add(market_btn)
 
         anchor = arcade.gui.UIAnchorLayout()
         anchor.add(
@@ -217,9 +223,8 @@ class GameView(arcade.View):
                 )
             return
 
-        # Check if this is the Real Estate Listings spot for building purchase
-        # Only trigger on the initial placement (next_player_id is None = deferred turn),
-        # not on the turn-advance response after purchase/cancel.
+        # Realtor spot: only trigger on initial placement
+        # (next_player_id=None means deferred turn).
         if (
             space_data.get("reward_special") == "purchase_building"
             and pid == my_id
@@ -571,10 +576,17 @@ class GameView(arcade.View):
     def _toggle_quests(self) -> None:
         self._show_quests_hand = not self._show_quests_hand
         self._show_intrigue_hand = False
+        self._show_building_market = False
 
     def _toggle_intrigue(self) -> None:
         self._show_intrigue_hand = not self._show_intrigue_hand
         self._show_quests_hand = False
+        self._show_building_market = False
+
+    def _toggle_building_market(self) -> None:
+        self._show_building_market = not self._show_building_market
+        self._show_quests_hand = False
+        self._show_intrigue_hand = False
 
     # ------------------------------------------------------------------
     # Drawing
@@ -594,9 +606,11 @@ class GameView(arcade.View):
         if self.game_log_panel:
             self.game_log_panel.draw(w - 300, 100, 300, h - 160)
 
-        # Hand overlay panels
+        # Overlay panels
         if self._show_quests_hand or self._show_intrigue_hand:
             self._draw_hand_panel(w, h)
+        if self._show_building_market:
+            self._draw_building_market_panel(w, h)
 
         # Status bar
         arcade.draw_rect_filled(
@@ -671,6 +685,140 @@ class GameView(arcade.View):
         for i, card in enumerate(cards[:4]):
             cx = start_x + i * card_spacing
             draw_fn(cx, panel_y - 10, card, cache_key=f"{hand_prefix}_{i}")
+
+    def _draw_building_market_panel(
+        self, w: float, h: float,
+    ) -> None:
+        """Draw the building market popup overlay."""
+        buildings = self._face_up_buildings
+        deck_count = self._building_deck_remaining
+
+        panel_w = min(w - 40, 750)
+        panel_h = min(h - 80, 500)
+        panel_x = w / 2
+        panel_y = h / 2
+        arcade.draw_rect_filled(
+            arcade.rect.XYWH(
+                panel_x, panel_y, panel_w, panel_h,
+            ),
+            (0, 0, 0, 210),
+        )
+        arcade.draw_rect_outline(
+            arcade.rect.XYWH(
+                panel_x, panel_y, panel_w, panel_h,
+            ),
+            arcade.color.WHITE,
+            border_width=2,
+        )
+
+        self._text(
+            "market_title", "Real Estate Listings",
+            panel_x, panel_y + panel_h / 2 - 20,
+            arcade.color.WHITE, 16,
+            anchor_x="center", anchor_y="center",
+            bold=True,
+        ).draw()
+
+        deck_label = f"{deck_count} remaining in deck"
+        self._text(
+            "market_deck", deck_label,
+            panel_x, panel_y + panel_h / 2 - 42,
+            arcade.color.LIGHT_GRAY, 12,
+            anchor_x="center", anchor_y="center",
+        ).draw()
+
+        if not buildings:
+            self._text(
+                "market_empty", "No buildings available.",
+                panel_x, panel_y,
+                arcade.color.LIGHT_GRAY, 14,
+                anchor_x="center", anchor_y="center",
+            ).draw()
+            return
+
+        col_count = min(len(buildings), 4)
+        col_w = panel_w / (col_count + 1)
+        top_y = panel_y + panel_h / 2 - 70
+
+        for i, bld in enumerate(buildings[:4]):
+            cx = (
+                panel_x
+                - (col_count - 1) * col_w / 2
+                + i * col_w
+            )
+            name = bld.get("name", "???")
+            genre = bld.get("genre", "")
+            cost = bld.get("cost_coins", 0)
+            vp = bld.get("accumulated_vp", 0)
+            desc = bld.get("description", "")
+            if len(desc) > 40:
+                desc = desc[:38] + ".."
+
+            vis = bld.get("visitor_reward", {})
+            own = bld.get("owner_bonus", {})
+
+            lines = [
+                (f"bm_{i}_name", name, arcade.color.WHITE,
+                 13, True, 0),
+                (f"bm_{i}_genre", genre, arcade.color.CYAN,
+                 11, False, -20),
+                (f"bm_{i}_cost", f"Cost: {cost}$",
+                 arcade.color.GOLD, 11, False, -38),
+                (f"bm_{i}_vp", f"VP: {vp}",
+                 arcade.color.LIGHT_GREEN, 11,
+                 False, -54),
+            ]
+
+            vis_str = self._resource_str(vis)
+            if vis_str:
+                lines.append((
+                    f"bm_{i}_vis",
+                    f"Customer: {vis_str}",
+                    arcade.color.LIGHT_GREEN, 10,
+                    False, -72,
+                ))
+
+            own_str = self._resource_str(own)
+            if own_str:
+                lines.append((
+                    f"bm_{i}_own",
+                    f"Owner: {own_str}",
+                    arcade.color.GOLD, 10,
+                    False, -88,
+                ))
+
+            if desc:
+                lines.append((
+                    f"bm_{i}_desc", desc,
+                    arcade.color.LIGHT_GRAY, 10,
+                    False, -108,
+                ))
+
+            for (key, text, color, size,
+                 bold, y_off) in lines:
+                self._text(
+                    key, text,
+                    cx, top_y + y_off,
+                    color, size,
+                    anchor_x="center",
+                    anchor_y="center",
+                    bold=bold,
+                ).draw()
+
+    @staticmethod
+    def _resource_str(res: dict) -> str:
+        parts = []
+        for key, sym in [
+            ("guitarists", "G"),
+            ("bass_players", "B"),
+            ("drummers", "D"),
+            ("singers", "S"),
+            ("coins", "$"),
+        ]:
+            val = res.get(key, 0)
+            if val > 0:
+                parts.append(f"{val}{sym}")
+        return " ".join(parts)
 
     # ------------------------------------------------------------------
     # Helpers

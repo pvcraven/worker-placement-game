@@ -57,9 +57,9 @@
       "slots": 1
     },
     {
-      "space_id": "real_estate_listings",
-      "name": "Real Estate Listings",
-      "space_type": "real_estate_listings",
+      "space_id": "realtor",
+      "name": "Realtor",
+      "space_type": "realtor",
       "reward_special": "purchase_building",
       "slots": 1
     },

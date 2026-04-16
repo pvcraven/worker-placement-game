@@ -1046,7 +1046,7 @@ async def handle_cancel_purchase_building(
         return
 
     # Unwind: free the space and return the worker
-    space = state.board.action_spaces.get("real_estate_listings")
+    space = state.board.action_spaces.get("realtor")
     if space and space.occupied_by == player.player_id:
         space.occupied_by = None
         player.available_workers += 1
@@ -1066,7 +1066,7 @@ async def handle_cancel_purchase_building(
         state.game_code,
         PlacementCancelledResponse(
             player_id=player.player_id,
-            space_id="real_estate_listings",
+            space_id="realtor",
             next_player_id=(
                 next_player.player_id if next_player else None
             ),

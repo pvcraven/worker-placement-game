@@ -37,9 +37,9 @@
 
 ### Implementation for User Story 1
 
-- [ ] T001 [US1] Remove "THE BOARD", "THE GARAGE", and "BACKSTAGE" heading label draw calls in client/ui/board_renderer.py
-- [ ] T002 [US1] Rename backstage slot labels from "Slot 1/2/3" to "Backstage 1/2/3" in client/ui/board_renderer.py
-- [ ] T003 [US1] Shift all Y positions upward in `_SPACE_LAYOUT` and `_BACKSTAGE_LAYOUT` dicts to reclaim freed vertical space in client/ui/board_renderer.py
+- [x] T001 [US1] Remove "THE BOARD", "THE GARAGE", and "BACKSTAGE" heading label draw calls in client/ui/board_renderer.py
+- [x] T002 [US1] Rename backstage slot labels from "Slot 1/2/3" to "Backstage 1/2/3" in client/ui/board_renderer.py
+- [x] T003 [US1] Shift all Y positions upward in `_SPACE_LAYOUT` and `_BACKSTAGE_LAYOUT` dicts to reclaim freed vertical space in client/ui/board_renderer.py
 
 **Checkpoint**: Board renders without heading labels, backstage slots are self-describing, elements fill vertical space.
 
@@ -53,11 +53,11 @@
 
 ### Implementation for User Story 2
 
-- [ ] T004 [P] [US2] Rename space_id from "real_estate_listings" to "realtor", name from "Real Estate Listings" to "Realtor", and space_type from "real_estate_listings" to "realtor" in config/board.json
-- [ ] T005 [P] [US2] Rename all "real_estate_listings" string literals and comment references to "realtor" in server/game_engine.py
-- [ ] T006 [P] [US2] Rename "real_estate_listings" key to "realtor" in `_SPACE_LAYOUT` dict in client/ui/board_renderer.py
-- [ ] T007 [P] [US2] Rename "real_estate_listings" references to "realtor" in client/views/game_view.py
-- [ ] T008 [US2] Update purchase dialog title from "Purchase a Building" to "Real Estate Listings" in client/ui/dialogs.py
+- [x] T004 [P] [US2] Rename space_id from "real_estate_listings" to "realtor", name from "Real Estate Listings" to "Realtor", and space_type from "real_estate_listings" to "realtor" in config/board.json
+- [x] T005 [P] [US2] Rename all "real_estate_listings" string literals and comment references to "realtor" in server/game_engine.py
+- [x] T006 [P] [US2] Rename "real_estate_listings" key to "realtor" in `_SPACE_LAYOUT` dict in client/ui/board_renderer.py
+- [x] T007 [P] [US2] Rename "real_estate_listings" references to "realtor" in client/views/game_view.py
+- [x] T008 [US2] Update purchase dialog title from "Purchase a Building" to "Real Estate Listings" in client/ui/dialogs.py
 
 **Checkpoint**: All code, config, and display references use "realtor". Purchase dialog title reads "Real Estate Listings".
 
@@ -73,11 +73,11 @@
 
 ### Implementation for User Story 3
 
-- [ ] T009 [US3] Remove inline building market text rendering (face-up building names, cost, VP labels) from client/ui/board_renderer.py
-- [ ] T010 [US3] Add `_show_building_market` toggle boolean to GameView and implement mutual exclusion with `_show_quests_hand` and `_show_intrigue_hand` in client/views/game_view.py
-- [ ] T011 [US3] Add "Real Estate Listings" toggle button to bottom-left button row (alongside My Quests and My Intrigue) in client/views/game_view.py
-- [ ] T012 [US3] Implement `_draw_building_market_panel()` method in GameView that draws a popup overlay panel showing each face-up building's name, genre, coin cost, accumulated VP, visitor reward, owner bonus, description, and deck remaining count in client/views/game_view.py
-- [ ] T013 [US3] Wire building market panel drawing into the main `on_draw()` method, matching the existing hand panel draw pattern, in client/views/game_view.py
+- [x] T009 [US3] Remove inline building market text rendering (face-up building names, cost, VP labels) from client/ui/board_renderer.py
+- [x] T010 [US3] Add `_show_building_market` toggle boolean to GameView and implement mutual exclusion with `_show_quests_hand` and `_show_intrigue_hand` in client/views/game_view.py
+- [x] T011 [US3] Add "Real Estate Listings" toggle button to bottom-left button row (alongside My Quests and My Intrigue) in client/views/game_view.py
+- [x] T012 [US3] Implement `_draw_building_market_panel()` method in GameView that draws a popup overlay panel showing each face-up building's name, genre, coin cost, accumulated VP, visitor reward, owner bonus, description, and deck remaining count in client/views/game_view.py
+- [x] T013 [US3] Wire building market panel drawing into the main `on_draw()` method, matching the existing hand panel draw pattern, in client/views/game_view.py
 
 **Checkpoint**: Building market popup toggles correctly, shows full building details, mutually excludes other panels, updates when market state changes.
 
@@ -91,10 +91,10 @@
 
 ### Implementation for User Story 4
 
-- [ ] T014 [US4] Add `_shape_list: ShapeElementList` and `_shapes_dirty: bool` instance variables to BoardRenderer in client/ui/board_renderer.py
-- [ ] T015 [US4] Create `_rebuild_shapes()` method that clears the ShapeElementList, then builds all static rectangles (filled + outlined) for action spaces, backstage slots, and board background using `create_rectangle_filled` and `create_rectangle_outline` factory functions in client/ui/board_renderer.py
-- [ ] T016 [US4] Replace individual `arcade.draw_rectangle_filled` and `arcade.draw_rectangle_outline` calls in the draw path with a single `self._shape_list.draw()` call, calling `_rebuild_shapes()` only when `_shapes_dirty` is True, in client/ui/board_renderer.py
-- [ ] T017 [US4] Set `_shapes_dirty = True` in `update_board()` and on window resize so the shape batch rebuilds when board state or dimensions change, in client/ui/board_renderer.py
+- [x] T014 [US4] Add `_shape_list: ShapeElementList` and `_shapes_dirty: bool` instance variables to BoardRenderer in client/ui/board_renderer.py
+- [x] T015 [US4] Create `_rebuild_shapes()` method that clears the ShapeElementList, then builds all static rectangles (filled + outlined) for action spaces, backstage slots, and board background using `create_rectangle_filled` and `create_rectangle_outline` factory functions in client/ui/board_renderer.py
+- [x] T016 [US4] Replace individual `arcade.draw_rectangle_filled` and `arcade.draw_rectangle_outline` calls in the draw path with a single `self._shape_list.draw()` call, calling `_rebuild_shapes()` only when `_shapes_dirty` is True, in client/ui/board_renderer.py
+- [x] T017 [US4] Set `_shapes_dirty = True` in `update_board()` and on window resize so the shape batch rebuilds when board state or dimensions change, in client/ui/board_renderer.py
 
 **Checkpoint**: Board renders identically using batched shapes. Shape list rebuilds on state change. 60fps maintained.
 
@@ -104,9 +104,9 @@
 
 **Purpose**: Final validation across all user stories
 
-- [ ] T018 Run quickstart.md manual validation flow (all 11 test steps) to verify end-to-end correctness
-- [ ] T019 Verify Game Log section remains unchanged and unaffected by all modifications
-- [ ] T020 Verify edge cases: rapid toggle clicks show only last-clicked panel; popup updates on purchase; empty market shows informational message
+- [x] T018 Run quickstart.md manual validation flow (all 11 test steps) to verify end-to-end correctness
+- [x] T019 Verify Game Log section remains unchanged and unaffected by all modifications
+- [x] T020 Verify edge cases: rapid toggle clicks show only last-clicked panel; popup updates on purchase; empty market shows informational message
 
 ---
 

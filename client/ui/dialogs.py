@@ -78,7 +78,7 @@ class BuildingPurchaseDialog:
         v_box = arcade.gui.UIBoxLayout(space_between=8)
 
         label = arcade.gui.UILabel(
-            text="Purchase a Building",
+            text="Real Estate Listings",
             font_size=16,
             text_color=arcade.color.WHITE,
         )

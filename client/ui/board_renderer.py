@@ -3,29 +3,30 @@
 from __future__ import annotations
 
 import arcade
+import arcade.shape_list
 
 from client.ui.card_renderer import CardRenderer
 
 
 # Board layout positions (proportional, relative to board area)
-# All permanent spaces in a single left column; second column reserved for buildings
+# Permanent spaces in left column; second column for buildings
 _SPACE_LAYOUT: dict[str, tuple[float, float]] = {
-    "merch_store": (0.08, 0.85),
-    "motown": (0.08, 0.75),
-    "guitar_center": (0.08, 0.65),
-    "talent_show": (0.08, 0.55),
-    "rhythm_pit": (0.08, 0.45),
-    "castle_waterdeep": (0.08, 0.35),
-    "real_estate_listings": (0.08, 0.25),
-    "the_garage_1": (0.38, 0.82),
-    "the_garage_2": (0.52, 0.82),
-    "the_garage_3": (0.66, 0.82),
+    "merch_store": (0.08, 0.90),
+    "motown": (0.08, 0.80),
+    "guitar_center": (0.08, 0.70),
+    "talent_show": (0.08, 0.60),
+    "rhythm_pit": (0.08, 0.50),
+    "castle_waterdeep": (0.08, 0.40),
+    "realtor": (0.08, 0.30),
+    "the_garage_1": (0.38, 0.87),
+    "the_garage_2": (0.52, 0.87),
+    "the_garage_3": (0.66, 0.87),
 }
 
 _BACKSTAGE_LAYOUT: list[tuple[float, float]] = [
-    (0.38, 0.28),  # Slot 1
-    (0.52, 0.28),  # Slot 2
-    (0.66, 0.28),  # Slot 3
+    (0.38, 0.33),
+    (0.52, 0.33),
+    (0.66, 0.33),
 ]
 
 _SPACE_WIDTH = 170
@@ -54,6 +55,9 @@ class BoardRenderer:
         self._face_up_buildings: list[dict] = []
         self._deck_remaining: int = 0
         self._text_cache: dict[str, arcade.Text] = {}
+        self._shape_list = arcade.shape_list.ShapeElementList()
+        self._shapes_dirty = True
+        self._last_draw_rect = (0.0, 0.0, 0.0, 0.0)
 
     def _text(
         self,
@@ -87,6 +91,7 @@ class BoardRenderer:
     ) -> None:
         self.board_data = board
         self.players = players
+        self._shapes_dirty = True
 
     def update_building_market(
         self, face_up_buildings: list[dict], deck_remaining: int,
@@ -98,27 +103,28 @@ class BoardRenderer:
         self, x: float, y: float, w: float, h: float
     ) -> None:
         """Draw the board in the given rectangle."""
-        self._space_rects.clear()
+        draw_rect = (x, y, w, h)
+        if (
+            self._shapes_dirty
+            or draw_rect != self._last_draw_rect
+        ):
+            self._rebuild_shapes(x, y, w, h)
+            self._last_draw_rect = draw_rect
+            self._shapes_dirty = False
 
-        # Background
-        arcade.draw_rect_filled(
-            arcade.rect.XYWH(x + w / 2, y + h / 2, w, h),
-            (30, 40, 50),
-        )
+        self._shape_list.draw()
 
         spaces = self.board_data.get("action_spaces", {})
         backstage_slots = self.board_data.get(
             "backstage_slots", []
         )
 
-        # Draw permanent action spaces
         for space_id, (px, py) in _SPACE_LAYOUT.items():
             cx = x + px * w
             cy = y + py * h
             space_data = spaces.get(space_id, {})
             self._draw_space(cx, cy, space_id, space_data)
 
-        # Draw Backstage slots
         for i, (px, py) in enumerate(_BACKSTAGE_LAYOUT):
             cx = x + px * w
             cy = y + py * h
@@ -132,15 +138,7 @@ class BoardRenderer:
                 cx, cy, slot_num, slot_data
             )
 
-        # Draw "THE GARAGE" label and face-up quest cards
         garage_center_x = x + 0.52 * w
-        self._text(
-            "garage_label", "THE GARAGE",
-            garage_center_x, y + 0.93 * h,
-            arcade.color.CYAN, 16,
-            anchor_x="center", bold=True,
-        ).draw()
-
         face_up_quests = self.board_data.get(
             "face_up_quests", []
         )
@@ -151,7 +149,7 @@ class BoardRenderer:
             start_x = (
                 garage_center_x - total_w / 2 + card_w / 2
             )
-            card_y = y + 0.56 * h
+            card_y = y + 0.60 * h
             for i, quest in enumerate(face_up_quests):
                 cx = start_x + i * spacing
                 CardRenderer.draw_contract(
@@ -159,68 +157,139 @@ class BoardRenderer:
                     cache_key=f"faceup_{i}",
                 )
                 qid = quest.get("id", f"quest_{i}")
-                self._space_rects[f"quest_card_{qid}"] = (
+                self._space_rects[
+                    f"quest_card_{qid}"
+                ] = (
                     cx - card_w / 2,
                     card_y - 100,
                     card_w,
                     200,
                 )
 
-        # Draw constructed buildings (second column, freed by single-column layout)
         building_start_x = 0.22
         for i, space_id in enumerate(
-            self.board_data.get("constructed_buildings", [])
+            self.board_data.get(
+                "constructed_buildings", []
+            )
         ):
             space_data = spaces.get(space_id, {})
             row = i % 7
             col = i // 7
             cx = x + (building_start_x + col * 0.14) * w
-            cy = y + (0.85 - row * 0.10) * h
+            cy = y + (0.90 - row * 0.10) * h
             self._draw_space(
-                cx, cy, space_id, space_data, is_building=True
+                cx, cy, space_id, space_data,
+                is_building=True,
             )
 
-        # Board title
-        self._text(
-            "board_title", "THE BOARD",
-            x + w / 2, y + h - 20,
-            arcade.color.WHITE, 20,
-            anchor_x="center", bold=True,
-        ).draw()
+    def _rebuild_shapes(
+        self, x: float, y: float, w: float, h: float,
+    ) -> None:
+        """Rebuild the batched shape list for all static rects."""
+        self._shape_list.clear()
+        self._space_rects.clear()
 
-        # Backstage label
-        self._text(
-            "backstage_label", "BACKSTAGE",
-            x + 0.52 * w, y + 0.38 * h,
-            arcade.color.YELLOW, 16,
-            anchor_x="center", bold=True,
-        ).draw()
+        sw, sh = _SPACE_WIDTH, _SPACE_HEIGHT
+        bsh = 60
+        spaces = self.board_data.get("action_spaces", {})
+        backstage_slots = self.board_data.get(
+            "backstage_slots", []
+        )
 
-        # Draw face-up building market
-        if self._face_up_buildings:
-            market_x = x + 0.08 * w
-            market_y = y + 0.10 * h
-            deck_text = f"Building Market ({self._deck_remaining} in deck)"
-            self._text(
-                "market_label", deck_text,
-                market_x, market_y + 30,
-                arcade.color.LIGHT_GREEN, 12,
-                anchor_x="center", bold=True,
-            ).draw()
-            for i, bld in enumerate(self._face_up_buildings):
-                bx = market_x + (i + 1) * 0.14 * w
-                name = bld.get("name", "?")
-                if len(name) > 16:
-                    name = name[:14] + ".."
-                cost = bld.get("cost_coins", 0)
-                vp = bld.get("accumulated_vp", 0)
-                label = f"{name} {cost}$ {vp}VP"
-                self._text(
-                    f"market_bld_{i}", label,
-                    bx, market_y,
-                    arcade.color.LIGHT_GREEN, 11,
-                    anchor_x="center",
-                ).draw()
+        # Background
+        self._shape_list.append(
+            arcade.shape_list.create_rectangle_filled(
+                x + w / 2, y + h / 2, w, h,
+                (30, 40, 50),
+            )
+        )
+
+        # Permanent action spaces
+        for space_id, (px, py) in _SPACE_LAYOUT.items():
+            cx = x + px * w
+            cy = y + py * h
+            data = spaces.get(space_id, {})
+            self._space_rects[space_id] = (
+                cx - sw / 2, cy - sh / 2, sw, sh,
+            )
+            occupied = data.get("occupied_by")
+            bg = (50, 60, 80)
+            if occupied:
+                bg = (80, 80, 40)
+            self._shape_list.append(
+                arcade.shape_list.create_rectangle_filled(
+                    cx, cy, sw, sh, bg,
+                )
+            )
+            self._shape_list.append(
+                arcade.shape_list.create_rectangle_outline(
+                    cx, cy, sw, sh,
+                    arcade.color.WHITE, border_width=1,
+                )
+            )
+
+        # Backstage slots
+        for i, (px, py) in enumerate(_BACKSTAGE_LAYOUT):
+            cx = x + px * w
+            cy = y + py * h
+            slot_num = i + 1
+            slot_data = {}
+            for gs in backstage_slots:
+                if gs.get("slot_number") == slot_num:
+                    slot_data = gs
+                    break
+            sid = f"backstage_slot_{slot_num}"
+            self._space_rects[sid] = (
+                cx - sw / 2, cy - bsh / 2, sw, bsh,
+            )
+            occupied = slot_data.get("occupied_by")
+            bg = (
+                (80, 50, 50)
+                if not occupied
+                else (80, 80, 40)
+            )
+            self._shape_list.append(
+                arcade.shape_list.create_rectangle_filled(
+                    cx, cy, sw, bsh, bg,
+                )
+            )
+            self._shape_list.append(
+                arcade.shape_list.create_rectangle_outline(
+                    cx, cy, sw, bsh,
+                    arcade.color.YELLOW, border_width=1,
+                )
+            )
+
+        # Constructed buildings
+        building_start_x = 0.22
+        for i, space_id in enumerate(
+            self.board_data.get(
+                "constructed_buildings", []
+            )
+        ):
+            data = spaces.get(space_id, {})
+            row = i % 7
+            col = i // 7
+            cx = x + (building_start_x + col * 0.14) * w
+            cy = y + (0.90 - row * 0.10) * h
+            self._space_rects[space_id] = (
+                cx - sw / 2, cy - sh / 2, sw, sh,
+            )
+            occupied = data.get("occupied_by")
+            bg = (60, 80, 60)
+            if occupied:
+                bg = (80, 80, 40)
+            self._shape_list.append(
+                arcade.shape_list.create_rectangle_filled(
+                    cx, cy, sw, sh, bg,
+                )
+            )
+            self._shape_list.append(
+                arcade.shape_list.create_rectangle_outline(
+                    cx, cy, sw, sh,
+                    arcade.color.WHITE, border_width=1,
+                )
+            )
 
     def _draw_space(
         self,
@@ -230,26 +299,9 @@ class BoardRenderer:
         data: dict,
         is_building: bool = False,
     ) -> None:
-        sw, sh = _SPACE_WIDTH, _SPACE_HEIGHT
-        self._space_rects[space_id] = (
-            cx - sw / 2, cy - sh / 2, sw, sh
-        )
-
+        """Draw text and tokens for a space (rects are batched)."""
+        sw = _SPACE_WIDTH
         occupied = data.get("occupied_by")
-        bg_color = (60, 80, 60) if is_building else (50, 60, 80)
-        if occupied:
-            bg_color = (80, 80, 40)
-
-        arcade.draw_rect_filled(
-            arcade.rect.XYWH(cx, cy, sw, sh),
-            bg_color,
-        )
-        arcade.draw_rect_outline(
-            arcade.rect.XYWH(cx, cy, sw, sh),
-            arcade.color.WHITE,
-            border_width=1,
-        )
-
         name = data.get("name", space_id)
         if len(name) > 22:
             name = name[:20] + ".."
@@ -335,30 +387,13 @@ class BoardRenderer:
         slot_num: int,
         data: dict,
     ) -> None:
-        sw, sh = _SPACE_WIDTH, 60
-        space_id = f"backstage_slot_{slot_num}"
-        self._space_rects[space_id] = (
-            cx - sw / 2, cy - sh / 2, sw, sh
-        )
-
+        """Draw text and tokens for a backstage slot (rects are batched)."""
+        sw = _SPACE_WIDTH
         occupied = data.get("occupied_by")
-        bg_color = (
-            (80, 50, 50) if not occupied else (80, 80, 40)
-        )
-
-        arcade.draw_rect_filled(
-            arcade.rect.XYWH(cx, cy, sw, sh),
-            bg_color,
-        )
-        arcade.draw_rect_outline(
-            arcade.rect.XYWH(cx, cy, sw, sh),
-            arcade.color.YELLOW,
-            border_width=1,
-        )
 
         self._text(
             f"backstage_{slot_num}_label",
-            f"Slot {slot_num}",
+            f"Backstage {slot_num}",
             cx, cy + 8,
             arcade.color.YELLOW, 13,
             anchor_x="center", anchor_y="center", bold=True,
