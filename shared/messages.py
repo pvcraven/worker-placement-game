@@ -70,7 +70,10 @@ class AcquireIntrigueRequest(BaseModel):
 class PurchaseBuildingRequest(BaseModel):
     action: Literal["purchase_building"] = "purchase_building"
     building_id: str
-    lot_index: int = Field(ge=0)
+
+
+class CancelPurchaseBuildingRequest(BaseModel):
+    action: Literal["cancel_purchase_building"] = "cancel_purchase_building"
 
 
 class ReassignWorkerRequest(BaseModel):
@@ -108,6 +111,7 @@ ClientMessage = Annotated[
         AcquireContractRequest,
         AcquireIntrigueRequest,
         PurchaseBuildingRequest,
+        CancelPurchaseBuildingRequest,
         ReassignWorkerRequest,
         ChooseIntrigueTargetRequest,
         ReconnectRequest,
@@ -166,6 +170,7 @@ class WorkerPlacedResponse(BaseModel):
     player_id: str
     space_id: str
     reward_granted: dict
+    owner_bonus: dict = Field(default_factory=dict)
     next_player_id: str | None
 
 
@@ -215,6 +220,13 @@ class ContractAcquiredResponse(BaseModel):
     new_face_up: dict | None = None
 
 
+class PlacementCancelledResponse(BaseModel):
+    action: Literal["placement_cancelled"] = "placement_cancelled"
+    player_id: str
+    space_id: str
+    next_player_id: str | None
+
+
 class BuildingConstructedResponse(BaseModel):
     action: Literal["building_constructed"] = "building_constructed"
     player_id: str
@@ -222,6 +234,16 @@ class BuildingConstructedResponse(BaseModel):
     building_name: str
     lot_index: int
     new_space_id: str
+    visitor_reward: dict = Field(default_factory=dict)
+    owner_bonus: dict = Field(default_factory=dict)
+    owner_id: str = ""
+    next_player_id: str | None = None
+
+
+class BuildingMarketUpdateResponse(BaseModel):
+    action: Literal["building_market_update"] = "building_market_update"
+    face_up_buildings: list[dict]
+    deck_remaining: int
 
 
 class ReassignmentPhaseStartResponse(BaseModel):
@@ -235,6 +257,7 @@ class WorkerReassignedResponse(BaseModel):
     from_slot: int
     to_space_id: str
     reward_granted: dict
+    owner_bonus: dict = Field(default_factory=dict)
 
 
 class RoundEndResponse(BaseModel):
@@ -314,7 +337,9 @@ ServerMessage = Annotated[
         QuestsResetResponse,
         QuestCompletedResponse,
         ContractAcquiredResponse,
+        PlacementCancelledResponse,
         BuildingConstructedResponse,
+        BuildingMarketUpdateResponse,
         ReassignmentPhaseStartResponse,
         WorkerReassignedResponse,
         RoundEndResponse,

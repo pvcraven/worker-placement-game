@@ -134,7 +134,8 @@ class LobbyView(arcade.View):
 
     def on_update(self, delta_time: float) -> None:
         network = self.window.network
-        for msg in network.poll():
+        messages = network.poll()
+        for i, msg in enumerate(messages):
             action = msg.get("action")
             if action == "player_joined":
                 self.players = msg.get("players", [])
@@ -149,6 +150,9 @@ class LobbyView(arcade.View):
             elif action == "game_started":
                 self.window.game_state = msg.get("game_state", {})
                 self.window.show_game()
+                for remaining in messages[i + 1:]:
+                    network.incoming.put(remaining)
+                return
             elif action == "error":
                 self.status_label.text = msg.get("message", "Error")
 

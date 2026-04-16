@@ -7,7 +7,7 @@ import arcade.gui
 
 from client.ui.board_renderer import BoardRenderer
 from client.ui.card_renderer import CardRenderer
-from client.ui.dialogs import CardSelectionDialog
+from client.ui.dialogs import BuildingPurchaseDialog, CardSelectionDialog
 from client.ui.game_log import GameLogPanel
 from client.ui.resource_bar import ResourceBar
 
@@ -25,6 +25,9 @@ class GameView(arcade.View):
         self._setup_done = False
         self._status_text = ""
         self._quest_dialog: CardSelectionDialog | None = None
+        self._building_dialog: BuildingPurchaseDialog | None = None
+        self._face_up_buildings: list[dict] = []
+        self._building_deck_remaining: int = 0
         self._show_quests_hand = False
         self._show_intrigue_hand = False
         self._text_cache: dict[str, arcade.Text] = {}
@@ -93,6 +96,16 @@ class GameView(arcade.View):
         if self.board_renderer:
             self.board_renderer.update_board(board, players)
 
+        # Extract building market from initial game state
+        face_up = board.get("face_up_buildings", [])
+        if face_up:
+            self._face_up_buildings = face_up
+            self._building_deck_remaining = board.get("building_deck_count", 0)
+            if self.board_renderer:
+                self.board_renderer.update_building_market(
+                    self._face_up_buildings, self._building_deck_remaining,
+                )
+
         # Update turn indicator
         turn_order = self.game_state.get("turn_order", [])
         idx = self.game_state.get("current_player_index", 0)
@@ -137,6 +150,10 @@ class GameView(arcade.View):
             self._on_contract_acquired(msg)
         elif action == "building_constructed":
             self._on_building_constructed(msg)
+        elif action == "placement_cancelled":
+            self._on_placement_cancelled(msg)
+        elif action == "building_market_update":
+            self._on_building_market_update(msg)
         elif action == "reassignment_phase_start":
             self._status_text = "Reassignment Phase"
         elif action == "worker_reassigned":
@@ -200,6 +217,17 @@ class GameView(arcade.View):
                 )
             return
 
+        # Check if this is the Real Estate Listings spot for building purchase
+        # Only trigger on the initial placement (next_player_id is None = deferred turn),
+        # not on the turn-advance response after purchase/cancel.
+        if (
+            space_data.get("reward_special") == "purchase_building"
+            and pid == my_id
+            and msg.get("next_player_id") is None
+        ):
+            self._show_building_purchase_dialog()
+            return
+
         # Update turn
         next_pid = msg.get("next_player_id")
         self._update_current_player(next_pid)
@@ -210,6 +238,22 @@ class GameView(arcade.View):
             self.game_log_panel.add_entry(
                 f"{name} placed worker on {space_name}"
             )
+
+        # Owner bonus notification
+        owner_bonus = msg.get("owner_bonus", {})
+        if owner_bonus and self.game_log_panel:
+            owner_name = owner_bonus.get("owner_name", "???")
+            bonus = owner_bonus.get("bonus", {})
+            bonus_parts = []
+            for key, sym in [("guitarists", "G"), ("bass_players", "B"),
+                             ("drummers", "D"), ("singers", "S"), ("coins", "$")]:
+                val = bonus.get(key, 0)
+                if val > 0:
+                    bonus_parts.append(f"{val}{sym}")
+            if bonus_parts:
+                self.game_log_panel.add_entry(
+                    f"{owner_name} earned owner bonus: {' '.join(bonus_parts)}"
+                )
 
     def _on_worker_placed_backstage(self, msg: dict) -> None:
         slot = msg.get("slot_number", 0)
@@ -249,6 +293,42 @@ class GameView(arcade.View):
         )
         self._quest_dialog.show(
             self.window.width, self.window.height
+        )
+
+    def _show_building_purchase_dialog(self) -> None:
+        """Show dialog for purchasing a face-up building."""
+        # Get player's current coins
+        my_id = getattr(self.window, "player_id", None)
+        player_coins = 0
+        for p in self.game_state.get("players", []):
+            if p.get("player_id") == my_id:
+                player_coins = p.get("resources", {}).get("coins", 0)
+                break
+
+        def on_purchase(building_id: str) -> None:
+            self._building_dialog = None
+            self.window.network.send({
+                "action": "purchase_building",
+                "building_id": building_id,
+            })
+
+        def on_cancel() -> None:
+            self._building_dialog = None
+            self.window.network.send({
+                "action": "cancel_purchase_building",
+            })
+            if self.game_log_panel:
+                self.game_log_panel.add_entry("Building purchase cancelled")
+
+        self._building_dialog = BuildingPurchaseDialog(
+            buildings=self._face_up_buildings,
+            player_coins=player_coins,
+            on_purchase=on_purchase,
+            on_cancel=on_cancel,
+            ui_manager=self.ui,
+        )
+        self._building_dialog.show(
+            self.window.width, self.window.height,
         )
 
     def _on_quest_card_selected(self, msg: dict) -> None:
@@ -342,9 +422,76 @@ class GameView(arcade.View):
             name = self._player_name(pid)
             self.game_log_panel.add_entry(f"{name} acquired a contract")
 
+    def _on_placement_cancelled(self, msg: dict) -> None:
+        """Handle placement cancellation — free the space, return the worker."""
+        space_id = msg.get("space_id", "")
+        pid = msg.get("player_id", "")
+
+        board = self.game_state.get("board", {})
+        spaces = board.get("action_spaces", {})
+        if space_id in spaces:
+            spaces[space_id]["occupied_by"] = None
+
+        # Return the worker to the player's count
+        for p in self.game_state.get("players", []):
+            if p.get("player_id") == pid:
+                p["available_workers"] = p.get("available_workers", 0) + 1
+                break
+
+        if self.board_renderer:
+            self.board_renderer.update_board(
+                board, self.game_state.get("players", []),
+            )
+
+        next_pid = msg.get("next_player_id")
+        self._update_current_player(next_pid)
+
+        if self.game_log_panel:
+            name = self._player_name(pid)
+            self.game_log_panel.add_entry(
+                f"{name} cancelled building purchase"
+            )
+
+    def _on_building_market_update(self, msg: dict) -> None:
+        """Handle building market state update from server."""
+        self._face_up_buildings = msg.get("face_up_buildings", [])
+        self._building_deck_remaining = msg.get("deck_remaining", 0)
+        if self.board_renderer:
+            self.board_renderer.update_building_market(
+                self._face_up_buildings, self._building_deck_remaining,
+            )
+
     def _on_building_constructed(self, msg: dict) -> None:
         pid = msg.get("player_id", "")
         bname = msg.get("building_name", "?")
+        new_space_id = msg.get("new_space_id", "")
+
+        # Update local board state
+        board = self.game_state.get("board", {})
+        constructed = board.get("constructed_buildings", [])
+        if new_space_id and new_space_id not in constructed:
+            constructed.append(new_space_id)
+
+        # Add building to local action_spaces so it renders
+        spaces = board.get("action_spaces", {})
+        if new_space_id and new_space_id not in spaces:
+            spaces[new_space_id] = {
+                "name": bname,
+                "space_type": "building",
+                "owner_id": msg.get("owner_id", ""),
+                "reward": msg.get("visitor_reward", {}),
+                "owner_bonus": msg.get("owner_bonus", {}),
+                "occupied_by": None,
+            }
+
+        if self.board_renderer:
+            self.board_renderer.update_board(
+                board, self.game_state.get("players", []),
+            )
+
+        next_pid = msg.get("next_player_id")
+        self._update_current_player(next_pid)
+
         if self.game_log_panel:
             name = self._player_name(pid)
             self.game_log_panel.add_entry(f"{name} built {bname}")
@@ -358,6 +505,22 @@ class GameView(arcade.View):
             self.game_log_panel.add_entry(
                 f"{name} reassigned from Backstage slot {slot} to {to_space}"
             )
+
+        # Owner bonus notification
+        owner_bonus = msg.get("owner_bonus", {})
+        if owner_bonus and self.game_log_panel:
+            owner_name = owner_bonus.get("owner_name", "???")
+            bonus = owner_bonus.get("bonus", {})
+            bonus_parts = []
+            for key, sym in [("guitarists", "G"), ("bass_players", "B"),
+                             ("drummers", "D"), ("singers", "S"), ("coins", "$")]:
+                val = bonus.get(key, 0)
+                if val > 0:
+                    bonus_parts.append(f"{val}{sym}")
+            if bonus_parts:
+                self.game_log_panel.add_entry(
+                    f"{owner_name} earned owner bonus: {' '.join(bonus_parts)}"
+                )
 
     def _on_round_end(self, msg: dict) -> None:
         next_round = msg.get("next_round", 0)

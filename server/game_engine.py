@@ -15,10 +15,12 @@ from shared.constants import BONUS_WORKER_ROUND, GamePhase
 from shared.constants import FACE_UP_QUEST_COUNT
 from shared.messages import (
     BonusWorkersGrantedResponse,
+    BuildingMarketUpdateResponse,
     ContractAcquiredResponse,
     FaceUpQuestsUpdatedResponse,
     FinalPlayerScore,
     GameOverResponse,
+    PlacementCancelledResponse,
     QuestCardSelectedResponse,
     QuestCompletedResponse,
     QuestsResetResponse,
@@ -157,6 +159,10 @@ async def _end_round(server: GameServer, state) -> None:
             ),
         )
 
+    # Increment VP on face-up buildings
+    for building in state.board.face_up_buildings:
+        building.accumulated_vp += 1
+
     # Set turn order based on first-player marker
     first_pid = state.board.first_player_id
     if first_pid:
@@ -175,6 +181,9 @@ async def _end_round(server: GameServer, state) -> None:
             bonus_worker_granted=bonus_granted,
         ),
     )
+
+    # Broadcast updated building market with incremented VP
+    await _broadcast_building_market(server, state)
 
 
 async def _end_game(server: GameServer, state) -> None:
@@ -300,6 +309,31 @@ async def handle_place_worker(
         )
         return
 
+    # Handle Real Estate Listings (building purchase — deferred turn)
+    if space.reward_special == "purchase_building":
+        state.game_log.append(
+            GameLog(
+                round_number=state.current_round,
+                player_id=player.player_id,
+                action="place_worker",
+                details=(
+                    f"{player.display_name} placed worker on"
+                    f" {space.name} — awaiting building purchase"
+                ),
+                timestamp=time.time(),
+            )
+        )
+        await server.broadcast_to_game(
+            state.game_code,
+            WorkerPlacedResponse(
+                player_id=player.player_id,
+                space_id=msg.space_id,
+                reward_granted=reward_dict,
+                next_player_id=None,
+            ),
+        )
+        return
+
     # Handle special spaces
     if space.space_type == "castle":
         # Castle Waterdeep: first-player marker + 1 intrigue card
@@ -314,10 +348,28 @@ async def handle_place_worker(
             player.intrigue_hand.append(card)
 
     # Owner bonus for buildings
+    owner_bonus_info = {}
     if space.space_type == "building" and space.owner_id:
         owner = state.get_player(space.owner_id)
         if owner and owner.player_id != player.player_id and space.building_tile:
             owner.resources.add(space.building_tile.owner_bonus)
+            owner_bonus_info = {
+                "owner_id": owner.player_id,
+                "owner_name": owner.display_name,
+                "bonus": space.building_tile.owner_bonus.model_dump(),
+            }
+            state.game_log.append(
+                GameLog(
+                    round_number=state.current_round,
+                    player_id=owner.player_id,
+                    action="owner_bonus",
+                    details=(
+                        f"{owner.display_name} received owner bonus from"
+                        f" {player.display_name} visiting {space.name}"
+                    ),
+                    timestamp=time.time(),
+                )
+            )
 
     state.game_log.append(
         GameLog(
@@ -339,6 +391,7 @@ async def handle_place_worker(
             player_id=player.player_id,
             space_id=msg.space_id,
             reward_granted=reward_dict,
+            owner_bonus=owner_bonus_info,
             next_player_id=next_player.player_id if next_player else None,
         ),
     )
@@ -856,6 +909,24 @@ async def handle_acquire_intrigue(
 
 
 # ------------------------------------------------------------------
+# Building market helpers
+# ------------------------------------------------------------------
+
+
+async def _broadcast_building_market(server: GameServer, state) -> None:
+    """Send current face-up building market state to all clients."""
+    await server.broadcast_to_game(
+        state.game_code,
+        BuildingMarketUpdateResponse(
+            face_up_buildings=[
+                b.model_dump() for b in state.board.face_up_buildings
+            ],
+            deck_remaining=len(state.board.building_deck),
+        ),
+    )
+
+
+# ------------------------------------------------------------------
 # Building purchase handler
 # ------------------------------------------------------------------
 
@@ -875,9 +946,9 @@ async def handle_purchase_building(
         await conn.send_error("INVALID_ACTION", "Player not found.")
         return
 
-    # Find building in supply
+    # Find building in face-up market
     building = None
-    for b in state.board.building_supply:
+    for b in state.board.face_up_buildings:
         if b.id == msg.building_id:
             building = b
             break
@@ -889,15 +960,25 @@ async def handle_purchase_building(
         await conn.send_error("INSUFFICIENT_RESOURCES", "Not enough Coins.")
         return
 
-    lot_id = f"lot_{msg.lot_index}"
-    if lot_id not in state.board.building_lots:
-        await conn.send_error("INVALID_ACTION", "No empty lot at that index.")
+    if not state.board.building_lots:
+        await conn.send_error("INVALID_ACTION", "No empty building lots available.")
         return
 
-    # Purchase
+    # Auto-assign next available lot
+    lot_id = state.board.building_lots[0]
+    lot_index = int(lot_id.split("_")[1])
+
+    # Purchase: deduct coins, award VP
     player.resources.coins -= building.cost_coins
-    state.board.building_supply.remove(building)
+    player.victory_points += building.accumulated_vp
+    state.board.face_up_buildings.remove(building)
     state.board.building_lots.remove(lot_id)
+
+    # Draw replacement from deck
+    if state.board.building_deck:
+        replacement = state.board.building_deck.pop(0)
+        replacement.accumulated_vp = 1
+        state.board.face_up_buildings.append(replacement)
 
     # Create new action space
     space_id = f"building_{building.id}"
@@ -917,10 +998,17 @@ async def handle_purchase_building(
             round_number=state.current_round,
             player_id=player.player_id,
             action="purchase_building",
-            details=f"{player.display_name} built {building.name}",
+            details=(
+                f"{player.display_name} built {building.name}"
+                f" (+{building.accumulated_vp} VP)"
+            ),
             timestamp=time.time(),
         )
     )
+
+    # Advance turn (deferred from placement on Real Estate Listings)
+    await _advance_turn(server, state)
+    next_player = state.current_player()
 
     await server.broadcast_to_game(
         state.game_code,
@@ -928,8 +1016,60 @@ async def handle_purchase_building(
             player_id=player.player_id,
             building_id=building.id,
             building_name=building.name,
-            lot_index=msg.lot_index,
+            lot_index=lot_index,
             new_space_id=space_id,
+            visitor_reward=building.visitor_reward.model_dump(),
+            owner_bonus=building.owner_bonus.model_dump(),
+            owner_id=player.player_id,
+            next_player_id=(
+                next_player.player_id if next_player else None
+            ),
+        ),
+    )
+
+    # Broadcast updated market
+    await _broadcast_building_market(server, state)
+
+
+async def handle_cancel_purchase_building(
+    server: GameServer, conn: ClientConnection, msg
+) -> None:
+    """Handle cancel of building purchase — unwind the placement."""
+    state = _get_game_state(server, conn)
+    if state is None:
+        await conn.send_error("GAME_NOT_FOUND", "Not in a game.")
+        return
+
+    player = state.get_player(conn.player_id)
+    if player is None:
+        await conn.send_error("INVALID_ACTION", "Player not found.")
+        return
+
+    # Unwind: free the space and return the worker
+    space = state.board.action_spaces.get("real_estate_listings")
+    if space and space.occupied_by == player.player_id:
+        space.occupied_by = None
+        player.available_workers += 1
+
+    state.game_log.append(
+        GameLog(
+            round_number=state.current_round,
+            player_id=player.player_id,
+            action="cancel_purchase_building",
+            details=f"{player.display_name} cancelled building purchase",
+            timestamp=time.time(),
+        )
+    )
+
+    next_player = state.current_player()
+    await server.broadcast_to_game(
+        state.game_code,
+        PlacementCancelledResponse(
+            player_id=player.player_id,
+            space_id="real_estate_listings",
+            next_player_id=(
+                next_player.player_id if next_player else None
+            ),
         ),
     )
 
@@ -997,10 +1137,28 @@ async def handle_reassign_worker(
     player.completed_quest_this_turn = False  # Reset for reassignment action
 
     # Owner bonus for buildings
+    owner_bonus_info = {}
     if target.space_type == "building" and target.owner_id:
         owner = state.get_player(target.owner_id)
         if owner and owner.player_id != player.player_id and target.building_tile:
             owner.resources.add(target.building_tile.owner_bonus)
+            owner_bonus_info = {
+                "owner_id": owner.player_id,
+                "owner_name": owner.display_name,
+                "bonus": target.building_tile.owner_bonus.model_dump(),
+            }
+            state.game_log.append(
+                GameLog(
+                    round_number=state.current_round,
+                    player_id=owner.player_id,
+                    action="owner_bonus",
+                    details=(
+                        f"{owner.display_name} received owner bonus from"
+                        f" {player.display_name} visiting {target.name}"
+                    ),
+                    timestamp=time.time(),
+                )
+            )
 
     # Handle Castle Waterdeep special
     if target.space_type == "castle":
@@ -1031,6 +1189,7 @@ async def handle_reassign_worker(
             from_slot=msg.slot_number,
             to_space_id=msg.target_space_id,
             reward_granted=reward_dict,
+            owner_bonus=owner_bonus_info,
         ),
     )
 

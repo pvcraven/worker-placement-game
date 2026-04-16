@@ -48,10 +48,16 @@ class BuildingsConfig(BaseModel):
 
     @field_validator("buildings")
     @classmethod
-    def validate_unique_ids(cls, v: list[BuildingTile]) -> list[BuildingTile]:
+    def validate_buildings(cls, v: list[BuildingTile]) -> list[BuildingTile]:
         ids = [b.id for b in v]
         if len(ids) != len(set(ids)):
             raise ValueError("Duplicate building IDs found")
+        for b in v:
+            if not (3 <= b.cost_coins <= 8):
+                raise ValueError(
+                    f"Building '{b.name}' cost_coins={b.cost_coins}"
+                    f" is outside allowed range 3-8"
+                )
         return v
 
 
