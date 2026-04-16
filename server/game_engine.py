@@ -20,6 +20,7 @@ from shared.messages import (
     FaceUpQuestsUpdatedResponse,
     FinalPlayerScore,
     GameOverResponse,
+    PlacementCancelledResponse,
     QuestCardSelectedResponse,
     QuestCompletedResponse,
     QuestsResetResponse,
@@ -305,6 +306,31 @@ async def handle_place_worker(
     if space.space_type == "garage":
         await _handle_garage_placement(
             server, state, player, space, msg.space_id
+        )
+        return
+
+    # Handle Real Estate Listings (building purchase — deferred turn)
+    if space.reward_special == "purchase_building":
+        state.game_log.append(
+            GameLog(
+                round_number=state.current_round,
+                player_id=player.player_id,
+                action="place_worker",
+                details=(
+                    f"{player.display_name} placed worker on"
+                    f" {space.name} — awaiting building purchase"
+                ),
+                timestamp=time.time(),
+            )
+        )
+        await server.broadcast_to_game(
+            state.game_code,
+            WorkerPlacedResponse(
+                player_id=player.player_id,
+                space_id=msg.space_id,
+                reward_granted=reward_dict,
+                next_player_id=None,
+            ),
         )
         return
 
@@ -980,6 +1006,10 @@ async def handle_purchase_building(
         )
     )
 
+    # Advance turn (deferred from placement on Real Estate Listings)
+    await _advance_turn(server, state)
+    next_player = state.current_player()
+
     await server.broadcast_to_game(
         state.game_code,
         BuildingConstructedResponse(
@@ -989,12 +1019,59 @@ async def handle_purchase_building(
             lot_index=lot_index,
             new_space_id=space_id,
             visitor_reward=building.visitor_reward.model_dump(),
+            owner_bonus=building.owner_bonus.model_dump(),
             owner_id=player.player_id,
+            next_player_id=(
+                next_player.player_id if next_player else None
+            ),
         ),
     )
 
     # Broadcast updated market
     await _broadcast_building_market(server, state)
+
+
+async def handle_cancel_purchase_building(
+    server: GameServer, conn: ClientConnection, msg
+) -> None:
+    """Handle cancel of building purchase — unwind the placement."""
+    state = _get_game_state(server, conn)
+    if state is None:
+        await conn.send_error("GAME_NOT_FOUND", "Not in a game.")
+        return
+
+    player = state.get_player(conn.player_id)
+    if player is None:
+        await conn.send_error("INVALID_ACTION", "Player not found.")
+        return
+
+    # Unwind: free the space and return the worker
+    space = state.board.action_spaces.get("real_estate_listings")
+    if space and space.occupied_by == player.player_id:
+        space.occupied_by = None
+        player.available_workers += 1
+
+    state.game_log.append(
+        GameLog(
+            round_number=state.current_round,
+            player_id=player.player_id,
+            action="cancel_purchase_building",
+            details=f"{player.display_name} cancelled building purchase",
+            timestamp=time.time(),
+        )
+    )
+
+    next_player = state.current_player()
+    await server.broadcast_to_game(
+        state.game_code,
+        PlacementCancelledResponse(
+            player_id=player.player_id,
+            space_id="real_estate_listings",
+            next_player_id=(
+                next_player.player_id if next_player else None
+            ),
+        ),
+    )
 
 
 # ------------------------------------------------------------------

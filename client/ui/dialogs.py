@@ -135,8 +135,11 @@ class BuildingPurchaseDialog:
         cancel_btn.on_click = lambda event: self._cancel()
         v_box.add(cancel_btn)
 
+        bg_box = v_box.with_padding(all=20).with_background(
+            color=(20, 20, 40, 230)
+        )
         self._widget = self.ui.add(arcade.gui.UIAnchorLayout())
-        self._widget.add(child=v_box, anchor_x="center", anchor_y="center")
+        self._widget.add(child=bg_box, anchor_x="center", anchor_y="center")
 
     def _purchase(self, building_id: str) -> None:
         self.hide()

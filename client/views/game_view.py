@@ -96,6 +96,16 @@ class GameView(arcade.View):
         if self.board_renderer:
             self.board_renderer.update_board(board, players)
 
+        # Extract building market from initial game state
+        face_up = board.get("face_up_buildings", [])
+        if face_up:
+            self._face_up_buildings = face_up
+            self._building_deck_remaining = board.get("building_deck_count", 0)
+            if self.board_renderer:
+                self.board_renderer.update_building_market(
+                    self._face_up_buildings, self._building_deck_remaining,
+                )
+
         # Update turn indicator
         turn_order = self.game_state.get("turn_order", [])
         idx = self.game_state.get("current_player_index", 0)
@@ -140,6 +150,8 @@ class GameView(arcade.View):
             self._on_contract_acquired(msg)
         elif action == "building_constructed":
             self._on_building_constructed(msg)
+        elif action == "placement_cancelled":
+            self._on_placement_cancelled(msg)
         elif action == "building_market_update":
             self._on_building_market_update(msg)
         elif action == "reassignment_phase_start":
@@ -206,9 +218,12 @@ class GameView(arcade.View):
             return
 
         # Check if this is the Real Estate Listings spot for building purchase
+        # Only trigger on the initial placement (next_player_id is None = deferred turn),
+        # not on the turn-advance response after purchase/cancel.
         if (
             space_data.get("reward_special") == "purchase_building"
             and pid == my_id
+            and msg.get("next_player_id") is None
         ):
             self._show_building_purchase_dialog()
             return
@@ -299,6 +314,9 @@ class GameView(arcade.View):
 
         def on_cancel() -> None:
             self._building_dialog = None
+            self.window.network.send({
+                "action": "cancel_purchase_building",
+            })
             if self.game_log_panel:
                 self.game_log_panel.add_entry("Building purchase cancelled")
 
@@ -404,6 +422,36 @@ class GameView(arcade.View):
             name = self._player_name(pid)
             self.game_log_panel.add_entry(f"{name} acquired a contract")
 
+    def _on_placement_cancelled(self, msg: dict) -> None:
+        """Handle placement cancellation — free the space, return the worker."""
+        space_id = msg.get("space_id", "")
+        pid = msg.get("player_id", "")
+
+        board = self.game_state.get("board", {})
+        spaces = board.get("action_spaces", {})
+        if space_id in spaces:
+            spaces[space_id]["occupied_by"] = None
+
+        # Return the worker to the player's count
+        for p in self.game_state.get("players", []):
+            if p.get("player_id") == pid:
+                p["available_workers"] = p.get("available_workers", 0) + 1
+                break
+
+        if self.board_renderer:
+            self.board_renderer.update_board(
+                board, self.game_state.get("players", []),
+            )
+
+        next_pid = msg.get("next_player_id")
+        self._update_current_player(next_pid)
+
+        if self.game_log_panel:
+            name = self._player_name(pid)
+            self.game_log_panel.add_entry(
+                f"{name} cancelled building purchase"
+            )
+
     def _on_building_market_update(self, msg: dict) -> None:
         """Handle building market state update from server."""
         self._face_up_buildings = msg.get("face_up_buildings", [])
@@ -432,6 +480,7 @@ class GameView(arcade.View):
                 "space_type": "building",
                 "owner_id": msg.get("owner_id", ""),
                 "reward": msg.get("visitor_reward", {}),
+                "owner_bonus": msg.get("owner_bonus", {}),
                 "occupied_by": None,
             }
 
@@ -439,6 +488,9 @@ class GameView(arcade.View):
             self.board_renderer.update_board(
                 board, self.game_state.get("players", []),
             )
+
+        next_pid = msg.get("next_player_id")
+        self._update_current_player(next_pid)
 
         if self.game_log_panel:
             name = self._player_name(pid)

@@ -72,6 +72,10 @@ class PurchaseBuildingRequest(BaseModel):
     building_id: str
 
 
+class CancelPurchaseBuildingRequest(BaseModel):
+    action: Literal["cancel_purchase_building"] = "cancel_purchase_building"
+
+
 class ReassignWorkerRequest(BaseModel):
     action: Literal["reassign_worker"] = "reassign_worker"
     slot_number: int = Field(ge=1, le=3)
@@ -107,6 +111,7 @@ ClientMessage = Annotated[
         AcquireContractRequest,
         AcquireIntrigueRequest,
         PurchaseBuildingRequest,
+        CancelPurchaseBuildingRequest,
         ReassignWorkerRequest,
         ChooseIntrigueTargetRequest,
         ReconnectRequest,
@@ -215,6 +220,13 @@ class ContractAcquiredResponse(BaseModel):
     new_face_up: dict | None = None
 
 
+class PlacementCancelledResponse(BaseModel):
+    action: Literal["placement_cancelled"] = "placement_cancelled"
+    player_id: str
+    space_id: str
+    next_player_id: str | None
+
+
 class BuildingConstructedResponse(BaseModel):
     action: Literal["building_constructed"] = "building_constructed"
     player_id: str
@@ -223,7 +235,9 @@ class BuildingConstructedResponse(BaseModel):
     lot_index: int
     new_space_id: str
     visitor_reward: dict = Field(default_factory=dict)
+    owner_bonus: dict = Field(default_factory=dict)
     owner_id: str = ""
+    next_player_id: str | None = None
 
 
 class BuildingMarketUpdateResponse(BaseModel):
@@ -323,6 +337,7 @@ ServerMessage = Annotated[
         QuestsResetResponse,
         QuestCompletedResponse,
         ContractAcquiredResponse,
+        PlacementCancelledResponse,
         BuildingConstructedResponse,
         BuildingMarketUpdateResponse,
         ReassignmentPhaseStartResponse,

@@ -253,25 +253,28 @@ class BoardRenderer:
         name = data.get("name", space_id)
         if len(name) > 22:
             name = name[:20] + ".."
-        self._text(
-            f"space_{space_id}_name", name,
-            cx, cy + 12,
-            arcade.color.WHITE, 13,
-            anchor_x="center", anchor_y="center", bold=True,
-        ).draw()
 
-        # Show reward hint
-        reward = data.get("reward", {})
-        reward_str = self._reward_summary(
-            reward, data.get("reward_special")
-        )
-        if reward_str:
+        if is_building:
+            self._draw_building_text(cx, cy, space_id, data, name)
+        else:
             self._text(
-                f"space_{space_id}_reward", reward_str,
-                cx, cy - 14,
-                arcade.color.LIGHT_GRAY, 11,
+                f"space_{space_id}_name", name,
+                cx, cy + 12,
+                arcade.color.WHITE, 13,
                 anchor_x="center", anchor_y="center",
+                bold=True,
             ).draw()
+            reward = data.get("reward", {})
+            reward_str = self._reward_summary(
+                reward, data.get("reward_special")
+            )
+            if reward_str:
+                self._text(
+                    f"space_{space_id}_reward", reward_str,
+                    cx, cy - 14,
+                    arcade.color.LIGHT_GRAY, 11,
+                    anchor_x="center", anchor_y="center",
+                ).draw()
 
         # Worker token
         if occupied:
@@ -279,6 +282,51 @@ class BoardRenderer:
             arcade.draw_circle_filled(
                 cx + sw / 2 - 14, cy, 9, color
             )
+
+    def _draw_building_text(
+        self,
+        cx: float,
+        cy: float,
+        space_id: str,
+        data: dict,
+        name: str,
+    ) -> None:
+        self._text(
+            f"space_{space_id}_name", name,
+            cx, cy + 20,
+            arcade.color.WHITE, 12,
+            anchor_x="center", anchor_y="center",
+            bold=True,
+        ).draw()
+
+        visitor = data.get("reward", {})
+        visitor_str = self._resource_str(visitor)
+        if visitor_str:
+            self._text(
+                f"space_{space_id}_cust",
+                f"Customer: {visitor_str}",
+                cx, cy + 2,
+                arcade.color.LIGHT_GREEN, 10,
+                anchor_x="center", anchor_y="center",
+            ).draw()
+
+        owner_id = data.get("owner_id")
+        if owner_id:
+            bonus = (
+                data.get("owner_bonus")
+                or data.get("building_tile", {}).get(
+                    "owner_bonus", {}
+                )
+            )
+            bonus_str = self._resource_str(bonus)
+            label = f"Owner: {bonus_str}" if bonus_str else ""
+            if label:
+                self._text(
+                    f"space_{space_id}_own", label,
+                    cx, cy - 14,
+                    arcade.color.GOLD, 10,
+                    anchor_x="center", anchor_y="center",
+                ).draw()
 
     def _draw_backstage_slot(
         self,
@@ -361,6 +409,19 @@ class BoardRenderer:
             if val > 0:
                 parts.append(f"{val}{label}")
         return " ".join(parts) if parts else ""
+
+    @staticmethod
+    def _resource_str(res: dict) -> str:
+        parts = []
+        for key, sym in [
+            ("guitarists", "G"), ("bass_players", "B"),
+            ("drummers", "D"), ("singers", "S"),
+            ("coins", "$"),
+        ]:
+            val = res.get(key, 0)
+            if val > 0:
+                parts.append(f"{val}{sym}")
+        return " ".join(parts)
 
     def _player_color(self, player_id: str) -> tuple:
         for i, p in enumerate(self.players):
