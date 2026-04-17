@@ -104,10 +104,16 @@ When all players have placed all their workers during the round, the game enters
 - **SC-005**: The reassignment phase processes all occupied Backstage spots within 30 seconds per spot (including player decision time).
 - **SC-006**: Players with no intrigue cards are blocked from Backstage placement with a clear message in 100% of attempts.
 
+## Clarifications
+
+### Session 2026-04-17
+
+- Q: Should Garage spots also be excluded during reassignment (FR-011 vs Assumptions conflict)? → A: No, only Backstage is excluded. Garage is allowed during reassignment.
+
 ## Assumptions
 
 - Intrigue card effects are already defined in the game configuration and the effect resolution logic already exists.
 - The intrigue card selection dialog follows the same UI pattern as existing card selection dialogs (list of cards with cancel option).
-- During reassignment, the freed worker can be placed on any permanent or building action space, but not on Backstage or Garage spots.
+- During reassignment, the freed worker can be placed on any open action space (permanent, building, or Garage) but not on Backstage spots.
 - The game already tracks turn order and uses it for determining play sequence.
 - The Backstage spots are already defined in the board configuration but are currently non-functional ("Unknown action space" error).
