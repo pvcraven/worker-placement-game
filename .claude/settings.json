@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Read(//c/Users/PaCra/Projects/arcade/arcade/**)"
+      "Read(//c/Users/PaCra/Projects/arcade/arcade/**)",
+      "Read(//c/Users/PaCra/Projects/arcade/pyglet/pyglet/**)",
     ]
   }
 }

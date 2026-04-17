@@ -155,6 +155,7 @@ class GameState(BaseModel):
     game_log: list[GameLog] = Field(default_factory=list)
     reassignment_queue: list[int] = Field(default_factory=list)
     producer_deck: list[ProducerCard] = Field(default_factory=list)
+    waiting_for_quest_completion: bool = False
     max_players: int = 4
     host_player_id: str | None = None
     created_at: float = 0.0

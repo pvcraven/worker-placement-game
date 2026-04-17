@@ -50,7 +50,10 @@ class ResourceBar:
     def update_resources(self, resources: dict) -> None:
         self.resources = resources
 
-    def draw(self, x: float, y: float, w: float, h: float) -> None:
+    def draw(
+        self, x: float, y: float, w: float, h: float,
+        workers_left: int = 0, victory_points: int = 0,
+    ) -> None:
         # Background
         arcade.draw_rect_filled(
             arcade.rect.XYWH(x + w / 2, y + h / 2, w, h),
@@ -58,33 +61,41 @@ class ResourceBar:
         )
 
         count = len(_RESOURCE_CONFIG)
-        section_w = w / (count + 1)  # +1 for VP display
+        section_w = w / count
+        row_y = y + h * 0.33
 
         for i, (key, label, color) in enumerate(_RESOURCE_CONFIG):
             cx = x + section_w * (i + 0.5)
-            cy = y + h / 2
             val = self.resources.get(key, 0)
 
             # Color swatch
             arcade.draw_rect_filled(
-                arcade.rect.XYWH(cx - 30, cy, 20, 20),
+                arcade.rect.XYWH(cx - 30, row_y, 20, 20),
                 color,
             )
 
             # Label and count
             self._text(
                 f"res_{key}", f"{label}: {val}",
-                cx - 15, cy,
+                cx - 15, row_y,
                 arcade.color.WHITE, 16,
                 anchor_x="left", anchor_y="center", bold=True,
             ).draw()
 
-        # VP display at the end
-        vp_cx = x + section_w * (count + 0.5)
+        # Workers left above Guitarists column
+        cx0 = x + section_w * 0.5
         self._text(
-            "vp",
-            f"VP: {self.resources.get('victory_points', 0)}",
-            vp_cx - 30, y + h / 2,
-            arcade.color.YELLOW, 20,
+            "workers_left", f"Workers left: {workers_left}",
+            cx0 - 15, y + h * 0.72,
+            arcade.color.WHITE, 16,
+            anchor_x="left", anchor_y="center", bold=True,
+        ).draw()
+
+        # VP above Bass column
+        cx1 = x + section_w * 1.5
+        self._text(
+            "vp", f"VP: {victory_points}",
+            cx1 - 15, y + h * 0.72,
+            arcade.color.WHITE, 16,
             anchor_x="left", anchor_y="center", bold=True,
         ).draw()

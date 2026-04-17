@@ -128,6 +128,10 @@ class GameServer:
         from server.game_engine import handle_complete_quest
         await handle_complete_quest(self, conn, msg)
 
+    async def _handle_skip_quest_completion(self, conn, msg) -> None:
+        from server.game_engine import handle_skip_quest_completion
+        await handle_skip_quest_completion(self, conn, msg)
+
     async def _handle_acquire_contract(self, conn, msg) -> None:
         from server.game_engine import handle_acquire_contract
         await handle_acquire_contract(self, conn, msg)

@@ -7,7 +7,7 @@ import arcade.gui
 
 from client.ui.board_renderer import BoardRenderer
 from client.ui.card_renderer import CardRenderer
-from client.ui.dialogs import BuildingPurchaseDialog, CardSelectionDialog
+from client.ui.dialogs import BuildingPurchaseDialog, CardSelectionDialog, QuestCompletionDialog
 from client.ui.game_log import GameLogPanel
 from client.ui.resource_bar import ResourceBar
 
@@ -26,6 +26,7 @@ class GameView(arcade.View):
         self._status_text = ""
         self._quest_dialog: CardSelectionDialog | None = None
         self._building_dialog: BuildingPurchaseDialog | None = None
+        self._quest_completion_dialog: QuestCompletionDialog | None = None
         self._face_up_buildings: list[dict] = []
         self._building_deck_remaining: int = 0
         self._show_quests_hand = False
@@ -152,6 +153,10 @@ class GameView(arcade.View):
             self._on_quests_reset(msg)
         elif action == "quest_completed":
             self._on_quest_completed(msg)
+        elif action == "quest_completion_prompt":
+            self._on_quest_completion_prompt(msg)
+        elif action == "quest_skipped":
+            self._on_quest_skipped(msg)
         elif action == "contract_acquired":
             self._on_contract_acquired(msg)
         elif action == "building_constructed":
@@ -203,8 +208,12 @@ class GameView(arcade.View):
         if space_id in spaces:
             spaces[space_id]["occupied_by"] = pid
 
-        # Update player resources
+        # Update player resources and worker count
         self._apply_reward_to_player(pid, reward)
+        for p in self.game_state.get("players", []):
+            if p.get("player_id") == pid:
+                p["available_workers"] = max(0, p.get("available_workers", 0) - 1)
+                break
 
         # Check if this is a garage spot requiring quest selection
         space_data = spaces.get(space_id, {})
@@ -264,6 +273,11 @@ class GameView(arcade.View):
         slot = msg.get("slot_number", 0)
         pid = msg.get("player_id", "")
         card = msg.get("intrigue_card", {})
+
+        for p in self.game_state.get("players", []):
+            if p.get("player_id") == pid:
+                p["available_workers"] = max(0, p.get("available_workers", 0) - 1)
+                break
 
         if self.game_log_panel:
             name = self._player_name(pid)
@@ -421,7 +435,15 @@ class GameView(arcade.View):
     def _on_quest_completed(self, msg: dict) -> None:
         pid = msg.get("player_id", "")
         cname = msg.get("contract_name", "?")
+        cid = msg.get("contract_id", "")
         vp = msg.get("victory_points_earned", 0)
+
+        for p in self.game_state.get("players", []):
+            if p.get("player_id") == pid:
+                p["victory_points"] = p.get("victory_points", 0) + vp
+                hand = p.get("contract_hand", [])
+                p["contract_hand"] = [c for c in hand if c.get("id") != cid]
+                break
 
         if self.game_log_panel:
             name = self._player_name(pid)
@@ -429,6 +451,43 @@ class GameView(arcade.View):
                 f"{name} completed '{cname}'"
                 f" for {vp} VP"
             )
+
+        next_pid = msg.get("next_player_id")
+        if next_pid:
+            self._update_current_player(next_pid)
+
+    def _on_quest_completion_prompt(self, msg: dict) -> None:
+        quests = msg.get("completable_quests", [])
+        if not quests:
+            return
+
+        def on_select(contract_id: str) -> None:
+            self._quest_completion_dialog = None
+            self.window.network.send({
+                "action": "complete_quest",
+                "contract_id": contract_id,
+            })
+
+        def on_skip() -> None:
+            self._quest_completion_dialog = None
+            self.window.network.send({
+                "action": "skip_quest_completion",
+            })
+
+        self._quest_completion_dialog = QuestCompletionDialog(
+            quests=quests,
+            on_select=on_select,
+            on_skip=on_skip,
+            ui_manager=self.ui,
+        )
+        self._quest_completion_dialog.show(
+            self.window.width, self.window.height
+        )
+
+    def _on_quest_skipped(self, msg: dict) -> None:
+        next_pid = msg.get("next_player_id")
+        if next_pid:
+            self._update_current_player(next_pid)
 
     def _on_contract_acquired(self, msg: dict) -> None:
         pid = msg.get("player_id", "")
@@ -610,7 +669,15 @@ class GameView(arcade.View):
             self.board_renderer.draw(0, 100, w, h - 160)
 
         if self.resource_bar:
-            self.resource_bar.draw(0, 0, w, 100)
+            my_id = getattr(self.window, "player_id", None)
+            workers_left = 0
+            vp = 0
+            for p in self.game_state.get("players", []):
+                if p.get("player_id") == my_id:
+                    workers_left = p.get("available_workers", 0)
+                    vp = p.get("victory_points", 0)
+                    break
+            self.resource_bar.draw(0, 0, w, 100, workers_left, vp)
 
         if self.game_log_panel:
             self.game_log_panel.draw(w - 300, 100, 300, h - 160)
