@@ -79,12 +79,14 @@ When all players have placed all their workers during the round, the game enters
 - **FR-005**: After placing a worker on a Backstage spot, the system MUST present the player with a selection dialog showing their intrigue cards.
 - **FR-006**: The player MUST select an intrigue card to play. Cancelling the selection MUST unwind the placement (remove worker, return to pool).
 - **FR-007**: The selected intrigue card's effect MUST resolve immediately upon selection.
-- **FR-008**: When all players have placed all workers, the system MUST enter a Backstage Reassignment phase.
+- **FR-008**: When all players have placed all workers and at least one Backstage spot is occupied, the system MUST enter a Backstage Reassignment phase.
 - **FR-009**: During reassignment, the system MUST process Backstage spots in order (1, 2, 3), skipping unoccupied spots.
 - **FR-010**: For each occupied Backstage spot during reassignment, the system MUST return the worker to its owner's pool and prompt that player to place it on any open action space.
 - **FR-011**: During reassignment, the freed worker follows normal placement rules (space must be unoccupied) but MUST NOT be placed on a Backstage spot.
 - **FR-012**: The reassignment placement MUST grant the normal reward of the chosen action space.
 - **FR-013**: All connected players MUST see updated game state after each backstage placement, intrigue card play, and reassignment.
+- **FR-014**: When all players have placed all workers and no Backstage spots are occupied, the system MUST skip the reassignment phase and advance directly to the next round.
+- **FR-015**: After the reassignment phase completes (all occupied Backstage spots processed), the system MUST advance to the next round, returning all workers to their owners' pools.
 
 ### Key Entities
 
@@ -109,6 +111,7 @@ When all players have placed all their workers during the round, the game enters
 ### Session 2026-04-17
 
 - Q: Should Garage spots also be excluded during reassignment (FR-011 vs Assumptions conflict)? → A: No, only Backstage is excluded. Garage is allowed during reassignment.
+- Q: What should happen when all workers are placed and no backstage slots are occupied? → A: The system must skip the reassignment phase and advance to the next round, returning workers to players. This is currently broken — the game stalls.
 
 ## Assumptions
 
