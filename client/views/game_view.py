@@ -289,6 +289,34 @@ class GameView(arcade.View):
                 p["intrigue_hand"] = [c for c in hand if c.get("id") != card_id]
                 break
 
+        # Apply intrigue effect rewards to player resources
+        effect = msg.get("intrigue_effect", {})
+        details = effect.get("details", {})
+        if details:
+            reward = {
+                k: details.get(k, 0)
+                for k in (
+                    "guitarists", "bass_players",
+                    "drummers", "singers", "coins",
+                )
+            }
+            all_gained = details.get("all_gained", {})
+            if all_gained:
+                for p in self.game_state.get("players", []):
+                    self._apply_reward_to_player(
+                        p.get("player_id", ""), all_gained,
+                    )
+            elif any(reward.values()):
+                self._apply_reward_to_player(pid, reward)
+            vp = details.get("victory_points", 0)
+            if vp:
+                for p in self.game_state.get("players", []):
+                    if p.get("player_id") == pid:
+                        p["victory_points"] = (
+                            p.get("victory_points", 0) + vp
+                        )
+                        break
+
         if self.board_renderer:
             self.board_renderer.update_board(
                 board, self.game_state.get("players", [])
@@ -597,7 +625,7 @@ class GameView(arcade.View):
     def _on_reassignment_phase_start(self, msg: dict) -> None:
         self._status_text = "Reassignment Phase"
         slots = msg.get("backstage_slots", [])
-        self.game_state["phase"] = "REASSIGNMENT"
+        self.game_state["phase"] = "reassignment"
         self.game_state["reassignment_queue"] = [
             s["slot_number"] for s in slots
         ]
@@ -668,6 +696,22 @@ class GameView(arcade.View):
                     f" {' '.join(bonus_parts)}"
                 )
 
+        # Garage quest selection during reassignment
+        my_id = getattr(self.window, "player_id", None)
+        space_data = spaces.get(to_space, {})
+        if (
+            space_data.get("space_type") == "garage"
+            and pid == my_id
+            and space_data.get("reward_special") in (
+                "quest_and_coins", "quest_and_intrigue",
+            )
+        ):
+            self._show_quest_selection_dialog()
+            if self.game_log_panel:
+                self.game_log_panel.add_entry(
+                    "Select a quest card from the display"
+                )
+
     def _on_round_end(self, msg: dict) -> None:
         next_round = msg.get("next_round", 0)
         bonus = msg.get("bonus_worker_granted", False)
@@ -675,6 +719,8 @@ class GameView(arcade.View):
 
         self.game_state["current_round"] = next_round
         self.game_state["current_player_index"] = 0
+        self.game_state["phase"] = "placement"
+        self.game_state.pop("reassignment_queue", None)
         if turn_order:
             self.game_state["turn_order"] = turn_order
 
@@ -738,11 +784,17 @@ class GameView(arcade.View):
     def on_mouse_press(
         self, x: int, y: int, button: int, modifiers: int,
     ) -> None:
-        """Handle clicks on the board to place workers."""
+        """Handle clicks on the board to place or reassign workers."""
         if not self.board_renderer:
             return
 
+        phase = self.game_state.get("phase", "")
         my_id = getattr(self.window, "player_id", None)
+
+        if phase == "reassignment":
+            self._handle_reassignment_click(x, y)
+            return
+
         turn_order = self.game_state.get("turn_order", [])
         idx = self.game_state.get("current_player_index", 0)
         if not turn_order or idx >= len(turn_order):
@@ -759,6 +811,42 @@ class GameView(arcade.View):
                     "action": "place_worker",
                     "space_id": space_id,
                 })
+
+    def _handle_reassignment_click(
+        self, x: int, y: int,
+    ) -> None:
+        """During reassignment, click an action space to reassign."""
+        my_id = getattr(self.window, "player_id", None)
+        queue = self.game_state.get("reassignment_queue", [])
+        if not queue:
+            return
+
+        current_slot = queue[0]
+
+        # Check this slot belongs to me
+        board = self.game_state.get("board", {})
+        slot_owner = None
+        for s in board.get("backstage_slots", []):
+            if s.get("slot_number") == current_slot:
+                slot_owner = s.get("occupied_by")
+                break
+        if slot_owner != my_id:
+            self._status_text = "Waiting for another player to reassign"
+            return
+
+        space_id = self.board_renderer.get_space_at(x, y)
+        if not space_id:
+            return
+
+        if space_id.startswith("backstage_slot_"):
+            self._status_text = "Cannot reassign to a Backstage slot"
+            return
+
+        self.window.network.send({
+            "action": "reassign_worker",
+            "slot_number": current_slot,
+            "target_space_id": space_id,
+        })
 
     def _handle_backstage_click(self, space_id: str) -> None:
         """Handle click on a backstage slot — show intrigue card selection."""
@@ -888,8 +976,11 @@ class GameView(arcade.View):
             draw_fn = CardRenderer.draw_intrigue
             hand_prefix = "hand_intrigue"
 
-        panel_w = min(w - 40, 700)
-        panel_h = 260
+        card_count = min(len(cards), 6)
+        card_spacing = 205
+        needed_w = card_count * card_spacing + 40
+        panel_w = max(min(w - 40, needed_w), 300)
+        panel_h = 280
         panel_x = w / 2
         panel_y = h / 2
         arcade.draw_rect_filled(
@@ -918,12 +1009,14 @@ class GameView(arcade.View):
             ).draw()
             return
 
-        card_spacing = 150
-        total = len(cards) * card_spacing
+        total = card_count * card_spacing
         start_x = panel_x - total / 2 + card_spacing / 2
-        for i, card in enumerate(cards[:4]):
+        for i, card in enumerate(cards[:6]):
             cx = start_x + i * card_spacing
-            draw_fn(cx, panel_y - 10, card, cache_key=f"{hand_prefix}_{i}")
+            draw_fn(
+                cx, panel_y - 10, card,
+                cache_key=f"{hand_prefix}_{i}",
+            )
 
     def _draw_building_market_panel(
         self, w: float, h: float,

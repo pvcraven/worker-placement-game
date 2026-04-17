@@ -183,11 +183,70 @@ class CardRenderer:
             desc = desc[:78] + ".."
         cls._text(
             f"{cache_key}_desc", desc,
-            cx, cy,
-            arcade.color.WHITE, 11,
+            cx, cy + 20,
+            arcade.color.WHITE, 10,
             anchor_x="center", anchor_y="center",
-            multiline=True, width=_CARD_WIDTH - 16, align="center",
+            multiline=True, width=_CARD_WIDTH - 16,
+            align="center",
         ).draw()
+
+        effect_str = cls._intrigue_effect_summary(card)
+        if effect_str:
+            cls._text(
+                f"{cache_key}_eff", effect_str,
+                cx, cy - 40,
+                arcade.color.YELLOW, 11,
+                anchor_x="center", anchor_y="center",
+                multiline=True, width=_CARD_WIDTH - 16,
+                align="center", bold=True,
+            ).draw()
+
+    @staticmethod
+    def _intrigue_effect_summary(card: dict) -> str:
+        etype = card.get("effect_type", "")
+        val = card.get("effect_value", {})
+        mapping = [
+            ("guitarists", "G"), ("bass_players", "B"),
+            ("drummers", "D"), ("singers", "S"),
+            ("coins", "$"),
+        ]
+        if etype in ("gain_resources", "all_players_gain"):
+            parts = []
+            for k, sym in mapping:
+                v = val.get(k, 0)
+                if v:
+                    parts.append(f"+{v}{sym}")
+            label = " ".join(parts)
+            if etype == "all_players_gain":
+                return f"{label} (all)"
+            return label
+        if etype == "gain_coins":
+            c = val.get("coins", 0)
+            return f"+{c}$" if c else ""
+        if etype == "vp_bonus":
+            vp = val.get("victory_points", 0)
+            return f"+{vp} VP" if vp else ""
+        if etype == "draw_contracts":
+            n = val.get("count", 1)
+            return f"Draw {n} quest(s)"
+        if etype == "draw_intrigue":
+            n = val.get("count", 1)
+            return f"Draw {n} intrigue"
+        if etype == "steal_resources":
+            parts = []
+            for k, sym in mapping:
+                v = val.get(k, 0)
+                if v:
+                    parts.append(f"{v}{sym}")
+            return f"Steal {' '.join(parts)}"
+        if etype == "opponent_loses":
+            parts = []
+            for k, sym in mapping:
+                v = val.get(k, 0)
+                if v:
+                    parts.append(f"{v}{sym}")
+            return f"Opponent loses {' '.join(parts)}"
+        return ""
 
     @staticmethod
     def get_card_rect(
