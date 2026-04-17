@@ -73,6 +73,25 @@ For each occupied slot in order:
   → All slots processed → _end_round()
 ```
 
+### Round Advancement (FR-014, FR-015)
+```
+_advance_turn() detects all workers placed
+  → Calls _end_placement_phase()
+  → _end_placement_phase() checks backstage slots:
+    → If occupied slots exist → enter REASSIGNMENT phase
+    → If no occupied slots → call _end_round() directly (FR-014)
+  
+_end_round():
+  → Returns all workers to players (reset available_workers = total_workers)
+  → Clears board occupants (action spaces + backstage slots)
+  → Increments round counter
+  → If total_rounds reached → game over
+  → Else → start next round (Phase = PLACEMENT)
+
+After reassignment completes (all slots processed):
+  → Call _end_round() (FR-015)
+```
+
 ### Starting Resources (Game Initialization)
 ```
 Game starts → for each player in turn order:

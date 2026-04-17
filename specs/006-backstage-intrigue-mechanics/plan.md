@@ -5,7 +5,7 @@
 
 ## Summary
 
-Implement backstage placement with intrigue card selection, starting resources (coins + intrigue cards based on turn order), and worker reassignment after all workers are placed. Most data models and message types already exist — the primary work is wiring up server handlers, client-side click routing, and the intrigue card selection dialog.
+Implement backstage placement with intrigue card selection, starting resources (coins + intrigue cards based on turn order), worker reassignment after all workers are placed, and round advancement when placement/reassignment completes. Most data models and message types already exist — the primary work is wiring up server handlers, client-side click routing, the intrigue card selection dialog, and fixing the round-end transition bug (FR-014/FR-015).
 
 ## Technical Context
 
@@ -45,7 +45,7 @@ specs/006-backstage-intrigue-mechanics/
 ```text
 server/
 ├── lobby.py             # Game initialization — add starting resources
-├── game_engine.py       # Backstage placement handler, validation
+├── game_engine.py       # Backstage placement handler, validation, round advancement fix
 ├── network.py           # Route place_worker_backstage messages
 └── models/
     └── game.py          # Models already exist (BackstageSlot, Player, etc.)
@@ -83,6 +83,7 @@ Most infrastructure for this feature already exists:
 | `WorkerReassignedResponse` | Exists | shared/messages.py |
 | `handle_reassign_worker()` | Exists | server/game_engine.py |
 | `_end_placement_phase()` | Exists | server/game_engine.py |
+| `_end_round()` | Exists (buggy) | server/game_engine.py |
 | `CardSelectionDialog` | Exists | client/ui/dialogs.py |
 | `intrigue.json` (50 cards) | Exists | config/intrigue.json |
 | Board rendering of backstage slots | Exists | client/ui/board_renderer.py |
@@ -95,6 +96,15 @@ Most infrastructure for this feature already exists:
 4. Client-side backstage click → intrigue dialog → send message flow
 5. Client-side reassignment phase UI updates
 6. Constants for starting resources
+7. **Round advancement fix**: When all workers are placed and no backstage slots are occupied, game currently stalls (FR-014). Also need to ensure round advances after reassignment completes (FR-015).
+
+## Key Implementation Notes
+
+### Round Advancement (FR-014, FR-015)
+The existing `_end_placement_phase()` has the correct structure: it checks for occupied backstage slots and either enters REASSIGNMENT or calls `_end_round()`. The bug is likely in the detection of "all workers placed" or in the call chain from `_advance_turn()` → `_end_placement_phase()`. This must be diagnosed and fixed as part of User Story 3 implementation.
+
+### FR-008 Update
+FR-008 now specifies that the reassignment phase only starts when at least one Backstage spot is occupied. This matches the existing `_end_placement_phase()` architecture.
 
 ## Complexity Tracking
 

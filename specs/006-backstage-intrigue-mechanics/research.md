@@ -64,3 +64,13 @@
 - Client-side backstage click routing and intrigue card dialog
 - Server-side backstage placement validation (sequential filling, player has card)
 - Server-side handler for `place_worker_backstage` messages (routing in network.py)
+- Round advancement fix: when all workers placed and no backstage slots occupied, game stalls instead of advancing
+
+## Decision 7: Round advancement after placement phase
+
+**Decision**: Fix `_end_placement_phase()` in `server/game_engine.py` to correctly advance to the next round when no backstage slots are occupied. The existing code structure already has the branch (backstage occupied → REASSIGNMENT, else → `_end_round()`), but the transition may not be firing. Verify and fix the `all_workers_placed()` detection and `_end_placement_phase()` call chain.
+
+**Rationale**: FR-014 requires the game to skip reassignment and advance to the next round when no backstage spots are occupied. FR-015 requires round advancement after reassignment completes. The existing `_end_placement_phase()` already has this logic but it's not working — likely a bug in detecting when all workers are placed or in calling `_end_placement_phase()`.
+
+**Alternatives considered**:
+- Adding a new game phase for round-end: Rejected — the existing flow (`_end_placement_phase()` → `_end_round()`) is the correct architecture, it just needs to be fixed.
