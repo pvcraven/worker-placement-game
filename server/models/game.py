@@ -154,6 +154,7 @@ class GameState(BaseModel):
     turn_order: list[str] = Field(default_factory=list)
     game_log: list[GameLog] = Field(default_factory=list)
     reassignment_queue: list[int] = Field(default_factory=list)
+    pending_intrigue_target: dict | None = None
     producer_deck: list[ProducerCard] = Field(default_factory=list)
     waiting_for_quest_completion: bool = False
     max_players: int = 4

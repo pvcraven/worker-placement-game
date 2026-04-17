@@ -26,9 +26,9 @@ cd src && pytest && ruff check .
 Python 3.12+: Follow standard conventions
 
 ## Recent Changes
+- 007-intrigue-targeting-player-overview: Added Python 3.12+ + Arcade (client UI), websockets (networking), Pydantic (data validation/serialization)
 - 006-backstage-intrigue-mechanics: Added Python 3.12+ + Arcade (client UI), websockets (networking), Pydantic (data validation/serialization)
 - 006-backstage-intrigue-mechanics: Added Python 3.12+ + Arcade (client UI), websockets (networking), Pydantic (data validation/serialization)
-- 005-quest-completion: Added Python 3.12+ + Arcade (client UI), websockets (networking), Pydantic (data validation/serialization)
 
 
 <!-- MANUAL ADDITIONS START -->
