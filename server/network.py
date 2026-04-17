@@ -144,6 +144,10 @@ class GameServer:
         from server.game_engine import handle_cancel_purchase_building
         await handle_cancel_purchase_building(self, conn, msg)
 
+    async def _handle_cancel_quest_selection(self, conn, msg) -> None:
+        from server.game_engine import handle_cancel_quest_selection
+        await handle_cancel_quest_selection(self, conn, msg)
+
     async def _handle_reassign_worker(self, conn, msg) -> None:
         from server.game_engine import handle_reassign_worker
         await handle_reassign_worker(self, conn, msg)

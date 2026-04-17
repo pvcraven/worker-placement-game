@@ -1046,7 +1046,7 @@ async def handle_cancel_purchase_building(
         return
 
     # Unwind: free the space and return the worker
-    space = state.board.action_spaces.get("real_estate_listings")
+    space = state.board.action_spaces.get("realtor")
     if space and space.occupied_by == player.player_id:
         space.occupied_by = None
         player.available_workers += 1
@@ -1066,7 +1066,56 @@ async def handle_cancel_purchase_building(
         state.game_code,
         PlacementCancelledResponse(
             player_id=player.player_id,
-            space_id="real_estate_listings",
+            space_id="realtor",
+            next_player_id=(
+                next_player.player_id if next_player else None
+            ),
+        ),
+    )
+
+
+async def handle_cancel_quest_selection(
+    server: GameServer, conn: ClientConnection, msg
+) -> None:
+    """Handle cancel of quest selection — unwind the garage placement."""
+    state = _get_game_state(server, conn)
+    if state is None:
+        await conn.send_error("GAME_NOT_FOUND", "Not in a game.")
+        return
+
+    player = state.get_player(conn.player_id)
+    if player is None:
+        await conn.send_error("INVALID_ACTION", "Player not found.")
+        return
+
+    freed_space_id = None
+    for sid, sp in state.board.action_spaces.items():
+        if sp.space_type == "garage" and sp.occupied_by == player.player_id:
+            sp.occupied_by = None
+            player.available_workers += 1
+            freed_space_id = sid
+            break
+
+    if freed_space_id is None:
+        await conn.send_error("INVALID_ACTION", "No garage spot to cancel.")
+        return
+
+    state.game_log.append(
+        GameLog(
+            round_number=state.current_round,
+            player_id=player.player_id,
+            action="cancel_quest_selection",
+            details=f"{player.display_name} cancelled quest selection",
+            timestamp=time.time(),
+        )
+    )
+
+    next_player = state.current_player()
+    await server.broadcast_to_game(
+        state.game_code,
+        PlacementCancelledResponse(
+            player_id=player.player_id,
+            space_id=freed_space_id,
             next_player_id=(
                 next_player.player_id if next_player else None
             ),
