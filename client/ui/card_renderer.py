@@ -127,8 +127,8 @@ class CardRenderer:
 
         # Description
         desc = card.get("description", "")
-        if len(desc) > 60:
-            desc = desc[:58] + ".."
+        if len(desc) > 120:
+            desc = desc[:118] + ".."
         cls._text(
             f"{cache_key}_desc", desc,
             cx, cy - 45,

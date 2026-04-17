@@ -76,6 +76,10 @@ class CancelPurchaseBuildingRequest(BaseModel):
     action: Literal["cancel_purchase_building"] = "cancel_purchase_building"
 
 
+class CancelQuestSelectionRequest(BaseModel):
+    action: Literal["cancel_quest_selection"] = "cancel_quest_selection"
+
+
 class ReassignWorkerRequest(BaseModel):
     action: Literal["reassign_worker"] = "reassign_worker"
     slot_number: int = Field(ge=1, le=3)
@@ -112,6 +116,7 @@ ClientMessage = Annotated[
         AcquireIntrigueRequest,
         PurchaseBuildingRequest,
         CancelPurchaseBuildingRequest,
+        CancelQuestSelectionRequest,
         ReassignWorkerRequest,
         ChooseIntrigueTargetRequest,
         ReconnectRequest,

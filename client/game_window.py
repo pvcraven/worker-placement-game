@@ -29,6 +29,7 @@ class GameWindow(arcade.Window):
             resizable=True,
             fullscreen=fullscreen,
             antialiasing=False,
+            pixel_perfect=True,
         )
         self.scale_x: float = width / DESIGN_WIDTH
         self.scale_y: float = height / DESIGN_HEIGHT

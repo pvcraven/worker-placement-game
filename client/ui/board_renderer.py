@@ -143,8 +143,8 @@ class BoardRenderer:
             "face_up_quests", []
         )
         if face_up_quests:
-            card_w = 130
-            spacing = card_w + 20
+            card_w = 190
+            spacing = card_w + 15
             total_w = len(face_up_quests) * spacing
             start_x = (
                 garage_center_x - total_w / 2 + card_w / 2

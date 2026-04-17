@@ -15,10 +15,12 @@ class CardSelectionDialog:
         cards: list[dict],
         on_select: callable,
         ui_manager: arcade.gui.UIManager,
+        on_cancel: callable | None = None,
     ) -> None:
         self.title = title
         self.cards = cards
         self.on_select = on_select
+        self.on_cancel = on_cancel
         self.ui = ui_manager
         self._widget = None
 
@@ -40,15 +42,23 @@ class CardSelectionDialog:
             v_box.add(btn)
 
         cancel_btn = arcade.gui.UIFlatButton(text="Cancel", width=280, height=35)
-        cancel_btn.on_click = lambda event: self.hide()
+        cancel_btn.on_click = lambda event: self._cancel()
         v_box.add(cancel_btn)
 
+        bg_box = v_box.with_padding(all=20).with_background(
+            color=(0, 0, 0)
+        )
         self._widget = self.ui.add(arcade.gui.UIAnchorLayout())
-        self._widget.add(child=v_box, anchor_x="center", anchor_y="center")
+        self._widget.add(child=bg_box, anchor_x="center", anchor_y="center")
 
     def _select(self, card_id: str) -> None:
         self.hide()
         self.on_select(card_id)
+
+    def _cancel(self) -> None:
+        self.hide()
+        if self.on_cancel:
+            self.on_cancel()
 
     def hide(self) -> None:
         if self._widget:
@@ -136,7 +146,7 @@ class BuildingPurchaseDialog:
         v_box.add(cancel_btn)
 
         bg_box = v_box.with_padding(all=20).with_background(
-            color=(20, 20, 40, 230)
+            color=(0, 0, 0)
         )
         self._widget = self.ui.add(arcade.gui.UIAnchorLayout())
         self._widget.add(child=bg_box, anchor_x="center", anchor_y="center")

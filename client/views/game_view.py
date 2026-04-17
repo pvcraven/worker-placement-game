@@ -290,11 +290,20 @@ class GameView(arcade.View):
                 "card_id": card_id,
             })
 
+        def on_cancel() -> None:
+            self._quest_dialog = None
+            self.window.network.send({
+                "action": "cancel_quest_selection",
+            })
+            if self.game_log_panel:
+                self.game_log_panel.add_entry("Quest selection cancelled")
+
         self._quest_dialog = CardSelectionDialog(
             title="Select a Quest Card",
             cards=quests,
             on_select=on_select,
             ui_manager=self.ui,
+            on_cancel=on_cancel,
         )
         self._quest_dialog.show(
             self.window.width, self.window.height
