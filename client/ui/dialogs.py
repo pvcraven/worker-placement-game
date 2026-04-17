@@ -165,6 +165,80 @@ class BuildingPurchaseDialog:
             self._widget = None
 
 
+class QuestCompletionDialog:
+    """A modal dialog for completing a quest at end of turn."""
+
+    def __init__(
+        self,
+        quests: list[dict],
+        on_select: callable,
+        on_skip: callable,
+        ui_manager: arcade.gui.UIManager,
+    ) -> None:
+        self.quests = quests
+        self.on_select = on_select
+        self.on_skip = on_skip
+        self.ui = ui_manager
+        self._widget = None
+
+    def show(self, window_width: float, window_height: float) -> None:
+        v_box = arcade.gui.UIBoxLayout(space_between=8)
+
+        label = arcade.gui.UILabel(
+            text="Complete a Quest?",
+            font_size=16,
+            text_color=arcade.color.WHITE,
+        )
+        v_box.add(label)
+
+        h_box = arcade.gui.UIBoxLayout(vertical=False, space_between=12)
+
+        for quest in self.quests[:6]:
+            qid = quest.get("id", "")
+            name = quest.get("name", "???")
+            vp = quest.get("victory_points", 0)
+            cost = quest.get("cost", {})
+            cost_parts = []
+            for key, sym in [("guitarists", "G"), ("bass_players", "B"),
+                             ("drummers", "D"), ("singers", "S"), ("coins", "$")]:
+                val = cost.get(key, 0)
+                if val > 0:
+                    cost_parts.append(f"{val}{sym}")
+            cost_str = " ".join(cost_parts) if cost_parts else "Free"
+
+            btn_text = f"{name}\n{vp} VP | Cost: {cost_str}"
+            btn = arcade.gui.UIFlatButton(
+                text=btn_text, width=180, height=70,
+            )
+            btn.on_click = lambda event, cid=qid: self._select(cid)
+            h_box.add(btn)
+
+        v_box.add(h_box)
+
+        skip_btn = arcade.gui.UIFlatButton(text="Skip", width=280, height=35)
+        skip_btn.on_click = lambda event: self._do_skip()
+        v_box.add(skip_btn)
+
+        bg_box = v_box.with_padding(all=20).with_background(
+            color=(0, 0, 0)
+        )
+        self._widget = self.ui.add(arcade.gui.UIAnchorLayout())
+        self._widget.add(child=bg_box, anchor_x="center", anchor_y="center")
+
+    def _select(self, contract_id: str) -> None:
+        self.hide()
+        self.on_select(contract_id)
+
+    def _do_skip(self) -> None:
+        self.hide()
+        self.on_skip()
+
+    def hide(self) -> None:
+        if self._widget:
+            self.ui.remove(self._widget)
+            self._widget = None
+
+
 class ConfirmDialog:
     """A simple yes/no confirmation dialog."""
 

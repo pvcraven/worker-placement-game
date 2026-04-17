@@ -23,6 +23,8 @@ from shared.messages import (
     PlacementCancelledResponse,
     QuestCardSelectedResponse,
     QuestCompletedResponse,
+    QuestCompletionPromptResponse,
+    QuestSkippedResponse,
     QuestsResetResponse,
     ReassignmentPhaseStartResponse,
     RoundEndResponse,
@@ -67,6 +69,30 @@ def _draw_from_quest_deck(state) -> ContractCard | None:
     if state.board.quest_deck:
         return state.board.quest_deck.pop(0)
     return None
+
+
+async def _check_quest_completion(server: GameServer, state) -> None:
+    """Check if current player can complete any quests; prompt or advance."""
+    player = state.current_player()
+    if player is None or player.completed_quest_this_turn:
+        await _advance_turn(server, state)
+        return
+
+    completable = [
+        c for c in player.contract_hand
+        if player.resources.can_afford(c.cost)
+    ]
+    if not completable:
+        await _advance_turn(server, state)
+        return
+
+    state.waiting_for_quest_completion = True
+    await server.send_to_player(
+        player.player_id,
+        QuestCompletionPromptResponse(
+            completable_quests=[c.model_dump() for c in completable],
+        ),
+    )
 
 
 async def _advance_turn(server: GameServer, state) -> None:
@@ -114,6 +140,8 @@ async def _end_placement_phase(server: GameServer, state) -> None:
 async def _end_round(server: GameServer, state) -> None:
     """End the current round: return workers, advance round."""
     round_number = state.current_round
+
+    state.waiting_for_quest_completion = False
 
     # Return all workers
     for player in state.players:
@@ -381,10 +409,6 @@ async def handle_place_worker(
         )
     )
 
-    # Determine next player
-    await _advance_turn(server, state)
-    next_player = state.current_player()
-
     await server.broadcast_to_game(
         state.game_code,
         WorkerPlacedResponse(
@@ -392,9 +416,11 @@ async def handle_place_worker(
             space_id=msg.space_id,
             reward_granted=reward_dict,
             owner_bonus=owner_bonus_info,
-            next_player_id=next_player.player_id if next_player else None,
+            next_player_id=None,
         ),
     )
+
+    await _check_quest_completion(server, state)
 
 
 # ------------------------------------------------------------------
@@ -573,9 +599,6 @@ async def handle_select_quest_card(
         )
     )
 
-    await _advance_turn(server, state)
-    next_player = state.current_player()
-
     await server.broadcast_to_game(
         state.game_code,
         QuestCardSelectedResponse(
@@ -583,11 +606,7 @@ async def handle_select_quest_card(
             card_id=card.id,
             spot_number=spot_num,
             bonus_reward=bonus_reward,
-            next_player_id=(
-                next_player.player_id
-                if next_player
-                else None
-            ),
+            next_player_id=None,
         ),
     )
     await server.broadcast_to_game(
@@ -599,6 +618,8 @@ async def handle_select_quest_card(
             ]
         ),
     )
+
+    await _check_quest_completion(server, state)
 
 
 # ------------------------------------------------------------------
@@ -664,9 +685,6 @@ async def handle_place_worker_backstage(
         )
     )
 
-    await _advance_turn(server, state)
-    next_player = state.current_player()
-
     await server.broadcast_to_game(
         state.game_code,
         WorkerPlacedBackstageResponse(
@@ -674,9 +692,11 @@ async def handle_place_worker_backstage(
             slot_number=msg.slot_number,
             intrigue_card={"id": card.id, "name": card.name, "description": card.description},
             intrigue_effect=effect_details,
-            next_player_id=next_player.player_id if next_player else None,
+            next_player_id=None,
         ),
     )
+
+    await _check_quest_completion(server, state)
 
 
 def _resolve_intrigue_effect(state, player, card) -> dict:
@@ -801,6 +821,12 @@ async def handle_complete_quest(
         )
     )
 
+    if state.waiting_for_quest_completion:
+        state.waiting_for_quest_completion = False
+        await _advance_turn(server, state)
+
+    next_player = state.current_player()
+
     await server.broadcast_to_game(
         state.game_code,
         QuestCompletedResponse(
@@ -809,6 +835,53 @@ async def handle_complete_quest(
             contract_name=contract.name,
             victory_points_earned=contract.victory_points,
             bonus_resources=contract.bonus_resources.model_dump(),
+            next_player_id=next_player.player_id if next_player else None,
+        ),
+    )
+
+
+async def handle_skip_quest_completion(
+    server: GameServer, conn: ClientConnection, msg
+) -> None:
+    state = _get_game_state(server, conn)
+    if state is None:
+        await conn.send_error("GAME_NOT_FOUND", "Not in a game.")
+        return
+
+    if not state.waiting_for_quest_completion:
+        await conn.send_error("INVALID_ACTION", "No quest completion to skip.")
+        return
+
+    player = state.get_player(conn.player_id)
+    if player is None:
+        await conn.send_error("INVALID_ACTION", "Player not found.")
+        return
+
+    current = state.current_player()
+    if current is None or current.player_id != conn.player_id:
+        await conn.send_error("NOT_YOUR_TURN", "It is not your turn.")
+        return
+
+    state.waiting_for_quest_completion = False
+
+    state.game_log.append(
+        GameLog(
+            round_number=state.current_round,
+            player_id=player.player_id,
+            action="skip_quest_completion",
+            details=f"{player.display_name} skipped quest completion",
+            timestamp=time.time(),
+        )
+    )
+
+    await _advance_turn(server, state)
+    next_player = state.current_player()
+
+    await server.broadcast_to_game(
+        state.game_code,
+        QuestSkippedResponse(
+            player_id=player.player_id,
+            next_player_id=next_player.player_id if next_player else None,
         ),
     )
 

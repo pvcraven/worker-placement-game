@@ -80,6 +80,10 @@ class CancelQuestSelectionRequest(BaseModel):
     action: Literal["cancel_quest_selection"] = "cancel_quest_selection"
 
 
+class SkipQuestCompletionRequest(BaseModel):
+    action: Literal["skip_quest_completion"] = "skip_quest_completion"
+
+
 class ReassignWorkerRequest(BaseModel):
     action: Literal["reassign_worker"] = "reassign_worker"
     slot_number: int = Field(ge=1, le=3)
@@ -117,6 +121,7 @@ ClientMessage = Annotated[
         PurchaseBuildingRequest,
         CancelPurchaseBuildingRequest,
         CancelQuestSelectionRequest,
+        SkipQuestCompletionRequest,
         ReassignWorkerRequest,
         ChooseIntrigueTargetRequest,
         ReconnectRequest,
@@ -216,6 +221,18 @@ class QuestCompletedResponse(BaseModel):
     contract_name: str
     victory_points_earned: int
     bonus_resources: dict
+    next_player_id: str | None = None
+
+
+class QuestCompletionPromptResponse(BaseModel):
+    action: Literal["quest_completion_prompt"] = "quest_completion_prompt"
+    completable_quests: list[dict]
+
+
+class QuestSkippedResponse(BaseModel):
+    action: Literal["quest_skipped"] = "quest_skipped"
+    player_id: str
+    next_player_id: str | None = None
 
 
 class ContractAcquiredResponse(BaseModel):
@@ -341,6 +358,8 @@ ServerMessage = Annotated[
         FaceUpQuestsUpdatedResponse,
         QuestsResetResponse,
         QuestCompletedResponse,
+        QuestCompletionPromptResponse,
+        QuestSkippedResponse,
         ContractAcquiredResponse,
         PlacementCancelledResponse,
         BuildingConstructedResponse,
