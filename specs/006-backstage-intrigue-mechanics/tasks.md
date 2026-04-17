@@ -23,7 +23,7 @@
 
 **Purpose**: Add starting resource constants shared by User Story 1
 
-- [ ] T001 Add `STARTING_INTRIGUE_CARDS = 2`, `STARTING_COINS_BASE = 4`, and `STARTING_COINS_INCREMENT = 2` constants in shared/constants.py
+- [x] T001 Add `STARTING_INTRIGUE_CARDS = 2`, `STARTING_COINS_BASE = 4`, and `STARTING_COINS_INCREMENT = 2` constants in shared/constants.py
 
 **Checkpoint**: Constants defined — user story implementation can begin
 
@@ -37,9 +37,9 @@
 
 ### Implementation for User Story 1
 
-- [ ] T002 [US1] In server/lobby.py, after player creation during game initialization, shuffle the intrigue deck and deal `STARTING_INTRIGUE_CARDS` cards to each player's `intrigue_hand` (draw from `board.intrigue_deck`)
-- [ ] T003 [US1] In server/lobby.py, during game initialization, grant each player starting coins using formula `STARTING_COINS_BASE + (slot_index * STARTING_COINS_INCREMENT)` where slot_index is 0-based position in turn order
-- [ ] T004 [US1] Verify the `GameStartedResponse` broadcast includes the updated player state (intrigue cards in hand and coins) so clients display correct starting resources in client/views/game_view.py
+- [x] T002 [US1] In server/lobby.py, after player creation during game initialization, shuffle the intrigue deck and deal `STARTING_INTRIGUE_CARDS` cards to each player's `intrigue_hand` (draw from `board.intrigue_deck`)
+- [x] T003 [US1] In server/lobby.py, during game initialization, grant each player starting coins using formula `STARTING_COINS_BASE + (slot_index * STARTING_COINS_INCREMENT)` where slot_index is 0-based position in turn order
+- [x] T004 [US1] Verify the `GameStartedResponse` broadcast includes the updated player state (intrigue cards in hand and coins) so clients display correct starting resources in client/views/game_view.py
 
 **Checkpoint**: Starting resources work end-to-end. Players see correct coins and intrigue cards at game start.
 
@@ -53,11 +53,11 @@
 
 ### Implementation for User Story 2
 
-- [ ] T005 [US2] Add `_handle_place_worker_backstage` route in server/network.py that dispatches `PlaceWorkerBackstageRequest` messages to `handle_place_worker_backstage` in server/game_engine.py
-- [ ] T006 [US2] Implement `handle_place_worker_backstage()` in server/game_engine.py: validate it's the player's turn, validate `available_workers > 0`, validate sequential slot filling (all lower-numbered slots occupied), validate player has the specified intrigue card in `intrigue_hand`, place worker on slot (`occupied_by = player_id`), attach intrigue card to slot, remove card from hand, call `_resolve_intrigue_effect()`, decrement `available_workers`, broadcast `WorkerPlacedBackstageResponse`, then call `_check_quest_completion()`
-- [ ] T007 [US2] In client/views/game_view.py `on_mouse_press()`, detect backstage clicks (space_id starts with `"backstage_slot_"`). Before sending a message: validate the player has intrigue cards, validate sequential filling on the client side, then show a `CardSelectionDialog` with the player's intrigue cards. On select, send `{"action": "place_worker_backstage", "slot_number": N, "intrigue_card_id": card_id}`. On cancel, close dialog (no message sent).
-- [ ] T008 [US2] In client/views/game_view.py, add/update `_on_worker_placed_backstage` handler to update local game state: mark backstage slot as occupied, decrement available workers, remove played intrigue card from local hand, log intrigue effect
-- [ ] T009 [US2] Add client-side validation feedback: if player clicks backstage with no intrigue cards, show error message "You need an intrigue card to place here". If sequential order violated, show "Backstage [N] must be filled first".
+- [x] T005 [US2] Add `_handle_place_worker_backstage` route in server/network.py that dispatches `PlaceWorkerBackstageRequest` messages to `handle_place_worker_backstage` in server/game_engine.py
+- [x] T006 [US2] Implement `handle_place_worker_backstage()` in server/game_engine.py: validate it's the player's turn, validate `available_workers > 0`, validate sequential slot filling (all lower-numbered slots occupied), validate player has the specified intrigue card in `intrigue_hand`, place worker on slot (`occupied_by = player_id`), attach intrigue card to slot, remove card from hand, call `_resolve_intrigue_effect()`, decrement `available_workers`, broadcast `WorkerPlacedBackstageResponse`, then call `_check_quest_completion()`
+- [x] T007 [US2] In client/views/game_view.py `on_mouse_press()`, detect backstage clicks (space_id starts with `"backstage_slot_"`). Before sending a message: validate the player has intrigue cards, validate sequential filling on the client side, then show a `CardSelectionDialog` with the player's intrigue cards. On select, send `{"action": "place_worker_backstage", "slot_number": N, "intrigue_card_id": card_id}`. On cancel, close dialog (no message sent).
+- [x] T008 [US2] In client/views/game_view.py, add/update `_on_worker_placed_backstage` handler to update local game state: mark backstage slot as occupied, decrement available workers, remove played intrigue card from local hand, log intrigue effect
+- [x] T009 [US2] Add client-side validation feedback: if player clicks backstage with no intrigue cards, show error message "You need an intrigue card to place here". If sequential order violated, show "Backstage [N] must be filled first".
 
 **Checkpoint**: Backstage placement flow works end-to-end. Player sees intrigue dialog, can select or cancel, effects resolve.
 
@@ -71,12 +71,12 @@
 
 ### Implementation for User Story 3
 
-- [ ] T010 [US3] Diagnose and fix the round advancement bug in server/game_engine.py: trace the call chain from `_advance_turn()` → `all_workers_placed()` → `_end_placement_phase()` → `_end_round()`. Ensure that when all workers are placed and no backstage slots are occupied, `_end_round()` is called and the next round starts (FR-014)
-- [ ] T011 [US3] In server/game_engine.py `_end_placement_phase()`, verify the backstage-occupied check correctly enters REASSIGNMENT phase when slots are occupied and calls `_end_round()` when they're not. Ensure `_end_round()` returns workers to players, clears board, increments round, and broadcasts round state
-- [ ] T012 [US3] In server/game_engine.py `handle_reassign_worker()`, add explicit validation that the target space_id does not start with `"backstage_slot_"` and return a clear error message if attempted
-- [ ] T013 [US3] Verify that after the last backstage slot is processed during reassignment, `_end_round()` is called to advance to the next round (FR-015). If not, add the call at the end of the reassignment queue processing
-- [ ] T014 [US3] In client/views/game_view.py, ensure the `reassignment_phase_start` message handler updates the UI to indicate reassignment is active (e.g., update status text) and that `worker_reassigned` responses update the board state, available workers, and rewards correctly
-- [ ] T015 [US3] In client/views/game_view.py, handle the round transition after reassignment: when a `round_started` or equivalent message arrives, reset the board display, update worker counts, and refresh the UI for the new round
+- [x] T010 [US3] Diagnose and fix the round advancement bug in server/game_engine.py: trace the call chain from `_advance_turn()` → `all_workers_placed()` → `_end_placement_phase()` → `_end_round()`. Ensure that when all workers are placed and no backstage slots are occupied, `_end_round()` is called and the next round starts (FR-014)
+- [x] T011 [US3] In server/game_engine.py `_end_placement_phase()`, verify the backstage-occupied check correctly enters REASSIGNMENT phase when slots are occupied and calls `_end_round()` when they're not. Ensure `_end_round()` returns workers to players, clears board, increments round, and broadcasts round state
+- [x] T012 [US3] In server/game_engine.py `handle_reassign_worker()`, add explicit validation that the target space_id does not start with `"backstage_slot_"` and return a clear error message if attempted
+- [x] T013 [US3] Verify that after the last backstage slot is processed during reassignment, `_end_round()` is called to advance to the next round (FR-015). If not, add the call at the end of the reassignment queue processing
+- [x] T014 [US3] In client/views/game_view.py, ensure the `reassignment_phase_start` message handler updates the UI to indicate reassignment is active (e.g., update status text) and that `worker_reassigned` responses update the board state, available workers, and rewards correctly
+- [x] T015 [US3] In client/views/game_view.py, handle the round transition after reassignment: when a `round_started` or equivalent message arrives, reset the board display, update worker counts, and refresh the UI for the new round
 
 **Checkpoint**: Reassignment phase works end-to-end. Round advances correctly both with and without backstage workers.
 
@@ -84,9 +84,9 @@
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T016 Verify backstage slot visual state updates correctly on the board (occupied/unoccupied) in client/ui/board_renderer.py
-- [ ] T017 Run quickstart.md scenarios 1-8 end-to-end and verify all test scenarios pass
-- [ ] T018 Verify intrigue card effects display correctly in game log/chat after backstage placement
+- [x] T016 Verify backstage slot visual state updates correctly on the board (occupied/unoccupied) in client/ui/board_renderer.py
+- [x] T017 Run quickstart.md scenarios 1-8 end-to-end and verify all test scenarios pass
+- [x] T018 Verify intrigue card effects display correctly in game log/chat after backstage placement
 
 ---
 

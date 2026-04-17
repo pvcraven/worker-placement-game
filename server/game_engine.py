@@ -206,6 +206,7 @@ async def _end_round(server: GameServer, state) -> None:
             round_number=round_number,
             next_round=state.current_round,
             first_player_id=state.board.first_player_id,
+            turn_order=state.turn_order,
             bonus_worker_granted=bonus_granted,
         ),
     )
@@ -650,6 +651,18 @@ async def handle_place_worker_backstage(
     if card is None:
         await conn.send_error("NO_INTRIGUE_CARDS", "You don't have that intrigue card.")
         return
+
+    # Validate sequential filling
+    for s in state.board.backstage_slots:
+        if (
+            s.slot_number < msg.slot_number
+            and s.occupied_by is None
+        ):
+            await conn.send_error(
+                "INVALID_ACTION",
+                f"Backstage {s.slot_number} must be filled first.",
+            )
+            return
 
     # Validate slot
     slot = None
@@ -1235,6 +1248,11 @@ async def handle_reassign_worker(
         await conn.send_error("INVALID_ACTION", "Not your worker in that slot.")
         return
 
+    # Cannot reassign to a Backstage slot
+    if msg.target_space_id.startswith("backstage_slot_"):
+        await conn.send_error("INVALID_ACTION", "Cannot reassign to a Backstage slot.")
+        return
+
     # Validate target space
     target = state.board.action_spaces.get(msg.target_space_id)
     if target is None:
@@ -1242,11 +1260,6 @@ async def handle_reassign_worker(
         return
     if target.occupied_by is not None:
         await conn.send_error("SPACE_OCCUPIED", "Target space is occupied.")
-        return
-
-    # Cannot reassign back to Garage
-    if target.space_type == "garage":
-        await conn.send_error("INVALID_ACTION", "Cannot reassign to The Garage.")
         return
 
     player = state.get_player(conn.player_id)

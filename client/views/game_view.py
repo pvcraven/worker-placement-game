@@ -166,7 +166,7 @@ class GameView(arcade.View):
         elif action == "building_market_update":
             self._on_building_market_update(msg)
         elif action == "reassignment_phase_start":
-            self._status_text = "Reassignment Phase"
+            self._on_reassignment_phase_start(msg)
         elif action == "worker_reassigned":
             self._on_worker_reassigned(msg)
         elif action == "round_end":
@@ -270,22 +270,47 @@ class GameView(arcade.View):
                 )
 
     def _on_worker_placed_backstage(self, msg: dict) -> None:
-        slot = msg.get("slot_number", 0)
+        slot_num = msg.get("slot_number", 0)
         pid = msg.get("player_id", "")
         card = msg.get("intrigue_card", {})
+        card_id = card.get("id", "")
+
+        # Update backstage slot state
+        board = self.game_state.get("board", {})
+        for s in board.get("backstage_slots", []):
+            if s.get("slot_number") == slot_num:
+                s["occupied_by"] = pid
+                break
 
         for p in self.game_state.get("players", []):
             if p.get("player_id") == pid:
                 p["available_workers"] = max(0, p.get("available_workers", 0) - 1)
+                hand = p.get("intrigue_hand", [])
+                p["intrigue_hand"] = [c for c in hand if c.get("id") != card_id]
                 break
+
+        if self.board_renderer:
+            self.board_renderer.update_board(
+                board, self.game_state.get("players", [])
+            )
 
         if self.game_log_panel:
             name = self._player_name(pid)
             card_name = card.get("name", "?")
             self.game_log_panel.add_entry(
                 f"{name} placed worker on Backstage"
-                f" slot {slot}, played {card_name}"
+                f" slot {slot_num}, played {card_name}"
             )
+            effect = msg.get("intrigue_effect", {})
+            effect_type = effect.get("type", "")
+            details = effect.get("details", {})
+            effect_str = self._format_intrigue_effect(
+                effect_type, details
+            )
+            if effect_str:
+                self.game_log_panel.add_entry(
+                    f"  Effect: {effect_str}"
+                )
 
         next_pid = msg.get("next_player_id")
         self._update_current_player(next_pid)
@@ -569,14 +594,58 @@ class GameView(arcade.View):
             name = self._player_name(pid)
             self.game_log_panel.add_entry(f"{name} built {bname}")
 
+    def _on_reassignment_phase_start(self, msg: dict) -> None:
+        self._status_text = "Reassignment Phase"
+        slots = msg.get("backstage_slots", [])
+        self.game_state["phase"] = "REASSIGNMENT"
+        self.game_state["reassignment_queue"] = [
+            s["slot_number"] for s in slots
+        ]
+        if self.game_log_panel:
+            self.game_log_panel.add_entry("--- Reassignment Phase ---")
+
     def _on_worker_reassigned(self, msg: dict) -> None:
         pid = msg.get("player_id", "")
-        slot = msg.get("from_slot", 0)
+        from_slot = msg.get("from_slot", 0)
         to_space = msg.get("to_space_id", "")
+        reward = msg.get("reward_granted", {})
+
+        board = self.game_state.get("board", {})
+
+        # Clear the backstage slot
+        for s in board.get("backstage_slots", []):
+            if s.get("slot_number") == from_slot:
+                s["occupied_by"] = None
+                s["intrigue_card_played"] = None
+                break
+
+        # Mark target space as occupied
+        spaces = board.get("action_spaces", {})
+        if to_space in spaces:
+            spaces[to_space]["occupied_by"] = pid
+
+        # Apply reward
+        self._apply_reward_to_player(pid, reward)
+
+        # Pop from reassignment queue
+        queue = self.game_state.get("reassignment_queue", [])
+        if queue and queue[0] == from_slot:
+            queue.pop(0)
+
+        if self.board_renderer:
+            self.board_renderer.update_board(
+                board, self.game_state.get("players", [])
+            )
+
         if self.game_log_panel:
             name = self._player_name(pid)
+            space_name = to_space
+            space_data = spaces.get(to_space, {})
+            if space_data.get("name"):
+                space_name = space_data["name"]
             self.game_log_panel.add_entry(
-                f"{name} reassigned from Backstage slot {slot} to {to_space}"
+                f"{name} reassigned from Backstage"
+                f" {from_slot} to {space_name}"
             )
 
         # Owner bonus notification
@@ -585,22 +654,69 @@ class GameView(arcade.View):
             owner_name = owner_bonus.get("owner_name", "???")
             bonus = owner_bonus.get("bonus", {})
             bonus_parts = []
-            for key, sym in [("guitarists", "G"), ("bass_players", "B"),
-                             ("drummers", "D"), ("singers", "S"), ("coins", "$")]:
+            for key, sym in [
+                ("guitarists", "G"), ("bass_players", "B"),
+                ("drummers", "D"), ("singers", "S"),
+                ("coins", "$"),
+            ]:
                 val = bonus.get(key, 0)
                 if val > 0:
                     bonus_parts.append(f"{val}{sym}")
             if bonus_parts:
                 self.game_log_panel.add_entry(
-                    f"{owner_name} earned owner bonus: {' '.join(bonus_parts)}"
+                    f"{owner_name} earned owner bonus:"
+                    f" {' '.join(bonus_parts)}"
                 )
 
     def _on_round_end(self, msg: dict) -> None:
         next_round = msg.get("next_round", 0)
         bonus = msg.get("bonus_worker_granted", False)
+        turn_order = msg.get("turn_order", [])
+
         self.game_state["current_round"] = next_round
         self.game_state["current_player_index"] = 0
-        self._status_text = f"Round {next_round}"
+        if turn_order:
+            self.game_state["turn_order"] = turn_order
+
+        # Reset workers and clear board
+        for p in self.game_state.get("players", []):
+            total = p.get("total_workers", 0)
+            if bonus:
+                total += 1
+                p["total_workers"] = total
+            p["available_workers"] = total
+            p["completed_quest_this_turn"] = False
+
+        board = self.game_state.get("board", {})
+        for space in board.get("action_spaces", {}).values():
+            space["occupied_by"] = None
+        for slot in board.get("backstage_slots", []):
+            slot["occupied_by"] = None
+            slot["intrigue_card_played"] = None
+
+        if self.board_renderer:
+            self.board_renderer.update_board(
+                board, self.game_state.get("players", [])
+            )
+
+        my_id = getattr(self.window, "player_id", None)
+        if self.resource_bar:
+            for p in self.game_state.get("players", []):
+                if p.get("player_id") == my_id:
+                    self.resource_bar.update_resources(p.get("resources", {}))
+                    break
+
+        # Update turn indicator
+        if turn_order:
+            first_pid = turn_order[0]
+            if first_pid == my_id:
+                self._status_text = f"Round {next_round} — YOUR TURN"
+            else:
+                name = self._player_name(first_pid)
+                self._status_text = f"Round {next_round} — {name}'s turn"
+        else:
+            self._status_text = f"Round {next_round}"
+
         if self.game_log_panel:
             self.game_log_panel.add_entry(f"--- Round {next_round} ---")
             if bonus:
@@ -636,10 +752,58 @@ class GameView(arcade.View):
 
         space_id = self.board_renderer.get_space_at(x, y)
         if space_id:
+            if space_id.startswith("backstage_slot_"):
+                self._handle_backstage_click(space_id)
+            else:
+                self.window.network.send({
+                    "action": "place_worker",
+                    "space_id": space_id,
+                })
+
+    def _handle_backstage_click(self, space_id: str) -> None:
+        """Handle click on a backstage slot — show intrigue card selection."""
+        slot_number = int(space_id.split("_")[-1])
+
+        my_id = getattr(self.window, "player_id", None)
+        my_player = None
+        for p in self.game_state.get("players", []):
+            if p.get("player_id") == my_id:
+                my_player = p
+                break
+        if not my_player:
+            return
+
+        intrigue_cards = my_player.get("intrigue_hand", [])
+        if not intrigue_cards:
+            self._status_text = "You need an intrigue card to place here"
+            return
+
+        board = self.game_state.get("board", {})
+        backstage = board.get("backstage_slots", [])
+        for s in backstage:
+            if s.get("slot_number", 0) < slot_number and s.get("occupied_by") is None:
+                self._status_text = f"Backstage {s['slot_number']} must be filled first"
+                return
+
+        def on_select(card_id: str) -> None:
+            self._quest_dialog = None
             self.window.network.send({
-                "action": "place_worker",
-                "space_id": space_id,
+                "action": "place_worker_backstage",
+                "slot_number": slot_number,
+                "intrigue_card_id": card_id,
             })
+
+        def on_cancel() -> None:
+            self._quest_dialog = None
+
+        self._quest_dialog = CardSelectionDialog(
+            title="Select an Intrigue Card",
+            cards=intrigue_cards,
+            on_select=on_select,
+            ui_manager=self.ui,
+            on_cancel=on_cancel,
+        )
+        self._quest_dialog.show(self.window.width, self.window.height)
 
     def _toggle_quests(self) -> None:
         self._show_quests_hand = not self._show_quests_hand
@@ -945,6 +1109,44 @@ class GameView(arcade.View):
             if p.get("player_id") == player_id:
                 return p.get("display_name", "???")
         return "???"
+
+    @staticmethod
+    def _format_intrigue_effect(
+        effect_type: str, details: dict,
+    ) -> str:
+        if effect_type in ("gain_resources", "all_players_gain"):
+            parts = []
+            for k, sym in [
+                ("guitarists", "G"), ("bass_players", "B"),
+                ("drummers", "D"), ("singers", "S"),
+                ("coins", "$"),
+            ]:
+                v = details.get(k, 0)
+                if v:
+                    parts.append(f"+{v}{sym}")
+            gained = details.get("all_gained", {})
+            for k, sym in [
+                ("guitarists", "G"), ("bass_players", "B"),
+                ("drummers", "D"), ("singers", "S"),
+                ("coins", "$"),
+            ]:
+                v = gained.get(k, 0)
+                if v:
+                    parts.append(f"+{v}{sym} (all)")
+            return " ".join(parts)
+        if effect_type == "gain_coins":
+            c = details.get("coins", 0)
+            return f"+{c}$" if c else ""
+        if effect_type == "vp_bonus":
+            vp = details.get("victory_points", 0)
+            return f"+{vp} VP" if vp else ""
+        if effect_type == "draw_contracts":
+            n = len(details.get("drawn", []))
+            return f"Drew {n} quest(s)"
+        if effect_type == "draw_intrigue":
+            n = len(details.get("drawn", []))
+            return f"Drew {n} intrigue card(s)"
+        return ""
 
     def _apply_reward_to_player(self, player_id: str, reward: dict) -> None:
         for p in self.game_state.get("players", []):

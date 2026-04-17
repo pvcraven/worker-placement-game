@@ -287,6 +287,7 @@ class RoundEndResponse(BaseModel):
     round_number: int
     next_round: int
     first_player_id: str | None
+    turn_order: list[str] = Field(default_factory=list)
     bonus_worker_granted: bool = False
 
 

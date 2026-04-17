@@ -1,5 +1,5 @@
 /speckit-specify
-/speckit-clarify
+/speckit-clarify (optional)
 /speckit-plan
 /speckit-tasks
 /speckit-implement
