@@ -19,6 +19,9 @@ from shared.constants import (
     BACKSTAGE_SLOTS,
     FACE_UP_BUILDING_COUNT,
     FACE_UP_QUEST_COUNT,
+    STARTING_COINS_BASE,
+    STARTING_COINS_INCREMENT,
+    STARTING_INTRIGUE_CARDS,
     STARTING_WORKERS,
     GamePhase,
 )
@@ -270,6 +273,13 @@ def _initialize_game(state, config) -> None:
     board.building_deck = all_buildings[FACE_UP_BUILDING_COUNT:]
 
     state.board = board
+
+    # Deal starting intrigue cards and coins
+    for i, player in enumerate(state.players):
+        for _ in range(STARTING_INTRIGUE_CARDS):
+            if board.intrigue_deck:
+                player.intrigue_hand.append(board.intrigue_deck.pop())
+        player.resources.coins = STARTING_COINS_BASE + (i * STARTING_COINS_INCREMENT)
 
     # First player is slot 0 by default
     state.board.first_player_id = state.players[0].player_id

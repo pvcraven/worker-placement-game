@@ -206,6 +206,7 @@ async def _end_round(server: GameServer, state) -> None:
             round_number=round_number,
             next_round=state.current_round,
             first_player_id=state.board.first_player_id,
+            turn_order=state.turn_order,
             bonus_worker_granted=bonus_granted,
         ),
     )
@@ -619,7 +620,10 @@ async def handle_select_quest_card(
         ),
     )
 
-    await _check_quest_completion(server, state)
+    if state.phase == GamePhase.REASSIGNMENT:
+        await _finish_reassignment(server, state)
+    else:
+        await _check_quest_completion(server, state)
 
 
 # ------------------------------------------------------------------
@@ -650,6 +654,18 @@ async def handle_place_worker_backstage(
     if card is None:
         await conn.send_error("NO_INTRIGUE_CARDS", "You don't have that intrigue card.")
         return
+
+    # Validate sequential filling
+    for s in state.board.backstage_slots:
+        if (
+            s.slot_number < msg.slot_number
+            and s.occupied_by is None
+        ):
+            await conn.send_error(
+                "INVALID_ACTION",
+                f"Backstage {s.slot_number} must be filled first.",
+            )
+            return
 
     # Validate slot
     slot = None
@@ -1163,14 +1179,17 @@ async def handle_cancel_quest_selection(
 
     freed_space_id = None
     for sid, sp in state.board.action_spaces.items():
-        if sp.space_type == "garage" and sp.occupied_by == player.player_id:
-            sp.occupied_by = None
-            player.available_workers += 1
+        if (
+            sp.space_type == "garage"
+            and sp.occupied_by == player.player_id
+        ):
             freed_space_id = sid
             break
 
     if freed_space_id is None:
-        await conn.send_error("INVALID_ACTION", "No garage spot to cancel.")
+        await conn.send_error(
+            "INVALID_ACTION", "No garage spot to cancel.",
+        )
         return
 
     state.game_log.append(
@@ -1178,10 +1197,23 @@ async def handle_cancel_quest_selection(
             round_number=state.current_round,
             player_id=player.player_id,
             action="cancel_quest_selection",
-            details=f"{player.display_name} cancelled quest selection",
+            details=(
+                f"{player.display_name}"
+                " cancelled quest selection"
+            ),
             timestamp=time.time(),
         )
     )
+
+    if state.phase == GamePhase.REASSIGNMENT:
+        # During reassignment, keep worker placed, skip quest
+        await _finish_reassignment(server, state)
+        return
+
+    # Normal placement: unwind the placement
+    sp = state.board.action_spaces[freed_space_id]
+    sp.occupied_by = None
+    player.available_workers += 1
 
     next_player = state.current_player()
     await server.broadcast_to_game(
@@ -1190,7 +1222,9 @@ async def handle_cancel_quest_selection(
             player_id=player.player_id,
             space_id=freed_space_id,
             next_player_id=(
-                next_player.player_id if next_player else None
+                next_player.player_id
+                if next_player
+                else None
             ),
         ),
     )
@@ -1235,6 +1269,11 @@ async def handle_reassign_worker(
         await conn.send_error("INVALID_ACTION", "Not your worker in that slot.")
         return
 
+    # Cannot reassign to a Backstage slot
+    if msg.target_space_id.startswith("backstage_slot_"):
+        await conn.send_error("INVALID_ACTION", "Cannot reassign to a Backstage slot.")
+        return
+
     # Validate target space
     target = state.board.action_spaces.get(msg.target_space_id)
     if target is None:
@@ -1242,11 +1281,6 @@ async def handle_reassign_worker(
         return
     if target.occupied_by is not None:
         await conn.send_error("SPACE_OCCUPIED", "Target space is occupied.")
-        return
-
-    # Cannot reassign back to Garage
-    if target.space_type == "garage":
-        await conn.send_error("INVALID_ACTION", "Cannot reassign to The Garage.")
         return
 
     player = state.get_player(conn.player_id)
@@ -1299,7 +1333,11 @@ async def handle_reassign_worker(
             round_number=state.current_round,
             player_id=player.player_id,
             action="reassign_worker",
-            details=f"{player.display_name} reassigned from Backstage slot {msg.slot_number} to {target.name}",
+            details=(
+                f"{player.display_name} reassigned from"
+                f" Backstage slot {msg.slot_number}"
+                f" to {target.name}"
+            ),
             timestamp=time.time(),
         )
     )
@@ -1315,7 +1353,39 @@ async def handle_reassign_worker(
         ),
     )
 
-    # If no more slots to reassign, end the round
+    # Handle Garage spots: pause for quest selection
+    if target.space_type == "garage":
+        special = target.reward_special
+        if special == "reset_quests":
+            state.board.quest_discard.extend(
+                state.board.face_up_quests
+            )
+            state.board.face_up_quests.clear()
+            for _ in range(FACE_UP_QUEST_COUNT):
+                card = _draw_from_quest_deck(state)
+                if card:
+                    state.board.face_up_quests.append(card)
+            await server.broadcast_to_game(
+                state.game_code,
+                FaceUpQuestsUpdatedResponse(
+                    face_up_quests=[
+                        q.model_dump()
+                        for q in state.board.face_up_quests
+                    ]
+                ),
+            )
+        elif special in (
+            "quest_and_coins", "quest_and_intrigue",
+        ):
+            return
+
+    await _finish_reassignment(server, state)
+
+
+async def _finish_reassignment(
+    server: GameServer, state,
+) -> None:
+    """Continue reassignment queue or end the round."""
     if not state.reassignment_queue:
         await _end_round(server, state)
 
