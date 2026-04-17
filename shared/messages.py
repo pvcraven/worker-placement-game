@@ -225,6 +225,7 @@ class QuestCompletedResponse(BaseModel):
     contract_id: str
     contract_name: str
     victory_points_earned: int
+    resources_spent: dict
     bonus_resources: dict
     next_player_id: str | None = None
 

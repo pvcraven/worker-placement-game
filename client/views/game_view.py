@@ -337,6 +337,30 @@ class GameView(arcade.View):
                         )
                         break
 
+            drawn = details.get("drawn", [])
+            if drawn:
+                etype = effect.get("type", "")
+                my_id = getattr(self.window, "player_id", None)
+                for p in self.game_state.get("players", []):
+                    if p.get("player_id") == pid:
+                        if pid == my_id:
+                            if etype == "draw_intrigue":
+                                p.setdefault("intrigue_hand", []).extend(drawn)
+                            elif etype == "draw_contracts":
+                                p.setdefault("contract_hand", []).extend(drawn)
+                        else:
+                            key = "intrigue_hand_count"
+                            if etype == "draw_contracts":
+                                key = "contract_hand_count"
+                            if etype in (
+                                "draw_intrigue",
+                                "draw_contracts",
+                            ):
+                                p[key] = (
+                                    p.get(key, 0) + len(drawn)
+                                )
+                        break
+
         if self.board_renderer:
             self.board_renderer.update_board(
                 board, self.game_state.get("players", [])
@@ -620,12 +644,35 @@ class GameView(arcade.View):
         cname = msg.get("contract_name", "?")
         cid = msg.get("contract_id", "")
         vp = msg.get("victory_points_earned", 0)
+        spent = msg.get("resources_spent", {})
+        bonus = msg.get("bonus_resources", {})
 
         for p in self.game_state.get("players", []):
             if p.get("player_id") == pid:
-                p["victory_points"] = p.get("victory_points", 0) + vp
+                p["victory_points"] = (
+                    p.get("victory_points", 0) + vp
+                )
                 hand = p.get("contract_hand", [])
-                p["contract_hand"] = [c for c in hand if c.get("id") != cid]
+                p["contract_hand"] = [
+                    c for c in hand if c.get("id") != cid
+                ]
+                res = p.get("resources", {})
+                for k in (
+                    "guitarists", "bass_players",
+                    "drummers", "singers", "coins",
+                ):
+                    res[k] = max(
+                        0, res.get(k, 0)
+                        - spent.get(k, 0)
+                        + bonus.get(k, 0)
+                    )
+                my_id = getattr(
+                    self.window, "player_id", None
+                )
+                if pid == my_id and self.resource_bar:
+                    self.resource_bar.update_resources(
+                        res
+                    )
                 break
 
         if self.game_log_panel:
@@ -1088,7 +1135,7 @@ class GameView(arcade.View):
             self.resource_bar.draw(0, 0, w, 100, workers_left, vp)
 
         if self.game_log_panel:
-            self.game_log_panel.draw(w - 300, 100, 300, h - 160)
+            self.game_log_panel.draw(w - 450, 100, 450, h - 160)
 
         # Overlay panels
         if self._show_quests_hand or self._show_intrigue_hand:
@@ -1315,9 +1362,12 @@ class GameView(arcade.View):
         players = self.game_state.get("players", [])
         my_id = getattr(self.window, "player_id", None)
 
-        panel_w = min(w - 40, 900)
+        panel_w = min(w - 40, 1300)
         row_count = len(players) + 1
-        panel_h = min(h - 80, 60 + row_count * 28)
+        row_h = 36
+        panel_h = min(
+            h - 80, 70 + row_count * row_h,
+        )
         panel_x = w / 2
         panel_y = h / 2
 
@@ -1337,31 +1387,34 @@ class GameView(arcade.View):
 
         self._text(
             "po_title", "Player Overview",
-            panel_x, panel_y + panel_h / 2 - 18,
-            arcade.color.WHITE, 16,
+            panel_x, panel_y + panel_h / 2 - 22,
+            arcade.color.WHITE, 20,
             anchor_x="center", anchor_y="center",
             bold=True,
         ).draw()
 
         headers = [
-            "Name", "W", "G", "B", "D",
-            "S", "$", "Intr", "Quests",
-            "Done", "VP",
+            "Name", "Workers", "Guitarists",
+            "Bass", "Drummers", "Singers",
+            "Coins", "Intrigue", "Quests",
+            "Completed", "VP",
         ]
         col_widths = [
-            140, 35, 35, 35, 35,
-            35, 35, 45, 55, 45, 40,
+            200, 90, 105,
+            85, 100, 90,
+            80, 90, 85,
+            105, 65,
         ]
         total_w = sum(col_widths)
         start_x = panel_x - total_w / 2
-        header_y = panel_y + panel_h / 2 - 42
+        header_y = panel_y + panel_h / 2 - 52
 
         cx = start_x
         for i, hdr in enumerate(headers):
             self._text(
                 f"po_h_{i}", hdr,
                 cx + col_widths[i] / 2, header_y,
-                arcade.color.GOLD, 11,
+                arcade.color.GOLD, 14,
                 anchor_x="center", anchor_y="center",
                 bold=True,
             ).draw()
@@ -1370,13 +1423,13 @@ class GameView(arcade.View):
         for row, p in enumerate(players):
             pid = p.get("player_id", "")
             is_me = pid == my_id
-            row_y = header_y - 24 - row * 24
+            row_y = header_y - row_h - row * row_h
 
             if is_me:
                 arcade.draw_rect_filled(
                     arcade.rect.XYWH(
                         panel_x, row_y,
-                        total_w + 10, 22,
+                        total_w + 10, row_h - 4,
                     ),
                     (40, 40, 80),
                 )
@@ -1386,8 +1439,12 @@ class GameView(arcade.View):
             workers = p.get("available_workers", 0)
 
             if is_me:
-                intr = len(p.get("intrigue_hand", []))
-                quests = len(p.get("contract_hand", []))
+                intr = len(
+                    p.get("intrigue_hand", [])
+                )
+                quests = len(
+                    p.get("contract_hand", [])
+                )
             else:
                 intr = p.get(
                     "intrigue_hand_count",
@@ -1398,7 +1455,9 @@ class GameView(arcade.View):
                     len(p.get("contract_hand", [])),
                 )
 
-            done = len(p.get("completed_contracts", []))
+            done = len(
+                p.get("completed_contracts", [])
+            )
             vp = p.get("victory_points", 0)
 
             vals = [
@@ -1424,7 +1483,7 @@ class GameView(arcade.View):
                 self._text(
                     f"po_{row}_{i}", val,
                     cx + col_widths[i] / 2, row_y,
-                    color, 11,
+                    color, 14,
                     anchor_x="center",
                     anchor_y="center",
                 ).draw()

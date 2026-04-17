@@ -79,6 +79,7 @@ async def _check_quest_completion(server: GameServer, state) -> None:
     player = state.current_player()
     if player is None or player.completed_quest_this_turn:
         await _advance_turn(server, state)
+        await _notify_turn_if_needed(server, state, player)
         return
 
     completable = [
@@ -87,6 +88,7 @@ async def _check_quest_completion(server: GameServer, state) -> None:
     ]
     if not completable:
         await _advance_turn(server, state)
+        await _notify_turn_if_needed(server, state, player)
         return
 
     state.waiting_for_quest_completion = True
@@ -94,6 +96,25 @@ async def _check_quest_completion(server: GameServer, state) -> None:
         player.player_id,
         QuestCompletionPromptResponse(
             completable_quests=[c.model_dump() for c in completable],
+        ),
+    )
+
+
+async def _notify_turn_if_needed(
+    server: GameServer, state, prev_player,
+) -> None:
+    """After auto-advance, tell clients whose turn it is."""
+    if state.phase != GamePhase.PLACEMENT:
+        return
+    nxt = state.current_player()
+    if not nxt:
+        return
+    pid = prev_player.player_id if prev_player else ""
+    await server.broadcast_to_game(
+        state.game_code,
+        QuestSkippedResponse(
+            player_id=pid,
+            next_player_id=nxt.player_id,
         ),
     )
 
@@ -813,11 +834,11 @@ def _resolve_intrigue_effect(state, player, card) -> dict:
         count = ev.get("count", 1)
         drawn = []
         for _ in range(count):
-            if state.board.contract_deck:
-                c = state.board.contract_deck.pop(0)
+            c = _draw_from_quest_deck(state)
+            if c:
                 player.contract_hand.append(c)
-                drawn.append(c.id)
-        effect["details"] = {"drawn": drawn}
+                drawn.append(c.model_dump())
+        effect["details"] = {"drawn": drawn, "count": len(drawn)}
 
     elif card.effect_type == "draw_intrigue":
         count = ev.get("count", 1)
@@ -826,8 +847,8 @@ def _resolve_intrigue_effect(state, player, card) -> dict:
             if state.board.intrigue_deck:
                 c = state.board.intrigue_deck.pop(0)
                 player.intrigue_hand.append(c)
-                drawn.append(c.id)
-        effect["details"] = {"drawn": drawn}
+                drawn.append(c.model_dump())
+        effect["details"] = {"drawn": drawn, "count": len(drawn)}
 
     elif card.effect_type in ("steal_resources", "opponent_loses"):
         if card.effect_target == "all":
@@ -932,6 +953,7 @@ async def handle_complete_quest(
             contract_id=contract.id,
             contract_name=contract.name,
             victory_points_earned=contract.victory_points,
+            resources_spent=contract.cost.model_dump(),
             bonus_resources=contract.bonus_resources.model_dump(),
             next_player_id=next_player.player_id if next_player else None,
         ),

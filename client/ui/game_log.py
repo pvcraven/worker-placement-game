@@ -73,8 +73,8 @@ class GameLogPanel:
 
         for i, idx in enumerate(range(start, end)):
             text = self.entries[idx]
-            if len(text) > 38:
-                text = text[:36] + ".."
+            if len(text) > 60:
+                text = text[:58] + ".."
             ty = y + h - 50 - i * line_height
             self._text(
                 f"line_{i}", text,
