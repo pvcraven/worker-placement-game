@@ -17,9 +17,12 @@ from shared.messages import (
     BonusWorkersGrantedResponse,
     BuildingMarketUpdateResponse,
     ContractAcquiredResponse,
+    ErrorResponse,
     FaceUpQuestsUpdatedResponse,
     FinalPlayerScore,
     GameOverResponse,
+    IntrigueEffectResolvedResponse,
+    IntrigueTargetPromptResponse,
     PlacementCancelledResponse,
     QuestCardSelectedResponse,
     QuestCompletedResponse,
@@ -701,6 +704,77 @@ async def handle_place_worker_backstage(
         )
     )
 
+    # Handle choose_opponent targeting
+    if effect_details.get("pending"):
+        eligible = effect_details.get("eligible_targets", [])
+
+        if not eligible:
+            # No valid targets — auto-unwind backstage placement
+            slot.occupied_by = None
+            slot.intrigue_card_played = None
+            player.intrigue_hand.append(card)
+            player.available_workers += 1
+
+            await server.send_to_player(
+                player.player_id,
+                ErrorResponse(
+                    code="NO_VALID_TARGETS",
+                    message="No opponents have the targeted resources.",
+                ),
+            )
+            await server.broadcast_to_game(
+                state.game_code,
+                PlacementCancelledResponse(
+                    player_id=player.player_id,
+                    space_id=f"backstage_slot_{msg.slot_number}",
+                    next_player_id=None,
+                ),
+            )
+            return
+
+        # Save pending state for target selection
+        state.pending_intrigue_target = {
+            "player_id": player.player_id,
+            "slot_number": msg.slot_number,
+            "intrigue_card": card.model_dump(),
+            "effect_type": card.effect_type,
+            "effect_value": card.effect_value,
+            "eligible_targets": eligible,
+        }
+
+        # Build target info with resource counts
+        target_info = []
+        for tid in eligible:
+            tp = state.get_player(tid)
+            if tp:
+                target_info.append({
+                    "player_id": tp.player_id,
+                    "player_name": tp.display_name,
+                    "resources": tp.resources.model_dump(),
+                })
+
+        await server.send_to_player(
+            player.player_id,
+            IntrigueTargetPromptResponse(
+                effect_type=card.effect_type,
+                effect_value=card.effect_value,
+                eligible_targets=target_info,
+            ),
+        )
+
+        # Broadcast worker placed (but no effect yet)
+        await server.broadcast_to_game(
+            state.game_code,
+            WorkerPlacedBackstageResponse(
+                player_id=player.player_id,
+                slot_number=msg.slot_number,
+                intrigue_card={"id": card.id, "name": card.name, "description": card.description},
+                intrigue_effect={"type": card.effect_type, "details": {}, "pending": True},
+                next_player_id=None,
+            ),
+        )
+        return
+
     await server.broadcast_to_game(
         state.game_code,
         WorkerPlacedBackstageResponse(
@@ -756,14 +830,22 @@ def _resolve_intrigue_effect(state, player, card) -> dict:
         effect["details"] = {"drawn": drawn}
 
     elif card.effect_type in ("steal_resources", "opponent_loses"):
-        # For targeted effects, handled via choose_intrigue_target
-        # For now, if target is "self" or "all", handle directly
         if card.effect_target == "all":
             reward = ResourceCost(**{k: v for k, v in ev.items() if k in ResourceCost.model_fields})
             for p in state.players:
                 p.resources.add(reward)
             effect["details"] = {"all_gained": reward.model_dump()}
-        # "choose_opponent" targeting is deferred to handle_choose_intrigue_target
+        elif card.effect_target == "choose_opponent":
+            resource_keys = [k for k in ev if k in ResourceCost.model_fields and ev[k] > 0]
+            eligible = []
+            for p in state.players:
+                if p.player_id == player.player_id:
+                    continue
+                has_resource = any(getattr(p.resources, k, 0) > 0 for k in resource_keys)
+                if has_resource:
+                    eligible.append(p.player_id)
+            effect["pending"] = True
+            effect["eligible_targets"] = eligible
 
     elif card.effect_type == "all_players_gain":
         reward = ResourceCost(**{k: v for k, v in ev.items() if k in ResourceCost.model_fields})
@@ -1404,12 +1486,117 @@ async def handle_choose_intrigue_target(
         await conn.send_error("GAME_NOT_FOUND", "Not in a game.")
         return
 
+    pending = state.pending_intrigue_target
+    if pending is None or pending["player_id"] != conn.player_id:
+        await conn.send_error("INVALID_ACTION", "No pending intrigue target.")
+        return
+
+    if msg.target_player_id not in pending["eligible_targets"]:
+        await conn.send_error("INVALID_ACTION", "Invalid target player.")
+        return
+
     player = state.get_player(conn.player_id)
     target = state.get_player(msg.target_player_id)
     if player is None or target is None:
         await conn.send_error("INVALID_ACTION", "Invalid player.")
         return
 
-    # For now, targeted effects are resolved inline during Backstage placement
-    # This handler is a placeholder for future interactive targeting flows
-    await conn.send_error("INVALID_ACTION", "Targeting not implemented yet.")
+    effect_type = pending["effect_type"]
+    effect_value = pending["effect_value"]
+    resources_affected = {}
+
+    resource_keys = [k for k in effect_value if k in ResourceCost.model_fields and effect_value[k] > 0]
+
+    for k in resource_keys:
+        amount = effect_value[k]
+        target_has = getattr(target.resources, k, 0)
+        actual = min(amount, target_has)
+        if actual > 0:
+            setattr(target.resources, k, target_has - actual)
+            if effect_type == "steal_resources":
+                current = getattr(player.resources, k, 0)
+                setattr(player.resources, k, current + actual)
+            resources_affected[k] = actual
+
+    state.pending_intrigue_target = None
+
+    state.game_log.append(
+        GameLog(
+            round_number=state.current_round,
+            player_id=player.player_id,
+            action="intrigue_effect",
+            details=(
+                f"{player.display_name} used {effect_type} on"
+                f" {target.display_name}: {resources_affected}"
+            ),
+            timestamp=time.time(),
+        )
+    )
+
+    await server.broadcast_to_game(
+        state.game_code,
+        IntrigueEffectResolvedResponse(
+            player_id=player.player_id,
+            target_player_id=target.player_id,
+            effect_type=effect_type,
+            resources_affected=resources_affected,
+        ),
+    )
+
+    await _check_quest_completion(server, state)
+
+
+async def handle_cancel_intrigue_target(
+    server: GameServer, conn: ClientConnection, msg
+) -> None:
+    """Handle cancel of intrigue target selection — unwind backstage placement."""
+    state = _get_game_state(server, conn)
+    if state is None:
+        await conn.send_error("GAME_NOT_FOUND", "Not in a game.")
+        return
+
+    pending = state.pending_intrigue_target
+    if pending is None or pending["player_id"] != conn.player_id:
+        await conn.send_error("INVALID_ACTION", "No pending intrigue target.")
+        return
+
+    player = state.get_player(conn.player_id)
+    if player is None:
+        await conn.send_error("INVALID_ACTION", "Player not found.")
+        return
+
+    slot_number = pending["slot_number"]
+
+    # Unwind: clear backstage slot
+    for s in state.board.backstage_slots:
+        if s.slot_number == slot_number:
+            s.occupied_by = None
+            s.intrigue_card_played = None
+            break
+
+    # Return intrigue card to hand
+    from shared.card_models import IntrigueCard
+    card = IntrigueCard(**pending["intrigue_card"])
+    player.intrigue_hand.append(card)
+    player.available_workers += 1
+
+    state.pending_intrigue_target = None
+
+    state.game_log.append(
+        GameLog(
+            round_number=state.current_round,
+            player_id=player.player_id,
+            action="cancel_intrigue_target",
+            details=f"{player.display_name} cancelled intrigue target selection",
+            timestamp=time.time(),
+        )
+    )
+
+    await server.broadcast_to_game(
+        state.game_code,
+        PlacementCancelledResponse(
+            player_id=player.player_id,
+            space_id=f"backstage_slot_{slot_number}",
+            next_player_id=None,
+        ),
+    )

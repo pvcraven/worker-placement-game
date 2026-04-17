@@ -80,6 +80,10 @@ class CancelQuestSelectionRequest(BaseModel):
     action: Literal["cancel_quest_selection"] = "cancel_quest_selection"
 
 
+class CancelIntrigueTargetRequest(BaseModel):
+    action: Literal["cancel_intrigue_target"] = "cancel_intrigue_target"
+
+
 class SkipQuestCompletionRequest(BaseModel):
     action: Literal["skip_quest_completion"] = "skip_quest_completion"
 
@@ -124,6 +128,7 @@ ClientMessage = Annotated[
         SkipQuestCompletionRequest,
         ReassignWorkerRequest,
         ChooseIntrigueTargetRequest,
+        CancelIntrigueTargetRequest,
         ReconnectRequest,
         PingRequest,
     ],
@@ -340,6 +345,21 @@ class PlayerReconnectedResponse(BaseModel):
     player_name: str
 
 
+class IntrigueTargetPromptResponse(BaseModel):
+    action: Literal["intrigue_target_prompt"] = "intrigue_target_prompt"
+    effect_type: str
+    effect_value: dict
+    eligible_targets: list[dict]
+
+
+class IntrigueEffectResolvedResponse(BaseModel):
+    action: Literal["intrigue_effect_resolved"] = "intrigue_effect_resolved"
+    player_id: str
+    target_player_id: str
+    effect_type: str
+    resources_affected: dict
+
+
 class TurnTimeoutResponse(BaseModel):
     action: Literal["turn_timeout"] = "turn_timeout"
     player_id: str
@@ -376,6 +396,8 @@ ServerMessage = Annotated[
         PlayerDisconnectedResponse,
         PlayerReconnectedResponse,
         TurnTimeoutResponse,
+        IntrigueTargetPromptResponse,
+        IntrigueEffectResolvedResponse,
     ],
     Field(discriminator="action"),
 ]
