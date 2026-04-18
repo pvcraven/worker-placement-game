@@ -39,6 +39,7 @@ class CardRenderer:
             t.x = x
             t.y = y
             t.color = color
+            t.font_size = font_size
             return t
         t = arcade.Text(
             text, x, y, color,
@@ -64,12 +65,12 @@ class CardRenderer:
             arcade.color.YELLOW if highlight else arcade.color.WHITE
         )
 
-        # Card background — dark gray body
+        # Card background — dark brown body (matches building cards)
         arcade.draw_rect_filled(
             arcade.rect.XYWH(
                 cx, cy, _CARD_WIDTH, _CARD_HEIGHT,
             ),
-            (45, 45, 45),
+            (50, 40, 30),
         )
         # Genre color band at top
         band_h = 36
