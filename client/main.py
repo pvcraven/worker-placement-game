@@ -3,15 +3,22 @@
 from __future__ import annotations
 
 import argparse
+import sys
+from pathlib import Path
 
-import arcade.text
+# Ensure card-generator is importable
+_card_gen_dir = str(Path(__file__).resolve().parent.parent / "card-generator")
+if _card_gen_dir not in sys.path:
+    sys.path.insert(0, _card_gen_dir)
+
+import arcade.text  # noqa: E402
 
 # Fix DirectWrite font enumeration hang on some Windows systems by
 # setting a known-good default font before any UI elements are created.
 arcade.text.DEFAULT_FONT_NAMES = ("Arial",)
 
-from client.game_window import GameWindow
-from client.network_client import NetworkClient
+from client.game_window import GameWindow  # noqa: E402
+from client.network_client import NetworkClient  # noqa: E402
 
 
 def parse_args() -> argparse.Namespace:
@@ -25,6 +32,9 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    from generate_cards import ensure_card_images
+    ensure_card_images()
+
     args = parse_args()
 
     # Create the network client (shared across all views)
