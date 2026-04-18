@@ -5,11 +5,11 @@ from __future__ import annotations
 import arcade
 
 _GENRE_COLORS = {
-    "jazz": (70, 130, 180),     # Steel blue
-    "pop": (180, 60, 120),      # Dark pink
-    "soul": (148, 103, 189),    # Purple
-    "funk": (180, 110, 0),      # Dark amber
-    "rock": (150, 20, 40),      # Dark crimson
+    "jazz": (25, 55, 85),       # Dark blue
+    "pop": (85, 25, 55),        # Dark magenta
+    "soul": (60, 40, 90),       # Dark purple
+    "funk": (85, 50, 0),        # Dark amber
+    "rock": (70, 8, 18),        # Dark crimson
 }
 
 _CARD_WIDTH = 190
@@ -39,6 +39,7 @@ class CardRenderer:
             t.x = x
             t.y = y
             t.color = color
+            t.font_size = font_size
             return t
         t = arcade.Text(
             text, x, y, color,
@@ -64,33 +65,47 @@ class CardRenderer:
             arcade.color.YELLOW if highlight else arcade.color.WHITE
         )
 
-        # Card background
+        # Card background — dark brown body (matches building cards)
         arcade.draw_rect_filled(
-            arcade.rect.XYWH(cx, cy, _CARD_WIDTH, _CARD_HEIGHT),
+            arcade.rect.XYWH(
+                cx, cy, _CARD_WIDTH, _CARD_HEIGHT,
+            ),
+            (50, 40, 30),
+        )
+        # Genre color band at top
+        band_h = 36
+        band_cy = cy + _CARD_HEIGHT / 2 - band_h / 2
+        arcade.draw_rect_filled(
+            arcade.rect.XYWH(
+                cx, band_cy, _CARD_WIDTH, band_h,
+            ),
             bg_color,
         )
         arcade.draw_rect_outline(
-            arcade.rect.XYWH(cx, cy, _CARD_WIDTH, _CARD_HEIGHT),
+            arcade.rect.XYWH(
+                cx, cy, _CARD_WIDTH, _CARD_HEIGHT,
+            ),
             border_color,
             border_width=2 if highlight else 1,
         )
 
-        # Name
+        # Genre tag (top, bold, in color band)
+        cls._text(
+            f"{cache_key}_genre", genre.upper(),
+            cx, band_cy,
+            arcade.color.WHITE, 14,
+            anchor_x="center", anchor_y="center",
+            bold=True,
+        ).draw()
+
+        # Name (below genre band)
         name = card.get("name", "???")
         if len(name) > 20:
             name = name[:18] + ".."
         cls._text(
             f"{cache_key}_name", name,
-            cx, cy + 96,
+            cx, cy + 74,
             arcade.color.WHITE, 13,
-            anchor_x="center", anchor_y="center",
-        ).draw()
-
-        # Genre tag
-        cls._text(
-            f"{cache_key}_genre", genre.upper(),
-            cx, cy + 78,
-            arcade.color.WHITE, 11,
             anchor_x="center", anchor_y="center",
         ).draw()
 
@@ -112,7 +127,7 @@ class CardRenderer:
         cls._text(
             f"{cache_key}_cost", f"Cost: {cost_str}",
             cx, cy + 50,
-            arcade.color.WHITE, 11,
+            arcade.color.WHITE, 12,
             anchor_x="center", anchor_y="center",
         ).draw()
 
@@ -153,7 +168,7 @@ class CardRenderer:
             cls._text(
                 f"{cache_key}_bonus", bonus_str,
                 cx, cy - 6,
-                arcade.color.WHITE, 12,
+                arcade.color.WHITE, 13,
                 anchor_x="center",
                 anchor_y="center",
             ).draw()
@@ -166,7 +181,106 @@ class CardRenderer:
         cls._text(
             f"{cache_key}_desc", desc,
             cx, desc_top,
+            arcade.color.WHITE, 10,
+            anchor_x="center", anchor_y="top",
+            multiline=True, width=_CARD_WIDTH - 16,
+            align="center",
+        ).draw()
+
+    @classmethod
+    def draw_building(
+        cls, cx: float, cy: float, card: dict,
+        highlight: bool = False, cache_key: str = "",
+    ) -> None:
+        """Draw a building card centered at (cx, cy)."""
+        if not cache_key:
+            cache_key = f"b_{cx:.0f}_{cy:.0f}"
+
+        bg_color = (50, 40, 30)
+        border_color = (
+            arcade.color.YELLOW if highlight
+            else arcade.color.GOLD
+        )
+
+        arcade.draw_rect_filled(
+            arcade.rect.XYWH(cx, cy, _CARD_WIDTH, _CARD_HEIGHT),
+            bg_color,
+        )
+        arcade.draw_rect_outline(
+            arcade.rect.XYWH(cx, cy, _CARD_WIDTH, _CARD_HEIGHT),
+            border_color,
+            border_width=2 if highlight else 1,
+        )
+
+        name = card.get("name", "???")
+        if len(name) > 20:
+            name = name[:18] + ".."
+        cls._text(
+            f"{cache_key}_name", name,
+            cx, cy + 96,
+            arcade.color.GOLD, 13,
+            anchor_x="center", anchor_y="center", bold=True,
+        ).draw()
+
+        cost = card.get("cost_coins", 0)
+        cls._text(
+            f"{cache_key}_cost", f"Cost: {cost} coins",
+            cx, cy + 72,
             arcade.color.WHITE, 11,
+            anchor_x="center", anchor_y="center",
+        ).draw()
+
+        mapping = {
+            "guitarists": "G", "bass_players": "B",
+            "drummers": "D", "singers": "S", "coins": "$",
+        }
+        visitor = card.get("visitor_reward", {})
+        vis_parts = []
+        for key, sym in mapping.items():
+            val = visitor.get(key, 0)
+            if val > 0:
+                vis_parts.append(f"{val}{sym}")
+        vis_str = " ".join(vis_parts) if vis_parts else "None"
+        cls._text(
+            f"{cache_key}_vis_lbl", "Visitor:",
+            cx, cy + 48,
+            arcade.color.LIGHT_GREEN, 11,
+            anchor_x="center", anchor_y="center",
+        ).draw()
+        cls._text(
+            f"{cache_key}_vis_val", vis_str,
+            cx, cy + 30,
+            arcade.color.LIGHT_GREEN, 12,
+            anchor_x="center", anchor_y="center", bold=True,
+        ).draw()
+
+        owner = card.get("owner_bonus", {})
+        own_parts = []
+        for key, sym in mapping.items():
+            val = owner.get(key, 0)
+            if val > 0:
+                own_parts.append(f"{val}{sym}")
+        own_str = " ".join(own_parts) if own_parts else "None"
+        cls._text(
+            f"{cache_key}_own_lbl", "Owner Bonus:",
+            cx, cy + 6,
+            arcade.color.YELLOW, 11,
+            anchor_x="center", anchor_y="center",
+        ).draw()
+        cls._text(
+            f"{cache_key}_own_val", own_str,
+            cx, cy - 12,
+            arcade.color.YELLOW, 12,
+            anchor_x="center", anchor_y="center", bold=True,
+        ).draw()
+
+        desc = card.get("description", "")
+        if len(desc) > 100:
+            desc = desc[:98] + ".."
+        cls._text(
+            f"{cache_key}_desc", desc,
+            cx, cy - 34,
+            arcade.color.WHITE, 10,
             anchor_x="center", anchor_y="top",
             multiline=True, width=_CARD_WIDTH - 16,
             align="center",

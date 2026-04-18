@@ -11,22 +11,22 @@ from client.ui.card_renderer import CardRenderer
 # Board layout positions (proportional, relative to board area)
 # Permanent spaces in left column; second column for buildings
 _SPACE_LAYOUT: dict[str, tuple[float, float]] = {
-    "merch_store": (0.08, 0.90),
-    "motown": (0.08, 0.80),
-    "guitar_center": (0.08, 0.70),
-    "talent_show": (0.08, 0.60),
-    "rhythm_pit": (0.08, 0.50),
-    "castle_waterdeep": (0.08, 0.40),
-    "realtor": (0.08, 0.30),
-    "the_garage_1": (0.38, 0.87),
-    "the_garage_2": (0.52, 0.87),
-    "the_garage_3": (0.66, 0.87),
+    "merch_store": (0.08, 0.92),
+    "motown": (0.08, 0.82),
+    "guitar_center": (0.08, 0.72),
+    "talent_show": (0.08, 0.62),
+    "rhythm_pit": (0.08, 0.52),
+    "castle_waterdeep": (0.08, 0.42),
+    "realtor": (0.57, 0.40),
+    "the_garage_1": (0.40, 0.92),
+    "the_garage_2": (0.54, 0.92),
+    "the_garage_3": (0.68, 0.92),
 }
 
 _BACKSTAGE_LAYOUT: list[tuple[float, float]] = [
-    (0.38, 0.33),
-    (0.52, 0.33),
-    (0.66, 0.33),
+    (0.35, 0.28),
+    (0.35, 0.20),
+    (0.35, 0.12),
 ]
 
 _SPACE_WIDTH = 170
@@ -100,7 +100,8 @@ class BoardRenderer:
         self._deck_remaining = deck_remaining
 
     def draw(
-        self, x: float, y: float, w: float, h: float
+        self, x: float, y: float, w: float, h: float,
+        highlighted_ids: list[str] | None = None,
     ) -> None:
         """Draw the board in the given rectangle."""
         draw_rect = (x, y, w, h)
@@ -138,7 +139,7 @@ class BoardRenderer:
                 cx, cy, slot_num, slot_data
             )
 
-        garage_center_x = x + 0.52 * w
+        garage_center_x = x + 0.54 * w
         face_up_quests = self.board_data.get(
             "face_up_quests", []
         )
@@ -149,14 +150,16 @@ class BoardRenderer:
             start_x = (
                 garage_center_x - total_w / 2 + card_w / 2
             )
-            card_y = y + 0.60 * h
+            card_y = y + 0.68 * h
+            hl = highlighted_ids or []
             for i, quest in enumerate(face_up_quests):
                 cx = start_x + i * spacing
+                qid = quest.get("id", f"quest_{i}")
                 CardRenderer.draw_contract(
                     cx, card_y, quest,
+                    highlight=qid in hl,
                     cache_key=f"faceup_{i}",
                 )
-                qid = quest.get("id", f"quest_{i}")
                 self._space_rects[
                     f"quest_card_{qid}"
                 ] = (
@@ -164,6 +167,36 @@ class BoardRenderer:
                     card_y - 100,
                     card_w,
                     200,
+                )
+
+        # Face-up building cards
+        if self._face_up_buildings:
+            bld_w = 190
+            bld_spacing = bld_w + 15
+            total_bw = len(self._face_up_buildings) * bld_spacing
+            bld_center_x = x + 0.57 * w
+            bld_start_x = (
+                bld_center_x - total_bw / 2 + bld_w / 2
+            )
+            bld_y = y + 0.20 * h
+            bhl = highlighted_ids or []
+            for i, bld in enumerate(
+                self._face_up_buildings
+            ):
+                bcx = bld_start_x + i * bld_spacing
+                bid = bld.get("id", f"building_{i}")
+                CardRenderer.draw_building(
+                    bcx, bld_y, bld,
+                    highlight=bid in bhl,
+                    cache_key=f"faceup_bld_{i}",
+                )
+                self._space_rects[
+                    f"building_card_{bid}"
+                ] = (
+                    bcx - bld_w / 2,
+                    bld_y - 115,
+                    bld_w,
+                    230,
                 )
 
         building_start_x = 0.22
@@ -176,7 +209,7 @@ class BoardRenderer:
             row = i % 7
             col = i // 7
             cx = x + (building_start_x + col * 0.14) * w
-            cy = y + (0.90 - row * 0.10) * h
+            cy = y + (0.92 - row * 0.10) * h
             self._draw_space(
                 cx, cy, space_id, space_data,
                 is_building=True,
@@ -271,7 +304,7 @@ class BoardRenderer:
             row = i % 7
             col = i // 7
             cx = x + (building_start_x + col * 0.14) * w
-            cy = y + (0.90 - row * 0.10) * h
+            cy = y + (0.92 - row * 0.10) * h
             self._space_rects[space_id] = (
                 cx - sw / 2, cy - sh / 2, sw, sh,
             )

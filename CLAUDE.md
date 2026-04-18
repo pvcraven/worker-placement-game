@@ -7,6 +7,7 @@ Auto-generated from all feature plans. Last updated: 2026-04-18
 - In-memory game state (server); JSON configuration (game content) (002-garage-quest-display)
 - Python 3.12+ + Arcade (client UI), websockets (networking), Pydantic (data validation/serialization) (003-building-purchase)
 - In-memory game state (server); JSON configuration files (game content) (003-building-purchase)
+- Python 3.12+ + Arcade (local source), websockets, Pydantic v2 (009-board-layout-optimization)
 
 - Python 3.12+ + Arcade (graphics/client UI), websockets (async networking), Pydantic (data validation/serialization) (001-worker-placement-game)
 
@@ -26,9 +27,9 @@ cd src && pytest && ruff check .
 Python 3.12+: Follow standard conventions
 
 ## Recent Changes
+- 009-board-layout-optimization: Added Python 3.12+ + Arcade (local source), websockets, Pydantic v2
 - 008-quest-reward-expansion: Added Python 3.12+ + Arcade (client UI), websockets (networking), Pydantic (data validation/serialization)
 - 007-intrigue-targeting-player-overview: Added Python 3.12+ + Arcade (client UI), websockets (networking), Pydantic (data validation/serialization)
-- 006-backstage-intrigue-mechanics: Added Python 3.12+ + Arcade (client UI), websockets (networking), Pydantic (data validation/serialization)
 
 
 <!-- MANUAL ADDITIONS START -->
