@@ -5,3 +5,4 @@
 /speckit-tasks
 /speckit-git-commit
 /speckit-implement
+/speckit-git-commit
