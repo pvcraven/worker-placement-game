@@ -8,7 +8,6 @@ import arcade.gui
 from client.ui.board_renderer import BoardRenderer
 from client.ui.card_renderer import CardRenderer
 from client.ui.dialogs import (
-    BuildingPurchaseDialog,
     CardSelectionDialog,
     PlayerTargetDialog,
     QuestCompletionDialog,
@@ -30,23 +29,35 @@ class GameView(arcade.View):
         self._setup_done = False
         self._status_text = ""
         self._quest_dialog: CardSelectionDialog | None = None
-        self._building_dialog: BuildingPurchaseDialog | None = None
         self._quest_completion_dialog: QuestCompletionDialog | None = None
         self._face_up_buildings: list[dict] = []
         self._building_deck_remaining: int = 0
         self._show_quests_hand = False
         self._show_intrigue_hand = False
-        self._show_building_market = False
         self._reward_choice_dialog = None
         self._show_player_overview = False
         self._target_dialog: PlayerTargetDialog | None = None
         self._text_cache: dict[str, arcade.Text] = {}
+        self._highlight_mode: str | None = None
+        self._highlighted_ids: list[str] = []
+        self._cancel_sprite: arcade.Sprite | None = None
+        self._cancel_sprite_list: arcade.SpriteList | None = None
 
     def on_show_view(self) -> None:
         self.ui.enable()
         self.game_state = getattr(self.window, "game_state", {})
         if not self._setup_done:
             self._build_ui()
+            self._cancel_sprite = arcade.Sprite(
+                "client/graphics/buttons/cancel.png",
+                scale=0.5,
+            )
+            self._cancel_sprite.position = (55, 55)
+            self._cancel_sprite.visible = False
+            self._cancel_sprite_list = arcade.SpriteList()
+            self._cancel_sprite_list.append(
+                self._cancel_sprite,
+            )
             self._setup_done = True
         self._sync_from_state()
 
@@ -67,12 +78,6 @@ class GameView(arcade.View):
             text="My Intrigue", width=120, height=32,
         )
         intrigue_btn.on_click = lambda _: self._toggle_intrigue()
-        market_btn = arcade.gui.UIFlatButton(
-            text="Real Estate Listings", width=160, height=32,
-        )
-        market_btn.on_click = (
-            lambda _: self._toggle_building_market()
-        )
         overview_btn = arcade.gui.UIFlatButton(
             text="Player Overview", width=140, height=32,
         )
@@ -85,7 +90,6 @@ class GameView(arcade.View):
         )
         btn_row.add(quests_btn)
         btn_row.add(intrigue_btn)
-        btn_row.add(market_btn)
         btn_row.add(overview_btn)
 
         anchor = arcade.gui.UIAnchorLayout()
@@ -250,21 +254,27 @@ class GameView(arcade.View):
                 "quest_and_coins", "quest_and_intrigue"
             )
         ):
-            self._show_quest_selection_dialog()
+            board = self.game_state.get("board", {})
+            quests = board.get("face_up_quests", [])
+            quest_ids = [
+                q.get("id") for q in quests if q.get("id")
+            ]
+            self._enter_highlight_mode(
+                "quest_selection", quest_ids,
+            )
             if self.game_log_panel:
                 self.game_log_panel.add_entry(
-                    "Select a quest card from the display"
+                    "Click a quest card to select it"
                 )
             return
 
-        # Realtor spot: only trigger on initial placement
-        # (next_player_id=None means deferred turn).
         if (
-            space_data.get("reward_special") == "purchase_building"
+            space_data.get("reward_special")
+            == "purchase_building"
             and pid == my_id
             and msg.get("next_player_id") is None
         ):
-            self._show_building_purchase_dialog()
+            self._enter_building_highlight(pid)
             return
 
         # Update turn
@@ -508,75 +518,6 @@ class GameView(arcade.View):
                     f"{tname} lost {res_str}"
                 )
 
-    def _show_quest_selection_dialog(self) -> None:
-        """Show dialog for selecting a face-up quest card."""
-        board = self.game_state.get("board", {})
-        quests = board.get("face_up_quests", [])
-        if not quests:
-            return
-
-        def on_select(card_id: str) -> None:
-            self._quest_dialog = None
-            self.window.network.send({
-                "action": "select_quest_card",
-                "card_id": card_id,
-            })
-
-        def on_cancel() -> None:
-            self._quest_dialog = None
-            self.window.network.send({
-                "action": "cancel_quest_selection",
-            })
-            if self.game_log_panel:
-                self.game_log_panel.add_entry("Quest selection cancelled")
-
-        self._quest_dialog = CardSelectionDialog(
-            title="Select a Quest Card",
-            cards=quests,
-            on_select=on_select,
-            ui_manager=self.ui,
-            on_cancel=on_cancel,
-        )
-        self._quest_dialog.show(
-            self.window.width, self.window.height
-        )
-
-    def _show_building_purchase_dialog(self) -> None:
-        """Show dialog for purchasing a face-up building."""
-        # Get player's current coins
-        my_id = getattr(self.window, "player_id", None)
-        player_coins = 0
-        for p in self.game_state.get("players", []):
-            if p.get("player_id") == my_id:
-                player_coins = p.get("resources", {}).get("coins", 0)
-                break
-
-        def on_purchase(building_id: str) -> None:
-            self._building_dialog = None
-            self.window.network.send({
-                "action": "purchase_building",
-                "building_id": building_id,
-            })
-
-        def on_cancel() -> None:
-            self._building_dialog = None
-            self.window.network.send({
-                "action": "cancel_purchase_building",
-            })
-            if self.game_log_panel:
-                self.game_log_panel.add_entry("Building purchase cancelled")
-
-        self._building_dialog = BuildingPurchaseDialog(
-            buildings=self._face_up_buildings,
-            player_coins=player_coins,
-            on_purchase=on_purchase,
-            on_cancel=on_cancel,
-            ui_manager=self.ui,
-        )
-        self._building_dialog.show(
-            self.window.width, self.window.height,
-        )
-
     def _on_quest_card_selected(self, msg: dict) -> None:
         pid = msg.get("player_id", "")
         card_id = msg.get("card_id", "")
@@ -794,33 +735,16 @@ class GameView(arcade.View):
                 self.window.width, self.window.height,
             )
         elif reward_type == "choose_building":
-            from client.ui.dialogs import RewardChoiceDialog
-            self._reward_choice_dialog = (
-                RewardChoiceDialog(
-                    title=f"Quest Reward: {quest_name}",
-                    description="Choose a free building:",
-                    choices=choices,
-                    label_key="name",
-                    on_select=(
-                        self._on_reward_building_selected
-                    ),
-                    ui_manager=self.ui,
-                )
-            )
-            self._reward_choice_dialog.show(
-                self.window.width, self.window.height,
+            bld_ids = [
+                b.get("id")
+                for b in self._face_up_buildings
+                if b.get("id")
+            ]
+            self._enter_highlight_mode(
+                "building_reward", bld_ids,
             )
 
     def _on_reward_quest_selected(
-        self, choice_id: str,
-    ) -> None:
-        self._reward_choice_dialog = None
-        self.window.network.send({
-            "action": "quest_reward_choice",
-            "choice_id": choice_id,
-        })
-
-    def _on_reward_building_selected(
         self, choice_id: str,
     ) -> None:
         self._reward_choice_dialog = None
@@ -1145,10 +1069,20 @@ class GameView(arcade.View):
                 "quest_and_coins", "quest_and_intrigue",
             )
         ):
-            self._show_quest_selection_dialog()
+            board_data = self.game_state.get("board", {})
+            quests = board_data.get(
+                "face_up_quests", [],
+            )
+            quest_ids = [
+                q.get("id") for q in quests
+                if q.get("id")
+            ]
+            self._enter_highlight_mode(
+                "quest_selection", quest_ids,
+            )
             if self.game_log_panel:
                 self.game_log_panel.add_entry(
-                    "Select a quest card from the display"
+                    "Click a quest card to select it"
                 )
 
     def _on_round_end(self, msg: dict) -> None:
@@ -1229,6 +1163,10 @@ class GameView(arcade.View):
                 x, y,
             ):
                 return
+
+        if self._highlight_mode:
+            self._handle_highlight_click(x, y)
+            return
 
         if not self.board_renderer:
             return
@@ -1338,22 +1276,131 @@ class GameView(arcade.View):
         )
         self._quest_dialog.show(self.window.width, self.window.height)
 
+    def _enter_building_highlight(
+        self, pid: str,
+    ) -> None:
+        player_coins = 0
+        for p in self.game_state.get("players", []):
+            if p.get("player_id") == pid:
+                player_coins = p.get(
+                    "resources", {},
+                ).get("coins", 0)
+                break
+        affordable = [
+            b.get("id")
+            for b in self._face_up_buildings
+            if b.get("cost_coins", 999) <= player_coins
+            and b.get("id")
+        ]
+        if not affordable:
+            self._status_text = (
+                "You can't afford any buildings"
+            )
+            self.window.network.send({
+                "action": "cancel_purchase_building",
+            })
+            return
+        self._enter_highlight_mode(
+            "building_purchase", affordable,
+        )
+        if self.game_log_panel:
+            self.game_log_panel.add_entry(
+                "Click a building to purchase it"
+            )
+
+    def _handle_highlight_click(
+        self, x: int, y: int,
+    ) -> None:
+        # Check cancel button
+        if self._cancel_sprite and self._cancel_sprite.visible:
+            sx = self._cancel_sprite.center_x
+            sy = self._cancel_sprite.center_y
+            hw = self._cancel_sprite.width / 2
+            hh = self._cancel_sprite.height / 2
+            if (
+                sx - hw <= x <= sx + hw
+                and sy - hh <= y <= sy + hh
+            ):
+                if self._highlight_mode == "quest_selection":
+                    self.window.network.send({
+                        "action": "cancel_quest_selection",
+                    })
+                    if self.game_log_panel:
+                        self.game_log_panel.add_entry(
+                            "Quest selection cancelled"
+                        )
+                elif self._highlight_mode == "building_purchase":
+                    self.window.network.send({
+                        "action": "cancel_purchase_building",
+                    })
+                    if self.game_log_panel:
+                        self.game_log_panel.add_entry(
+                            "Building purchase cancelled"
+                        )
+                self._exit_highlight_mode()
+                return
+
+        if not self.board_renderer:
+            return
+
+        clicked = self.board_renderer.get_space_at(x, y)
+        if not clicked:
+            return
+
+        if self._highlight_mode == "quest_selection":
+            if clicked.startswith("quest_card_"):
+                qid = clicked[len("quest_card_"):]
+                if qid in self._highlighted_ids:
+                    self.window.network.send({
+                        "action": "select_quest_card",
+                        "card_id": qid,
+                    })
+                    self._exit_highlight_mode()
+        elif self._highlight_mode == "building_purchase":
+            if clicked.startswith("building_card_"):
+                bid = clicked[len("building_card_"):]
+                if bid in self._highlighted_ids:
+                    self.window.network.send({
+                        "action": "purchase_building",
+                        "building_id": bid,
+                    })
+                    self._exit_highlight_mode()
+                else:
+                    self._status_text = (
+                        "You can't afford that building"
+                    )
+        elif self._highlight_mode == "building_reward":
+            if clicked.startswith("building_card_"):
+                bid = clicked[len("building_card_"):]
+                if bid in self._highlighted_ids:
+                    self.window.network.send({
+                        "action": "quest_reward_choice",
+                        "choice_id": bid,
+                    })
+                    self._exit_highlight_mode()
+
+    def _enter_highlight_mode(
+        self, mode: str, ids: list[str],
+    ) -> None:
+        self._highlight_mode = mode
+        self._highlighted_ids = ids
+        if self._cancel_sprite:
+            self._cancel_sprite.visible = True
+
+    def _exit_highlight_mode(self) -> None:
+        self._highlight_mode = None
+        self._highlighted_ids = []
+        if self._cancel_sprite:
+            self._cancel_sprite.visible = False
+
     def _toggle_quests(self) -> None:
         self._show_quests_hand = not self._show_quests_hand
         self._show_intrigue_hand = False
-        self._show_building_market = False
         self._show_player_overview = False
 
     def _toggle_intrigue(self) -> None:
         self._show_intrigue_hand = not self._show_intrigue_hand
         self._show_quests_hand = False
-        self._show_building_market = False
-        self._show_player_overview = False
-
-    def _toggle_building_market(self) -> None:
-        self._show_building_market = not self._show_building_market
-        self._show_quests_hand = False
-        self._show_intrigue_hand = False
         self._show_player_overview = False
 
     def _toggle_player_overview(self) -> None:
@@ -1362,7 +1409,6 @@ class GameView(arcade.View):
         )
         self._show_quests_hand = False
         self._show_intrigue_hand = False
-        self._show_building_market = False
 
     # ------------------------------------------------------------------
     # Drawing
@@ -1374,7 +1420,10 @@ class GameView(arcade.View):
         w, h = self.window.width, self.window.height
 
         if self.board_renderer:
-            self.board_renderer.draw(0, 100, w, h - 160)
+            self.board_renderer.draw(
+                0, 100, w, h - 160,
+                highlighted_ids=self._highlighted_ids,
+            )
 
         if self.resource_bar:
             my_id = getattr(self.window, "player_id", None)
@@ -1393,10 +1442,17 @@ class GameView(arcade.View):
         # Overlay panels
         if self._show_quests_hand or self._show_intrigue_hand:
             self._draw_hand_panel(w, h)
-        if self._show_building_market:
-            self._draw_building_market_panel(w, h)
         if self._show_player_overview:
             self._draw_player_overview_panel(w, h)
+
+        # Cancel button for highlight mode
+        if (
+            self._highlight_mode
+            and self._cancel_sprite
+            and self._cancel_sprite.visible
+            and self._cancel_sprite_list
+        ):
+            self._cancel_sprite_list.draw()
 
         # Quest completion card dialog
         if self._quest_completion_dialog:
@@ -1479,157 +1535,6 @@ class GameView(arcade.View):
                 cx, panel_y - 10, card,
                 cache_key=f"{hand_prefix}_{i}",
             )
-
-    def _draw_building_market_panel(
-        self, w: float, h: float,
-    ) -> None:
-        """Draw the building market popup overlay."""
-        buildings = self._face_up_buildings
-        deck_count = self._building_deck_remaining
-
-        panel_w = min(w - 40, 900)
-        panel_h = min(h - 80, 360)
-        panel_x = w / 2
-        panel_y = h / 2
-        arcade.draw_rect_filled(
-            arcade.rect.XYWH(
-                panel_x, panel_y, panel_w, panel_h,
-            ),
-            (0, 0, 0),
-        )
-        arcade.draw_rect_outline(
-            arcade.rect.XYWH(
-                panel_x, panel_y, panel_w, panel_h,
-            ),
-            arcade.color.WHITE,
-            border_width=2,
-        )
-
-        self._text(
-            "market_title", "Real Estate Listings",
-            panel_x, panel_y + panel_h / 2 - 20,
-            arcade.color.WHITE, 16,
-            anchor_x="center", anchor_y="center",
-            bold=True,
-        ).draw()
-
-        deck_label = f"{deck_count} remaining in deck"
-        self._text(
-            "market_deck", deck_label,
-            panel_x, panel_y + panel_h / 2 - 42,
-            arcade.color.LIGHT_GRAY, 12,
-            anchor_x="center", anchor_y="center",
-        ).draw()
-
-        if not buildings:
-            self._text(
-                "market_empty", "No buildings available.",
-                panel_x, panel_y,
-                arcade.color.LIGHT_GRAY, 14,
-                anchor_x="center", anchor_y="center",
-            ).draw()
-            return
-
-        col_count = min(len(buildings), 4)
-        col_w = panel_w / (col_count + 1)
-        top_y = panel_y + panel_h / 2 - 80
-        card_h = panel_h - 100
-        card_w = int(col_w * 0.92)
-
-        for i, bld in enumerate(buildings[:4]):
-            cx = (
-                panel_x
-                - (col_count - 1) * col_w / 2
-                + i * col_w
-            )
-
-            card_cy = top_y - card_h / 2 + 10
-            arcade.draw_rect_filled(
-                arcade.rect.XYWH(
-                    cx, card_cy, card_w, card_h,
-                ),
-                (40, 40, 40),
-            )
-            arcade.draw_rect_outline(
-                arcade.rect.XYWH(
-                    cx, card_cy, card_w, card_h,
-                ),
-                (120, 120, 120),
-                border_width=1,
-            )
-
-            name = bld.get("name", "???")
-            genre = bld.get("genre", "")
-            cost = bld.get("cost_coins", 0)
-            vp = bld.get("accumulated_vp", 0)
-            desc = bld.get("description", "")
-
-            vis = bld.get("visitor_reward", {})
-            own = bld.get("owner_bonus", {})
-
-            lines = [
-                (f"bm_{i}_name", name, arcade.color.WHITE,
-                 13, True, 0),
-                (f"bm_{i}_genre", genre, arcade.color.CYAN,
-                 13, False, -20),
-                (f"bm_{i}_cost", f"Cost: {cost}$",
-                 arcade.color.GOLD, 11, False, -38),
-                (f"bm_{i}_vp", f"VP: {vp}",
-                 arcade.color.LIGHT_GREEN, 11,
-                 False, -54),
-            ]
-
-            vis_str = self._resource_str(vis)
-            if vis_str:
-                lines.append((
-                    f"bm_{i}_vis",
-                    f"Customer: {vis_str}",
-                    arcade.color.LIGHT_GREEN, 11,
-                    False, -72,
-                ))
-
-            own_str = self._resource_str(own)
-            if own_str:
-                lines.append((
-                    f"bm_{i}_own",
-                    f"Owner: {own_str}",
-                    arcade.color.GOLD, 11,
-                    False, -88,
-                ))
-
-            for (key, text, color, size,
-                 bold, y_off) in lines:
-                self._text(
-                    key, text,
-                    cx, top_y + y_off,
-                    color, size,
-                    anchor_x="center",
-                    anchor_y="center",
-                    bold=bold,
-                ).draw()
-
-            if desc:
-                desc_w = int(col_w * 0.9)
-                desc_key = f"bm_{i}_desc"
-                if desc_key in self._text_cache:
-                    t = self._text_cache[desc_key]
-                    t.text = desc
-                    t.x = cx
-                    t.y = top_y - 108
-                    t.color = arcade.color.LIGHT_GRAY
-                else:
-                    t = arcade.Text(
-                        desc, cx, top_y - 108,
-                        arcade.color.LIGHT_GRAY,
-                        font_size=11,
-                        font_name="Tahoma",
-                        anchor_x="center",
-                        anchor_y="top",
-                        multiline=True,
-                        width=desc_w,
-                    )
-                    self._text_cache[desc_key] = t
-                t.draw()
 
     def _draw_player_overview_panel(
         self, w: float, h: float,
