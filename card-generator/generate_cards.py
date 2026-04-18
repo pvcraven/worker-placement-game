@@ -162,37 +162,58 @@ def generate_quest_cards() -> int:
             [0, band_h - CORNER_RADIUS, CARD_WIDTH - 1, band_h],
             fill=genre_color,
         )
+        # VP circle in upper-left of genre band
+        vp_r = 15
+        vp_cx, vp_cy = 20, band_h // 2
+        draw.ellipse(
+            [vp_cx - vp_r, vp_cy - vp_r,
+             vp_cx + vp_r, vp_cy + vp_r],
+            fill=(240, 220, 140),
+        )
+        vp_text = str(card.victory_points)
+        vp_bbox = draw.textbbox((0, 0), vp_text, font=FONT_TITLE)
+        vp_tw = vp_bbox[2] - vp_bbox[0]
+        vp_th = vp_bbox[3] - vp_bbox[1]
+        draw.text(
+            (vp_cx - vp_tw // 2, vp_cy - vp_th // 2 - 4),
+            vp_text, fill=(60, 40, 20), font=FONT_TITLE,
+        )
+        # Genre text centered in band
         draw_text_centered(
             draw, genre.upper(), 8, FONT_GENRE, (255, 255, 255),
         )
+        # Title (allow 2 lines)
         y = band_h + 4
-        name = truncate_name(card.name)
-        draw_text_centered(draw, name, y, FONT_TITLE)
-        y += 22
+        y = draw_text_wrapped(
+            draw, card.name, y, FONT_TITLE, max_lines=2,
+        )
+        y += 6
         cost_str = f"Cost: {format_resources(card.cost)}"
         draw_text_centered(draw, cost_str, y, FONT_BODY)
         y += 20
-        vp_str = f"{card.victory_points} VP"
-        draw_text_centered(draw, vp_str, y, FONT_VP, (120, 80, 0))
-        y += 30
-        bonus_parts = []
+        # Reward line
+        reward_parts = []
         br = format_resources(card.bonus_resources)
         if br != "None":
-            bonus_parts.append(f"+{br}")
+            reward_parts.append(f"+{br}")
         if card.reward_draw_intrigue:
-            bonus_parts.append(f"+{card.reward_draw_intrigue} Intrigue")
+            reward_parts.append(
+                f"+{card.reward_draw_intrigue} Intrigue",
+            )
         if card.reward_draw_quests:
             is_choose = card.reward_quest_draw_mode == "choose"
             mode = "Choose" if is_choose else "Draw"
-            bonus_parts.append(f"{mode} {card.reward_draw_quests} Quest")
+            reward_parts.append(
+                f"{mode} {card.reward_draw_quests} Quest",
+            )
         if card.reward_building == "market_choice":
-            bonus_parts.append("Choose Building")
+            reward_parts.append("Choose Building")
         elif card.reward_building == "random_draw":
-            bonus_parts.append("Draw Building")
-        if bonus_parts:
-            bonus_str = " ".join(bonus_parts)
+            reward_parts.append("Draw Building")
+        if reward_parts:
+            reward_str = "Reward: " + " ".join(reward_parts)
             draw_text_centered(
-                draw, bonus_str, y, FONT_BODY, (100, 60, 10),
+                draw, reward_str, y, FONT_BODY, (100, 60, 10),
             )
             y += 18
         if card.is_plot_quest:
@@ -391,20 +412,59 @@ def generate_producer_cards() -> int:
     return count
 
 
+JSON_FILES = [
+    CONFIG_DIR / "contracts.json",
+    CONFIG_DIR / "buildings.json",
+    CONFIG_DIR / "intrigue.json",
+    CONFIG_DIR / "producers.json",
+]
+
+OUTPUT_DIRS = [
+    OUTPUT_QUESTS, OUTPUT_BUILDINGS,
+    OUTPUT_INTRIGUE, OUTPUT_PRODUCERS,
+]
+
+
+def _needs_regeneration() -> bool:
+    newest_json = 0.0
+    for f in JSON_FILES:
+        if not f.exists():
+            return False
+        newest_json = max(newest_json, f.stat().st_mtime)
+    oldest_png = float("inf")
+    png_count = 0
+    for d in OUTPUT_DIRS:
+        if not d.exists():
+            return True
+        for p in d.glob("*.png"):
+            oldest_png = min(oldest_png, p.stat().st_mtime)
+            png_count += 1
+    if png_count == 0:
+        return True
+    return newest_json > oldest_png
+
+
+def generate_all() -> int:
+    q = generate_quest_cards()
+    b = generate_building_cards()
+    i = generate_intrigue_cards()
+    p = generate_producer_cards()
+    return q + b + i + p
+
+
+def ensure_card_images() -> None:
+    if _needs_regeneration():
+        print("Card images out of date, regenerating...")
+        total = generate_all()
+        print(f"Generated {total} card images.")
+
+
 def main() -> None:
     print("Card Image Generator")
     print(f"Output: {OUTPUT_BASE}")
     print()
-    q = generate_quest_cards()
-    print(f"Quest cards: {q} written to {OUTPUT_QUESTS}/")
-    b = generate_building_cards()
-    print(f"Building cards: {b} written to {OUTPUT_BUILDINGS}/")
-    i = generate_intrigue_cards()
-    print(f"Intrigue cards: {i} written to {OUTPUT_INTRIGUE}/")
-    p = generate_producer_cards()
-    print(f"Producer cards: {p} written to {OUTPUT_PRODUCERS}/")
-    total = q + b + i + p
-    print(f"\nDone. {total} card images generated.")
+    total = generate_all()
+    print(f"Done. {total} card images generated.")
 
 
 if __name__ == "__main__":
