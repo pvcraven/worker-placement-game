@@ -35,3 +35,6 @@ htmlcov/
 # Logs
 *.log
 uv.lock
+
+# Generated card images
+client/assets/card_images/

@@ -8,6 +8,8 @@ Auto-generated from all feature plans. Last updated: 2026-04-18
 - Python 3.12+ + Arcade (client UI), websockets (networking), Pydantic (data validation/serialization) (003-building-purchase)
 - In-memory game state (server); JSON configuration files (game content) (003-building-purchase)
 - Python 3.12+ + Arcade (local source), websockets, Pydantic v2 (009-board-layout-optimization)
+- Python 3.12+ + Pillow (PIL), Pydantic v2 (existing), shared/card_models.py (existing) (010-card-image-generator)
+- File system — reads JSON from `config/`, writes PNGs to `client/assets/card_images/` (010-card-image-generator)
 
 - Python 3.12+ + Arcade (graphics/client UI), websockets (async networking), Pydantic (data validation/serialization) (001-worker-placement-game)
 
@@ -27,9 +29,9 @@ cd src && pytest && ruff check .
 Python 3.12+: Follow standard conventions
 
 ## Recent Changes
+- 010-card-image-generator: Added Python 3.12+ + Pillow (PIL), Pydantic v2 (existing), shared/card_models.py (existing)
 - 009-board-layout-optimization: Added Python 3.12+ + Arcade (local source), websockets, Pydantic v2
 - 008-quest-reward-expansion: Added Python 3.12+ + Arcade (client UI), websockets (networking), Pydantic (data validation/serialization)
-- 007-intrigue-targeting-player-overview: Added Python 3.12+ + Arcade (client UI), websockets (networking), Pydantic (data validation/serialization)
 
 
 <!-- MANUAL ADDITIONS START -->
