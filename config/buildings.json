@@ -155,9 +155,9 @@
       "name": "The 100 Club",
       "description": "The Oxford Street venue that hosted the first international punk festival in 1976, featuring the Sex Pistols and The Clash.",
       "cost_coins": 3,
-      "visitor_reward": {"guitarists": 0, "bass_players": 1, "drummers": 0, "singers": 0, "coins": 1},
+      "visitor_reward": {"guitarists": 0, "bass_players": 1, "drummers": 0, "singers": 0, "coins": 2},
       "visitor_reward_special": null,
-      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 1},
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 2},
       "owner_bonus_special": null
     },
     {

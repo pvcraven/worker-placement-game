@@ -868,6 +868,40 @@ class GameView(arcade.View):
                 board.setdefault(
                     "constructed_buildings", [],
                 ).append(sid)
+                spaces = board.get(
+                    "action_spaces", {},
+                )
+                if sid not in spaces:
+                    spaces[sid] = {
+                        "name": choice.get(
+                            "building_name", "?",
+                        ),
+                        "space_type": "building",
+                        "owner_id": pid,
+                        "reward": choice.get(
+                            "visitor_reward", {},
+                        ),
+                        "owner_bonus": choice.get(
+                            "owner_bonus", {},
+                        ),
+                        "occupied_by": None,
+                    }
+                bid = choice.get("building_id")
+                if bid:
+                    fub = board.get(
+                        "face_up_buildings", [],
+                    )
+                    board["face_up_buildings"] = [
+                        b for b in fub
+                        if b.get("id") != bid
+                    ]
+                if self.board_renderer:
+                    self.board_renderer.update_board(
+                        board,
+                        self.game_state.get(
+                            "players", [],
+                        ),
+                    )
 
         if self.game_log_panel:
             name = self._player_name(pid)
@@ -916,7 +950,6 @@ class GameView(arcade.View):
                 quests=quests,
                 on_select=on_select,
                 on_skip=on_skip,
-                ui_manager=self.ui,
             )
         )
         self._quest_completion_dialog.show(
@@ -1191,6 +1224,12 @@ class GameView(arcade.View):
         self, x: int, y: int, button: int, modifiers: int,
     ) -> None:
         """Handle clicks on the board to place or reassign workers."""
+        if self._quest_completion_dialog:
+            if self._quest_completion_dialog.handle_click(
+                x, y,
+            ):
+                return
+
         if not self.board_renderer:
             return
 
@@ -1359,6 +1398,10 @@ class GameView(arcade.View):
         if self._show_player_overview:
             self._draw_player_overview_panel(w, h)
 
+        # Quest completion card dialog
+        if self._quest_completion_dialog:
+            self._quest_completion_dialog.draw(w, h)
+
         # Status bar
         arcade.draw_rect_filled(
             arcade.rect.XYWH(w / 2, h - 25, w, 50),
@@ -1399,7 +1442,7 @@ class GameView(arcade.View):
         card_spacing = 205
         needed_w = card_count * card_spacing + 40
         panel_w = max(min(w - 40, needed_w), 300)
-        panel_h = 280
+        panel_h = 320
         panel_x = w / 2
         panel_y = h / 2
         arcade.draw_rect_filled(
@@ -1510,7 +1553,7 @@ class GameView(arcade.View):
                 (f"bm_{i}_name", name, arcade.color.WHITE,
                  13, True, 0),
                 (f"bm_{i}_genre", genre, arcade.color.CYAN,
-                 11, False, -20),
+                 13, False, -20),
                 (f"bm_{i}_cost", f"Cost: {cost}$",
                  arcade.color.GOLD, 11, False, -38),
                 (f"bm_{i}_vp", f"VP: {vp}",
@@ -1523,7 +1566,7 @@ class GameView(arcade.View):
                 lines.append((
                     f"bm_{i}_vis",
                     f"Customer: {vis_str}",
-                    arcade.color.LIGHT_GREEN, 10,
+                    arcade.color.LIGHT_GREEN, 11,
                     False, -72,
                 ))
 
@@ -1532,7 +1575,7 @@ class GameView(arcade.View):
                 lines.append((
                     f"bm_{i}_own",
                     f"Owner: {own_str}",
-                    arcade.color.GOLD, 10,
+                    arcade.color.GOLD, 11,
                     False, -88,
                 ))
 
@@ -1560,7 +1603,7 @@ class GameView(arcade.View):
                     t = arcade.Text(
                         desc, cx, top_y - 108,
                         arcade.color.LIGHT_GRAY,
-                        font_size=9,
+                        font_size=11,
                         font_name="Tahoma",
                         anchor_x="center",
                         anchor_y="top",
