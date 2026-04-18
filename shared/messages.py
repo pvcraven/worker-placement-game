@@ -91,6 +91,11 @@ class ChooseIntrigueTargetRequest(BaseModel):
     target_player_id: str
 
 
+class QuestRewardChoiceRequest(BaseModel):
+    action: Literal["quest_reward_choice"] = "quest_reward_choice"
+    choice_id: str
+
+
 class ReconnectRequest(BaseModel):
     action: Literal["reconnect"] = "reconnect"
     game_code: str
@@ -119,6 +124,7 @@ ClientMessage = Annotated[
         CancelQuestSelectionRequest,
         ReassignWorkerRequest,
         ChooseIntrigueTargetRequest,
+        QuestRewardChoiceRequest,
         ReconnectRequest,
         PingRequest,
     ],
@@ -215,7 +221,17 @@ class QuestCompletedResponse(BaseModel):
     contract_id: str
     contract_name: str
     victory_points_earned: int
+    resources_spent: dict
     bonus_resources: dict
+    drawn_intrigue: list[dict] = Field(
+        default_factory=list,
+    )
+    drawn_quests: list[dict] = Field(
+        default_factory=list,
+    )
+    building_granted: dict | None = None
+    pending_choice: bool = False
+    next_player_id: str | None = None
 
 
 class ContractAcquiredResponse(BaseModel):
@@ -322,6 +338,26 @@ class PlayerReconnectedResponse(BaseModel):
     player_name: str
 
 
+class QuestRewardChoicePromptResponse(BaseModel):
+    action: Literal["quest_reward_choice_prompt"] = (
+        "quest_reward_choice_prompt"
+    )
+    reward_type: str
+    available_choices: list[dict]
+    quest_name: str
+
+
+class QuestRewardChoiceResolvedResponse(BaseModel):
+    action: Literal["quest_reward_choice_resolved"] = (
+        "quest_reward_choice_resolved"
+    )
+    player_id: str
+    reward_type: str
+    choice: dict
+    quest_name: str
+    next_player_id: str | None = None
+
+
 class TurnTimeoutResponse(BaseModel):
     action: Literal["turn_timeout"] = "turn_timeout"
     player_id: str
@@ -355,6 +391,8 @@ ServerMessage = Annotated[
         PongResponse,
         PlayerDisconnectedResponse,
         PlayerReconnectedResponse,
+        QuestRewardChoicePromptResponse,
+        QuestRewardChoiceResolvedResponse,
         TurnTimeoutResponse,
     ],
     Field(discriminator="action"),

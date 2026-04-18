@@ -23,6 +23,8 @@ from shared.messages import (
     PlacementCancelledResponse,
     QuestCardSelectedResponse,
     QuestCompletedResponse,
+    QuestRewardChoicePromptResponse,
+    QuestRewardChoiceResolvedResponse,
     QuestsResetResponse,
     ReassignmentPhaseStartResponse,
     RoundEndResponse,
@@ -67,6 +69,112 @@ def _draw_from_quest_deck(state) -> ContractCard | None:
     if state.board.quest_deck:
         return state.board.quest_deck.pop(0)
     return None
+
+
+def _draw_intrigue_cards(state, player, count: int) -> list[dict]:
+    drawn: list[dict] = []
+    for _ in range(count):
+        if state.board.intrigue_deck:
+            c = state.board.intrigue_deck.pop(0)
+            player.intrigue_hand.append(c)
+            drawn.append(c.model_dump())
+    return drawn
+
+
+def _grant_random_building(state, player) -> dict | None:
+    if not state.board.building_deck:
+        return None
+    tile = state.board.building_deck.pop(0)
+    return _assign_building_to_player(state, player, tile)
+
+
+def _assign_building_to_player(
+    state, player, tile,
+) -> dict:
+    """Assign a building tile to a player, creating an action space."""
+    lot_idx = len(state.board.constructed_buildings)
+    space_id = f"building_{tile.id}"
+    space = ActionSpace(
+        space_id=space_id,
+        name=tile.name,
+        space_type="building",
+        owner_id=player.player_id,
+        building_tile=tile,
+        reward=tile.visitor_reward,
+        reward_special=tile.visitor_reward_special,
+    )
+    state.board.action_spaces[space_id] = space
+    state.board.constructed_buildings.append(space_id)
+    if tile in state.board.face_up_buildings:
+        state.board.face_up_buildings.remove(tile)
+        if state.board.building_deck:
+            new_b = state.board.building_deck.pop(0)
+            new_b.accumulated_vp = 1
+            state.board.face_up_buildings.append(new_b)
+    player.victory_points += tile.accumulated_vp
+    return {
+        "building_id": tile.id,
+        "building_name": tile.name,
+        "lot_index": lot_idx,
+        "space_id": space_id,
+        "visitor_reward": tile.visitor_reward.model_dump(),
+        "owner_bonus": tile.owner_bonus.model_dump(),
+        "accumulated_vp": tile.accumulated_vp,
+    }
+
+
+async def _send_quest_reward_prompt(
+    server, state, player, contract,
+) -> None:
+    """Send interactive reward prompt to the player."""
+    if (
+        contract.reward_draw_quests > 0
+        and contract.reward_quest_draw_mode == "choose"
+    ):
+        choices = [
+            q.model_dump()
+            for q in state.board.face_up_quests
+        ]
+        if choices:
+            state.pending_quest_reward = {
+                "player_id": player.player_id,
+                "reward_type": "choose_quest",
+                "available_choices": choices,
+                "quest_name": contract.name,
+                "contract": contract.model_dump(),
+            }
+            await server.send_to_player(
+                player.player_id,
+                QuestRewardChoicePromptResponse(
+                    reward_type="choose_quest",
+                    available_choices=choices,
+                    quest_name=contract.name,
+                ),
+            )
+            return
+
+    if contract.reward_building == "market_choice":
+        choices = [
+            b.model_dump()
+            for b in state.board.face_up_buildings
+        ]
+        if choices:
+            state.pending_quest_reward = {
+                "player_id": player.player_id,
+                "reward_type": "choose_building",
+                "available_choices": choices,
+                "quest_name": contract.name,
+                "contract": contract.model_dump(),
+            }
+            await server.send_to_player(
+                player.player_id,
+                QuestRewardChoicePromptResponse(
+                    reward_type="choose_building",
+                    available_choices=choices,
+                    quest_name=contract.name,
+                ),
+            )
+            return
 
 
 async def _advance_turn(server: GameServer, state) -> None:
@@ -703,21 +811,20 @@ def _resolve_intrigue_effect(state, player, card) -> dict:
         count = ev.get("count", 1)
         drawn = []
         for _ in range(count):
-            if state.board.contract_deck:
-                c = state.board.contract_deck.pop(0)
+            c = _draw_from_quest_deck(state)
+            if c:
                 player.contract_hand.append(c)
                 drawn.append(c.id)
         effect["details"] = {"drawn": drawn}
 
     elif card.effect_type == "draw_intrigue":
         count = ev.get("count", 1)
-        drawn = []
-        for _ in range(count):
-            if state.board.intrigue_deck:
-                c = state.board.intrigue_deck.pop(0)
-                player.intrigue_hand.append(c)
-                drawn.append(c.id)
-        effect["details"] = {"drawn": drawn}
+        drawn_cards = _draw_intrigue_cards(
+            state, player, count,
+        )
+        effect["details"] = {
+            "drawn": [d["id"] for d in drawn_cards],
+        }
 
     elif card.effect_type in ("steal_resources", "opponent_loses"):
         # For targeted effects, handled via choose_intrigue_target
@@ -796,10 +903,43 @@ async def handle_complete_quest(
             round_number=state.current_round,
             player_id=player.player_id,
             action="complete_quest",
-            details=f"{player.display_name} completed '{contract.name}' for {contract.victory_points} VP",
+            details=(
+                f"{player.display_name} completed"
+                f" '{contract.name}'"
+                f" for {contract.victory_points} VP"
+            ),
             timestamp=time.time(),
         )
     )
+
+    drawn_intrigue = _draw_intrigue_cards(
+        state, player, contract.reward_draw_intrigue,
+    )
+    drawn_quests: list[dict] = []
+    if (
+        contract.reward_draw_quests > 0
+        and contract.reward_quest_draw_mode == "random"
+    ):
+        for _ in range(contract.reward_draw_quests):
+            c = _draw_from_quest_deck(state)
+            if c:
+                player.contract_hand.append(c)
+                drawn_quests.append(c.model_dump())
+
+    building_granted = None
+    if contract.reward_building == "random_draw":
+        building_granted = _grant_random_building(
+            state, player,
+        )
+
+    has_interactive = False
+    if (
+        contract.reward_draw_quests > 0
+        and contract.reward_quest_draw_mode == "choose"
+    ):
+        has_interactive = True
+    if contract.reward_building == "market_choice":
+        has_interactive = True
 
     await server.broadcast_to_game(
         state.game_code,
@@ -808,7 +948,108 @@ async def handle_complete_quest(
             contract_id=contract.id,
             contract_name=contract.name,
             victory_points_earned=contract.victory_points,
-            bonus_resources=contract.bonus_resources.model_dump(),
+            resources_spent=contract.cost.model_dump(),
+            bonus_resources=(
+                contract.bonus_resources.model_dump()
+            ),
+            drawn_intrigue=drawn_intrigue,
+            drawn_quests=drawn_quests,
+            building_granted=building_granted,
+            pending_choice=has_interactive,
+            next_player_id=None if has_interactive else None,
+        ),
+    )
+
+    if has_interactive:
+        await _send_quest_reward_prompt(
+            server, state, player, contract,
+        )
+
+
+async def handle_quest_reward_choice(
+    server: GameServer, conn: ClientConnection, msg,
+) -> None:
+    state = _get_game_state(server, conn)
+    if state is None:
+        await conn.send_error(
+            "GAME_NOT_FOUND", "Not in a game.",
+        )
+        return
+
+    pending = state.pending_quest_reward
+    if not pending:
+        await conn.send_error(
+            "INVALID_ACTION", "No pending reward choice.",
+        )
+        return
+
+    if pending["player_id"] != conn.player_id:
+        await conn.send_error(
+            "NOT_YOUR_TURN", "Not your reward to choose.",
+        )
+        return
+
+    player = state.get_player(conn.player_id)
+    if player is None:
+        await conn.send_error(
+            "INVALID_ACTION", "Player not found.",
+        )
+        return
+
+    choice_id = msg.choice_id
+    reward_type = pending["reward_type"]
+    quest_name = pending["quest_name"]
+
+    if reward_type == "choose_quest":
+        chosen = None
+        for q in state.board.face_up_quests:
+            if q.id == choice_id:
+                chosen = q
+                break
+        if chosen is None:
+            await conn.send_error(
+                "INVALID_ACTION",
+                "Quest not in face-up quests.",
+            )
+            return
+        state.board.face_up_quests.remove(chosen)
+        player.contract_hand.append(chosen)
+        replacement = _draw_from_quest_deck(state)
+        if replacement:
+            state.board.face_up_quests.append(replacement)
+        choice_dict = chosen.model_dump()
+
+    elif reward_type == "choose_building":
+        chosen_b = None
+        for b in state.board.face_up_buildings:
+            if b.id == choice_id:
+                chosen_b = b
+                break
+        if chosen_b is None:
+            await conn.send_error(
+                "INVALID_ACTION",
+                "Building not in market.",
+            )
+            return
+        choice_dict = _assign_building_to_player(
+            state, player, chosen_b,
+        )
+    else:
+        await conn.send_error(
+            "INVALID_ACTION",
+            f"Unknown reward type: {reward_type}",
+        )
+        return
+
+    state.pending_quest_reward = None
+
+    await server.broadcast_to_game(
+        state.game_code,
+        QuestRewardChoiceResolvedResponse(
+            player_id=player.player_id,
+            reward_type=reward_type,
+            choice=choice_dict,
+            quest_name=quest_name,
         ),
     )
 

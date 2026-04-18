@@ -125,16 +125,49 @@ class CardRenderer:
             anchor_x="center", anchor_y="center", bold=True,
         ).draw()
 
+        # Bonus rewards line
+        bonus_parts = []
+        bonus_res = card.get("bonus_resources", {})
+        for rk, rs in mapping.items():
+            rv = bonus_res.get(rk, 0)
+            if rv > 0:
+                bonus_parts.append(f"+{rv}{rs}")
+        di = card.get("reward_draw_intrigue", 0)
+        if di:
+            bonus_parts.append(f"+{di} Intrigue")
+        dq = card.get("reward_draw_quests", 0)
+        if dq:
+            mode = card.get(
+                "reward_quest_draw_mode", "random",
+            )
+            tag = "Choose" if mode == "choose" else "Draw"
+            bonus_parts.append(f"{tag} {dq} Quest")
+        rb = card.get("reward_building")
+        if rb == "market_choice":
+            bonus_parts.append("Free Building")
+        elif rb == "random_draw":
+            bonus_parts.append("Random Building")
+        if bonus_parts:
+            bonus_str = " ".join(bonus_parts)
+            cls._text(
+                f"{cache_key}_bonus", bonus_str,
+                cx, cy - 18,
+                arcade.color.LIGHT_GREEN, 10,
+                anchor_x="center",
+                anchor_y="center",
+            ).draw()
+
         # Description
         desc = card.get("description", "")
         if len(desc) > 120:
             desc = desc[:118] + ".."
         cls._text(
             f"{cache_key}_desc", desc,
-            cx, cy - 45,
+            cx, cy - 50,
             arcade.color.WHITE, 10,
             anchor_x="center", anchor_y="center",
-            multiline=True, width=_CARD_WIDTH - 16, align="center",
+            multiline=True, width=_CARD_WIDTH - 16,
+            align="center",
         ).draw()
 
     @classmethod

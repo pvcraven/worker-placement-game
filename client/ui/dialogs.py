@@ -165,6 +165,78 @@ class BuildingPurchaseDialog:
             self._widget = None
 
 
+class RewardChoiceDialog:
+    """A modal dialog for choosing a reward (quest or building)."""
+
+    def __init__(
+        self,
+        title: str,
+        description: str,
+        choices: list[dict],
+        label_key: str,
+        on_select: callable,
+        ui_manager: arcade.gui.UIManager,
+    ) -> None:
+        self.title = title
+        self.description = description
+        self.choices = choices
+        self.label_key = label_key
+        self.on_select = on_select
+        self.ui = ui_manager
+        self._widget = None
+
+    def show(
+        self, window_width: float, window_height: float,
+    ) -> None:
+        v_box = arcade.gui.UIBoxLayout(space_between=8)
+
+        label = arcade.gui.UILabel(
+            text=self.title,
+            font_size=16,
+            text_color=arcade.color.WHITE,
+        )
+        v_box.add(label)
+
+        desc = arcade.gui.UILabel(
+            text=self.description,
+            font_size=13,
+            text_color=arcade.color.LIGHT_GRAY,
+        )
+        v_box.add(desc)
+
+        for item in self.choices[:8]:
+            name = item.get(self.label_key, "???")
+            item_id = item.get("id", "")
+            btn = arcade.gui.UIFlatButton(
+                text=name, width=320, height=35,
+            )
+            btn.on_click = (
+                lambda event, cid=item_id: self._select(cid)
+            )
+            v_box.add(btn)
+
+        bg_box = v_box.with_padding(
+            all=20,
+        ).with_background(color=(0, 0, 0))
+        self._widget = self.ui.add(
+            arcade.gui.UIAnchorLayout(),
+        )
+        self._widget.add(
+            child=bg_box,
+            anchor_x="center",
+            anchor_y="center",
+        )
+
+    def _select(self, choice_id: str) -> None:
+        self.hide()
+        self.on_select(choice_id)
+
+    def hide(self) -> None:
+        if self._widget:
+            self.ui.remove(self._widget)
+            self._widget = None
+
+
 class ConfirmDialog:
     """A simple yes/no confirmation dialog."""
 

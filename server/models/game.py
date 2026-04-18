@@ -159,6 +159,7 @@ class GameState(BaseModel):
     host_player_id: str | None = None
     created_at: float = 0.0
     last_activity: float = 0.0
+    pending_quest_reward: dict | None = None
 
     def get_player(self, player_id: str) -> Player | None:
         for p in self.players:
