@@ -17,14 +17,19 @@ from shared.messages import (
     BonusWorkersGrantedResponse,
     BuildingMarketUpdateResponse,
     ContractAcquiredResponse,
+    ErrorResponse,
     FaceUpQuestsUpdatedResponse,
     FinalPlayerScore,
     GameOverResponse,
+    IntrigueEffectResolvedResponse,
+    IntrigueTargetPromptResponse,
     PlacementCancelledResponse,
     QuestCardSelectedResponse,
     QuestCompletedResponse,
+    QuestCompletionPromptResponse,
     QuestRewardChoicePromptResponse,
     QuestRewardChoiceResolvedResponse,
+    QuestSkippedResponse,
     QuestsResetResponse,
     ReassignmentPhaseStartResponse,
     RoundEndResponse,
@@ -177,6 +182,61 @@ async def _send_quest_reward_prompt(
             return
 
 
+async def _check_quest_completion(
+    server: GameServer, state,
+) -> None:
+    """Check if current player can complete quests."""
+    player = state.current_player()
+    if player is None or player.completed_quest_this_turn:
+        await _advance_turn(server, state)
+        await _notify_turn_if_needed(
+            server, state, player,
+        )
+        return
+
+    completable = [
+        c for c in player.contract_hand
+        if player.resources.can_afford(c.cost)
+    ]
+    if not completable:
+        await _advance_turn(server, state)
+        await _notify_turn_if_needed(
+            server, state, player,
+        )
+        return
+
+    state.waiting_for_quest_completion = True
+    await server.send_to_player(
+        player.player_id,
+        QuestCompletionPromptResponse(
+            completable_quests=[
+                c.model_dump() for c in completable
+            ],
+        ),
+    )
+
+
+async def _notify_turn_if_needed(
+    server: GameServer, state, prev_player,
+) -> None:
+    """After auto-advance, tell clients whose turn."""
+    if state.phase != GamePhase.PLACEMENT:
+        return
+    nxt = state.current_player()
+    if not nxt:
+        return
+    pid = (
+        prev_player.player_id if prev_player else ""
+    )
+    await server.broadcast_to_game(
+        state.game_code,
+        QuestSkippedResponse(
+            player_id=pid,
+            next_player_id=nxt.player_id,
+        ),
+    )
+
+
 async def _advance_turn(server: GameServer, state) -> None:
     """Advance to the next player, or trigger end-of-round if all placed."""
     state.last_activity = time.time()
@@ -222,6 +282,8 @@ async def _end_placement_phase(server: GameServer, state) -> None:
 async def _end_round(server: GameServer, state) -> None:
     """End the current round: return workers, advance round."""
     round_number = state.current_round
+
+    state.waiting_for_quest_completion = False
 
     # Return all workers
     for player in state.players:
@@ -286,6 +348,7 @@ async def _end_round(server: GameServer, state) -> None:
             round_number=round_number,
             next_round=state.current_round,
             first_player_id=state.board.first_player_id,
+            turn_order=state.turn_order,
             bonus_worker_granted=bonus_granted,
         ),
     )
@@ -489,10 +552,6 @@ async def handle_place_worker(
         )
     )
 
-    # Determine next player
-    await _advance_turn(server, state)
-    next_player = state.current_player()
-
     await server.broadcast_to_game(
         state.game_code,
         WorkerPlacedResponse(
@@ -500,9 +559,11 @@ async def handle_place_worker(
             space_id=msg.space_id,
             reward_granted=reward_dict,
             owner_bonus=owner_bonus_info,
-            next_player_id=next_player.player_id if next_player else None,
+            next_player_id=None,
         ),
     )
+
+    await _check_quest_completion(server, state)
 
 
 # ------------------------------------------------------------------
@@ -681,9 +742,6 @@ async def handle_select_quest_card(
         )
     )
 
-    await _advance_turn(server, state)
-    next_player = state.current_player()
-
     await server.broadcast_to_game(
         state.game_code,
         QuestCardSelectedResponse(
@@ -691,11 +749,7 @@ async def handle_select_quest_card(
             card_id=card.id,
             spot_number=spot_num,
             bonus_reward=bonus_reward,
-            next_player_id=(
-                next_player.player_id
-                if next_player
-                else None
-            ),
+            next_player_id=None,
         ),
     )
     await server.broadcast_to_game(
@@ -707,6 +761,11 @@ async def handle_select_quest_card(
             ]
         ),
     )
+
+    if state.phase == GamePhase.REASSIGNMENT:
+        await _finish_reassignment(server, state)
+    else:
+        await _check_quest_completion(server, state)
 
 
 # ------------------------------------------------------------------
@@ -737,6 +796,18 @@ async def handle_place_worker_backstage(
     if card is None:
         await conn.send_error("NO_INTRIGUE_CARDS", "You don't have that intrigue card.")
         return
+
+    # Validate sequential filling
+    for s in state.board.backstage_slots:
+        if (
+            s.slot_number < msg.slot_number
+            and s.occupied_by is None
+        ):
+            await conn.send_error(
+                "INVALID_ACTION",
+                f"Backstage {s.slot_number} must be filled first.",
+            )
+            return
 
     # Validate slot
     slot = None
@@ -772,8 +843,76 @@ async def handle_place_worker_backstage(
         )
     )
 
-    await _advance_turn(server, state)
-    next_player = state.current_player()
+    # Handle choose_opponent targeting
+    if effect_details.get("pending"):
+        eligible = effect_details.get("eligible_targets", [])
+
+        if not eligible:
+            # No valid targets — auto-unwind backstage placement
+            slot.occupied_by = None
+            slot.intrigue_card_played = None
+            player.intrigue_hand.append(card)
+            player.available_workers += 1
+
+            await server.send_to_player(
+                player.player_id,
+                ErrorResponse(
+                    code="NO_VALID_TARGETS",
+                    message="No opponents have the targeted resources.",
+                ),
+            )
+            await server.broadcast_to_game(
+                state.game_code,
+                PlacementCancelledResponse(
+                    player_id=player.player_id,
+                    space_id=f"backstage_slot_{msg.slot_number}",
+                    next_player_id=None,
+                ),
+            )
+            return
+
+        # Save pending state for target selection
+        state.pending_intrigue_target = {
+            "player_id": player.player_id,
+            "slot_number": msg.slot_number,
+            "intrigue_card": card.model_dump(),
+            "effect_type": card.effect_type,
+            "effect_value": card.effect_value,
+            "eligible_targets": eligible,
+        }
+
+        # Build target info with resource counts
+        target_info = []
+        for tid in eligible:
+            tp = state.get_player(tid)
+            if tp:
+                target_info.append({
+                    "player_id": tp.player_id,
+                    "player_name": tp.display_name,
+                    "resources": tp.resources.model_dump(),
+                })
+
+        await server.send_to_player(
+            player.player_id,
+            IntrigueTargetPromptResponse(
+                effect_type=card.effect_type,
+                effect_value=card.effect_value,
+                eligible_targets=target_info,
+            ),
+        )
+
+        # Broadcast worker placed (but no effect yet)
+        await server.broadcast_to_game(
+            state.game_code,
+            WorkerPlacedBackstageResponse(
+                player_id=player.player_id,
+                slot_number=msg.slot_number,
+                intrigue_card={"id": card.id, "name": card.name, "description": card.description},
+                intrigue_effect={"type": card.effect_type, "details": {}, "pending": True},
+                next_player_id=None,
+            ),
+        )
+        return
 
     await server.broadcast_to_game(
         state.game_code,
@@ -782,9 +921,11 @@ async def handle_place_worker_backstage(
             slot_number=msg.slot_number,
             intrigue_card={"id": card.id, "name": card.name, "description": card.description},
             intrigue_effect=effect_details,
-            next_player_id=next_player.player_id if next_player else None,
+            next_player_id=None,
         ),
     )
+
+    await _check_quest_completion(server, state)
 
 
 def _resolve_intrigue_effect(state, player, card) -> dict:
@@ -814,8 +955,8 @@ def _resolve_intrigue_effect(state, player, card) -> dict:
             c = _draw_from_quest_deck(state)
             if c:
                 player.contract_hand.append(c)
-                drawn.append(c.id)
-        effect["details"] = {"drawn": drawn}
+                drawn.append(c.model_dump())
+        effect["details"] = {"drawn": drawn, "count": len(drawn)}
 
     elif card.effect_type == "draw_intrigue":
         count = ev.get("count", 1)
@@ -823,18 +964,27 @@ def _resolve_intrigue_effect(state, player, card) -> dict:
             state, player, count,
         )
         effect["details"] = {
-            "drawn": [d["id"] for d in drawn_cards],
+            "drawn": drawn_cards,
+            "count": len(drawn_cards),
         }
 
     elif card.effect_type in ("steal_resources", "opponent_loses"):
-        # For targeted effects, handled via choose_intrigue_target
-        # For now, if target is "self" or "all", handle directly
         if card.effect_target == "all":
             reward = ResourceCost(**{k: v for k, v in ev.items() if k in ResourceCost.model_fields})
             for p in state.players:
                 p.resources.add(reward)
             effect["details"] = {"all_gained": reward.model_dump()}
-        # "choose_opponent" targeting is deferred to handle_choose_intrigue_target
+        elif card.effect_target == "choose_opponent":
+            resource_keys = [k for k in ev if k in ResourceCost.model_fields and ev[k] > 0]
+            eligible = []
+            for p in state.players:
+                if p.player_id == player.player_id:
+                    continue
+                has_resource = any(getattr(p.resources, k, 0) > 0 for k in resource_keys)
+                if has_resource:
+                    eligible.append(p.player_id)
+            effect["pending"] = True
+            effect["eligible_targets"] = eligible
 
     elif card.effect_type == "all_players_gain":
         reward = ResourceCost(**{k: v for k, v in ev.items() if k in ResourceCost.model_fields})
@@ -941,6 +1091,9 @@ async def handle_complete_quest(
     if contract.reward_building == "market_choice":
         has_interactive = True
 
+    if state.waiting_for_quest_completion:
+        state.waiting_for_quest_completion = False
+
     await server.broadcast_to_game(
         state.game_code,
         QuestCompletedResponse(
@@ -956,13 +1109,21 @@ async def handle_complete_quest(
             drawn_quests=drawn_quests,
             building_granted=building_granted,
             pending_choice=has_interactive,
-            next_player_id=None if has_interactive else None,
+            next_player_id=None,
         ),
     )
 
     if has_interactive:
         await _send_quest_reward_prompt(
             server, state, player, contract,
+        )
+        return
+
+    await _advance_turn(server, state)
+    next_player = state.current_player()
+    if next_player:
+        await _notify_turn_if_needed(
+            server, state, player,
         )
 
 
@@ -979,13 +1140,15 @@ async def handle_quest_reward_choice(
     pending = state.pending_quest_reward
     if not pending:
         await conn.send_error(
-            "INVALID_ACTION", "No pending reward choice.",
+            "INVALID_ACTION",
+            "No pending reward choice.",
         )
         return
 
     if pending["player_id"] != conn.player_id:
         await conn.send_error(
-            "NOT_YOUR_TURN", "Not your reward to choose.",
+            "NOT_YOUR_TURN",
+            "Not your reward to choose.",
         )
         return
 
@@ -1016,7 +1179,9 @@ async def handle_quest_reward_choice(
         player.contract_hand.append(chosen)
         replacement = _draw_from_quest_deck(state)
         if replacement:
-            state.board.face_up_quests.append(replacement)
+            state.board.face_up_quests.append(
+                replacement,
+            )
         choice_dict = chosen.model_dump()
 
     elif reward_type == "choose_building":
@@ -1050,6 +1215,79 @@ async def handle_quest_reward_choice(
             reward_type=reward_type,
             choice=choice_dict,
             quest_name=quest_name,
+        ),
+    )
+
+    await _advance_turn(server, state)
+    await _notify_turn_if_needed(
+        server, state, player,
+    )
+
+
+async def handle_skip_quest_completion(
+    server: GameServer,
+    conn: ClientConnection,
+    msg,
+) -> None:
+    state = _get_game_state(server, conn)
+    if state is None:
+        await conn.send_error(
+            "GAME_NOT_FOUND", "Not in a game.",
+        )
+        return
+
+    if not state.waiting_for_quest_completion:
+        await conn.send_error(
+            "INVALID_ACTION",
+            "No quest completion to skip.",
+        )
+        return
+
+    player = state.get_player(conn.player_id)
+    if player is None:
+        await conn.send_error(
+            "INVALID_ACTION", "Player not found.",
+        )
+        return
+
+    current = state.current_player()
+    if (
+        current is None
+        or current.player_id != conn.player_id
+    ):
+        await conn.send_error(
+            "NOT_YOUR_TURN",
+            "It is not your turn.",
+        )
+        return
+
+    state.waiting_for_quest_completion = False
+
+    state.game_log.append(
+        GameLog(
+            round_number=state.current_round,
+            player_id=player.player_id,
+            action="skip_quest_completion",
+            details=(
+                f"{player.display_name}"
+                " skipped quest completion"
+            ),
+            timestamp=time.time(),
+        )
+    )
+
+    await _advance_turn(server, state)
+    next_player = state.current_player()
+
+    await server.broadcast_to_game(
+        state.game_code,
+        QuestSkippedResponse(
+            player_id=player.player_id,
+            next_player_id=(
+                next_player.player_id
+                if next_player
+                else None
+            ),
         ),
     )
 
@@ -1331,14 +1569,17 @@ async def handle_cancel_quest_selection(
 
     freed_space_id = None
     for sid, sp in state.board.action_spaces.items():
-        if sp.space_type == "garage" and sp.occupied_by == player.player_id:
-            sp.occupied_by = None
-            player.available_workers += 1
+        if (
+            sp.space_type == "garage"
+            and sp.occupied_by == player.player_id
+        ):
             freed_space_id = sid
             break
 
     if freed_space_id is None:
-        await conn.send_error("INVALID_ACTION", "No garage spot to cancel.")
+        await conn.send_error(
+            "INVALID_ACTION", "No garage spot to cancel.",
+        )
         return
 
     state.game_log.append(
@@ -1346,10 +1587,23 @@ async def handle_cancel_quest_selection(
             round_number=state.current_round,
             player_id=player.player_id,
             action="cancel_quest_selection",
-            details=f"{player.display_name} cancelled quest selection",
+            details=(
+                f"{player.display_name}"
+                " cancelled quest selection"
+            ),
             timestamp=time.time(),
         )
     )
+
+    if state.phase == GamePhase.REASSIGNMENT:
+        # During reassignment, keep worker placed, skip quest
+        await _finish_reassignment(server, state)
+        return
+
+    # Normal placement: unwind the placement
+    sp = state.board.action_spaces[freed_space_id]
+    sp.occupied_by = None
+    player.available_workers += 1
 
     next_player = state.current_player()
     await server.broadcast_to_game(
@@ -1358,7 +1612,9 @@ async def handle_cancel_quest_selection(
             player_id=player.player_id,
             space_id=freed_space_id,
             next_player_id=(
-                next_player.player_id if next_player else None
+                next_player.player_id
+                if next_player
+                else None
             ),
         ),
     )
@@ -1403,6 +1659,11 @@ async def handle_reassign_worker(
         await conn.send_error("INVALID_ACTION", "Not your worker in that slot.")
         return
 
+    # Cannot reassign to a Backstage slot
+    if msg.target_space_id.startswith("backstage_slot_"):
+        await conn.send_error("INVALID_ACTION", "Cannot reassign to a Backstage slot.")
+        return
+
     # Validate target space
     target = state.board.action_spaces.get(msg.target_space_id)
     if target is None:
@@ -1410,11 +1671,6 @@ async def handle_reassign_worker(
         return
     if target.occupied_by is not None:
         await conn.send_error("SPACE_OCCUPIED", "Target space is occupied.")
-        return
-
-    # Cannot reassign back to Garage
-    if target.space_type == "garage":
-        await conn.send_error("INVALID_ACTION", "Cannot reassign to The Garage.")
         return
 
     player = state.get_player(conn.player_id)
@@ -1467,7 +1723,11 @@ async def handle_reassign_worker(
             round_number=state.current_round,
             player_id=player.player_id,
             action="reassign_worker",
-            details=f"{player.display_name} reassigned from Backstage slot {msg.slot_number} to {target.name}",
+            details=(
+                f"{player.display_name} reassigned from"
+                f" Backstage slot {msg.slot_number}"
+                f" to {target.name}"
+            ),
             timestamp=time.time(),
         )
     )
@@ -1483,7 +1743,39 @@ async def handle_reassign_worker(
         ),
     )
 
-    # If no more slots to reassign, end the round
+    # Handle Garage spots: pause for quest selection
+    if target.space_type == "garage":
+        special = target.reward_special
+        if special == "reset_quests":
+            state.board.quest_discard.extend(
+                state.board.face_up_quests
+            )
+            state.board.face_up_quests.clear()
+            for _ in range(FACE_UP_QUEST_COUNT):
+                card = _draw_from_quest_deck(state)
+                if card:
+                    state.board.face_up_quests.append(card)
+            await server.broadcast_to_game(
+                state.game_code,
+                FaceUpQuestsUpdatedResponse(
+                    face_up_quests=[
+                        q.model_dump()
+                        for q in state.board.face_up_quests
+                    ]
+                ),
+            )
+        elif special in (
+            "quest_and_coins", "quest_and_intrigue",
+        ):
+            return
+
+    await _finish_reassignment(server, state)
+
+
+async def _finish_reassignment(
+    server: GameServer, state,
+) -> None:
+    """Continue reassignment queue or end the round."""
     if not state.reassignment_queue:
         await _end_round(server, state)
 
@@ -1502,12 +1794,117 @@ async def handle_choose_intrigue_target(
         await conn.send_error("GAME_NOT_FOUND", "Not in a game.")
         return
 
+    pending = state.pending_intrigue_target
+    if pending is None or pending["player_id"] != conn.player_id:
+        await conn.send_error("INVALID_ACTION", "No pending intrigue target.")
+        return
+
+    if msg.target_player_id not in pending["eligible_targets"]:
+        await conn.send_error("INVALID_ACTION", "Invalid target player.")
+        return
+
     player = state.get_player(conn.player_id)
     target = state.get_player(msg.target_player_id)
     if player is None or target is None:
         await conn.send_error("INVALID_ACTION", "Invalid player.")
         return
 
-    # For now, targeted effects are resolved inline during Backstage placement
-    # This handler is a placeholder for future interactive targeting flows
-    await conn.send_error("INVALID_ACTION", "Targeting not implemented yet.")
+    effect_type = pending["effect_type"]
+    effect_value = pending["effect_value"]
+    resources_affected = {}
+
+    resource_keys = [k for k in effect_value if k in ResourceCost.model_fields and effect_value[k] > 0]
+
+    for k in resource_keys:
+        amount = effect_value[k]
+        target_has = getattr(target.resources, k, 0)
+        actual = min(amount, target_has)
+        if actual > 0:
+            setattr(target.resources, k, target_has - actual)
+            if effect_type == "steal_resources":
+                current = getattr(player.resources, k, 0)
+                setattr(player.resources, k, current + actual)
+            resources_affected[k] = actual
+
+    state.pending_intrigue_target = None
+
+    state.game_log.append(
+        GameLog(
+            round_number=state.current_round,
+            player_id=player.player_id,
+            action="intrigue_effect",
+            details=(
+                f"{player.display_name} used {effect_type} on"
+                f" {target.display_name}: {resources_affected}"
+            ),
+            timestamp=time.time(),
+        )
+    )
+
+    await server.broadcast_to_game(
+        state.game_code,
+        IntrigueEffectResolvedResponse(
+            player_id=player.player_id,
+            target_player_id=target.player_id,
+            effect_type=effect_type,
+            resources_affected=resources_affected,
+        ),
+    )
+
+    await _check_quest_completion(server, state)
+
+
+async def handle_cancel_intrigue_target(
+    server: GameServer, conn: ClientConnection, msg
+) -> None:
+    """Handle cancel of intrigue target selection — unwind backstage placement."""
+    state = _get_game_state(server, conn)
+    if state is None:
+        await conn.send_error("GAME_NOT_FOUND", "Not in a game.")
+        return
+
+    pending = state.pending_intrigue_target
+    if pending is None or pending["player_id"] != conn.player_id:
+        await conn.send_error("INVALID_ACTION", "No pending intrigue target.")
+        return
+
+    player = state.get_player(conn.player_id)
+    if player is None:
+        await conn.send_error("INVALID_ACTION", "Player not found.")
+        return
+
+    slot_number = pending["slot_number"]
+
+    # Unwind: clear backstage slot
+    for s in state.board.backstage_slots:
+        if s.slot_number == slot_number:
+            s.occupied_by = None
+            s.intrigue_card_played = None
+            break
+
+    # Return intrigue card to hand
+    from shared.card_models import IntrigueCard
+    card = IntrigueCard(**pending["intrigue_card"])
+    player.intrigue_hand.append(card)
+    player.available_workers += 1
+
+    state.pending_intrigue_target = None
+
+    state.game_log.append(
+        GameLog(
+            round_number=state.current_round,
+            player_id=player.player_id,
+            action="cancel_intrigue_target",
+            details=f"{player.display_name} cancelled intrigue target selection",
+            timestamp=time.time(),
+        )
+    )
+
+    await server.broadcast_to_game(
+        state.game_code,
+        PlacementCancelledResponse(
+            player_id=player.player_id,
+            space_id=f"backstage_slot_{slot_number}",
+            next_player_id=None,
+        ),
+    )

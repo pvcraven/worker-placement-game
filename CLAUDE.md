@@ -27,8 +27,8 @@ Python 3.12+: Follow standard conventions
 
 ## Recent Changes
 - 008-quest-reward-expansion: Added Python 3.12+ + Arcade (client UI), websockets (networking), Pydantic (data validation/serialization)
-- 004-board-layout-optimization: Added Python 3.12+ + Arcade (client UI), websockets (networking), Pydantic (data validation/serialization)
-- 003-building-purchase: Added Python 3.12+ + Arcade (client UI), websockets (networking), Pydantic (data validation/serialization)
+- 007-intrigue-targeting-player-overview: Added Python 3.12+ + Arcade (client UI), websockets (networking), Pydantic (data validation/serialization)
+- 006-backstage-intrigue-mechanics: Added Python 3.12+ + Arcade (client UI), websockets (networking), Pydantic (data validation/serialization)
 
 
 <!-- MANUAL ADDITIONS START -->

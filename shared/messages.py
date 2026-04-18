@@ -80,6 +80,14 @@ class CancelQuestSelectionRequest(BaseModel):
     action: Literal["cancel_quest_selection"] = "cancel_quest_selection"
 
 
+class CancelIntrigueTargetRequest(BaseModel):
+    action: Literal["cancel_intrigue_target"] = "cancel_intrigue_target"
+
+
+class SkipQuestCompletionRequest(BaseModel):
+    action: Literal["skip_quest_completion"] = "skip_quest_completion"
+
+
 class ReassignWorkerRequest(BaseModel):
     action: Literal["reassign_worker"] = "reassign_worker"
     slot_number: int = Field(ge=1, le=3)
@@ -122,9 +130,11 @@ ClientMessage = Annotated[
         PurchaseBuildingRequest,
         CancelPurchaseBuildingRequest,
         CancelQuestSelectionRequest,
+        SkipQuestCompletionRequest,
         ReassignWorkerRequest,
         ChooseIntrigueTargetRequest,
         QuestRewardChoiceRequest,
+        CancelIntrigueTargetRequest,
         ReconnectRequest,
         PingRequest,
     ],
@@ -234,6 +244,19 @@ class QuestCompletedResponse(BaseModel):
     next_player_id: str | None = None
 
 
+class QuestCompletionPromptResponse(BaseModel):
+    action: Literal["quest_completion_prompt"] = (
+        "quest_completion_prompt"
+    )
+    completable_quests: list[dict]
+
+
+class QuestSkippedResponse(BaseModel):
+    action: Literal["quest_skipped"] = "quest_skipped"
+    player_id: str
+    next_player_id: str | None = None
+
+
 class ContractAcquiredResponse(BaseModel):
     action: Literal["contract_acquired"] = "contract_acquired"
     player_id: str
@@ -286,6 +309,7 @@ class RoundEndResponse(BaseModel):
     round_number: int
     next_round: int
     first_player_id: str | None
+    turn_order: list[str] = Field(default_factory=list)
     bonus_worker_granted: bool = False
 
 
@@ -358,6 +382,25 @@ class QuestRewardChoiceResolvedResponse(BaseModel):
     next_player_id: str | None = None
 
 
+class IntrigueTargetPromptResponse(BaseModel):
+    action: Literal["intrigue_target_prompt"] = (
+        "intrigue_target_prompt"
+    )
+    effect_type: str
+    effect_value: dict
+    eligible_targets: list[dict]
+
+
+class IntrigueEffectResolvedResponse(BaseModel):
+    action: Literal["intrigue_effect_resolved"] = (
+        "intrigue_effect_resolved"
+    )
+    player_id: str
+    target_player_id: str
+    effect_type: str
+    resources_affected: dict
+
+
 class TurnTimeoutResponse(BaseModel):
     action: Literal["turn_timeout"] = "turn_timeout"
     player_id: str
@@ -377,6 +420,8 @@ ServerMessage = Annotated[
         FaceUpQuestsUpdatedResponse,
         QuestsResetResponse,
         QuestCompletedResponse,
+        QuestCompletionPromptResponse,
+        QuestSkippedResponse,
         ContractAcquiredResponse,
         PlacementCancelledResponse,
         BuildingConstructedResponse,
@@ -394,6 +439,8 @@ ServerMessage = Annotated[
         QuestRewardChoicePromptResponse,
         QuestRewardChoiceResolvedResponse,
         TurnTimeoutResponse,
+        IntrigueTargetPromptResponse,
+        IntrigueEffectResolvedResponse,
     ],
     Field(discriminator="action"),
 ]

@@ -128,6 +128,10 @@ class GameServer:
         from server.game_engine import handle_complete_quest
         await handle_complete_quest(self, conn, msg)
 
+    async def _handle_skip_quest_completion(self, conn, msg) -> None:
+        from server.game_engine import handle_skip_quest_completion
+        await handle_skip_quest_completion(self, conn, msg)
+
     async def _handle_acquire_contract(self, conn, msg) -> None:
         from server.game_engine import handle_acquire_contract
         await handle_acquire_contract(self, conn, msg)
@@ -159,6 +163,10 @@ class GameServer:
     async def _handle_quest_reward_choice(self, conn, msg) -> None:
         from server.game_engine import handle_quest_reward_choice
         await handle_quest_reward_choice(self, conn, msg)
+
+    async def _handle_cancel_intrigue_target(self, conn, msg) -> None:
+        from server.game_engine import handle_cancel_intrigue_target
+        await handle_cancel_intrigue_target(self, conn, msg)
 
     # ------------------------------------------------------------------
     # System handlers
