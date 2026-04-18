@@ -99,6 +99,11 @@ class ChooseIntrigueTargetRequest(BaseModel):
     target_player_id: str
 
 
+class QuestRewardChoiceRequest(BaseModel):
+    action: Literal["quest_reward_choice"] = "quest_reward_choice"
+    choice_id: str
+
+
 class ReconnectRequest(BaseModel):
     action: Literal["reconnect"] = "reconnect"
     game_code: str
@@ -128,6 +133,7 @@ ClientMessage = Annotated[
         SkipQuestCompletionRequest,
         ReassignWorkerRequest,
         ChooseIntrigueTargetRequest,
+        QuestRewardChoiceRequest,
         CancelIntrigueTargetRequest,
         ReconnectRequest,
         PingRequest,
@@ -227,11 +233,21 @@ class QuestCompletedResponse(BaseModel):
     victory_points_earned: int
     resources_spent: dict
     bonus_resources: dict
+    drawn_intrigue: list[dict] = Field(
+        default_factory=list,
+    )
+    drawn_quests: list[dict] = Field(
+        default_factory=list,
+    )
+    building_granted: dict | None = None
+    pending_choice: bool = False
     next_player_id: str | None = None
 
 
 class QuestCompletionPromptResponse(BaseModel):
-    action: Literal["quest_completion_prompt"] = "quest_completion_prompt"
+    action: Literal["quest_completion_prompt"] = (
+        "quest_completion_prompt"
+    )
     completable_quests: list[dict]
 
 
@@ -346,15 +362,39 @@ class PlayerReconnectedResponse(BaseModel):
     player_name: str
 
 
+class QuestRewardChoicePromptResponse(BaseModel):
+    action: Literal["quest_reward_choice_prompt"] = (
+        "quest_reward_choice_prompt"
+    )
+    reward_type: str
+    available_choices: list[dict]
+    quest_name: str
+
+
+class QuestRewardChoiceResolvedResponse(BaseModel):
+    action: Literal["quest_reward_choice_resolved"] = (
+        "quest_reward_choice_resolved"
+    )
+    player_id: str
+    reward_type: str
+    choice: dict
+    quest_name: str
+    next_player_id: str | None = None
+
+
 class IntrigueTargetPromptResponse(BaseModel):
-    action: Literal["intrigue_target_prompt"] = "intrigue_target_prompt"
+    action: Literal["intrigue_target_prompt"] = (
+        "intrigue_target_prompt"
+    )
     effect_type: str
     effect_value: dict
     eligible_targets: list[dict]
 
 
 class IntrigueEffectResolvedResponse(BaseModel):
-    action: Literal["intrigue_effect_resolved"] = "intrigue_effect_resolved"
+    action: Literal["intrigue_effect_resolved"] = (
+        "intrigue_effect_resolved"
+    )
     player_id: str
     target_player_id: str
     effect_type: str
@@ -396,6 +436,8 @@ ServerMessage = Annotated[
         PongResponse,
         PlayerDisconnectedResponse,
         PlayerReconnectedResponse,
+        QuestRewardChoicePromptResponse,
+        QuestRewardChoiceResolvedResponse,
         TurnTimeoutResponse,
         IntrigueTargetPromptResponse,
         IntrigueEffectResolvedResponse,

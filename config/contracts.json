@@ -659,6 +659,88 @@
       "bonus_resources": {"guitarists": 1, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
       "is_plot_quest": false,
       "ongoing_benefit_description": null
+    },
+    {
+      "id": "contract_jazz_013",
+      "name": "Backstage Pass Connections",
+      "description": "Use your jazz connections to gain insider access and recruit new talent.",
+      "genre": "jazz",
+      "cost": {"guitarists": 1, "bass_players": 1, "drummers": 1, "singers": 0, "coins": 0},
+      "victory_points": 4,
+      "bonus_resources": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
+      "reward_draw_intrigue": 1,
+      "reward_draw_quests": 0,
+      "is_plot_quest": false,
+      "ongoing_benefit_description": null
+    },
+    {
+      "id": "contract_pop_013",
+      "name": "A&R Talent Scout",
+      "description": "Scout new talent at open mic nights — discover the next big contract.",
+      "genre": "pop",
+      "cost": {"guitarists": 0, "bass_players": 0, "drummers": 1, "singers": 1, "coins": 1},
+      "victory_points": 3,
+      "bonus_resources": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
+      "reward_draw_intrigue": 0,
+      "reward_draw_quests": 1,
+      "reward_quest_draw_mode": "random",
+      "is_plot_quest": false,
+      "ongoing_benefit_description": null
+    },
+    {
+      "id": "contract_soul_013",
+      "name": "Soul Kitchen Open Call",
+      "description": "Host an open call at the Soul Kitchen — pick the best act from those who show up.",
+      "genre": "soul",
+      "cost": {"guitarists": 1, "bass_players": 0, "drummers": 1, "singers": 1, "coins": 0},
+      "victory_points": 5,
+      "bonus_resources": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
+      "reward_draw_intrigue": 0,
+      "reward_draw_quests": 1,
+      "reward_quest_draw_mode": "choose",
+      "is_plot_quest": false,
+      "ongoing_benefit_description": null
+    },
+    {
+      "id": "contract_funk_013",
+      "name": "Funk Syndicate Network",
+      "description": "Build a network of funk musicians and pick up intrigue along the way.",
+      "genre": "funk",
+      "cost": {"guitarists": 1, "bass_players": 1, "drummers": 0, "singers": 0, "coins": 1},
+      "victory_points": 4,
+      "bonus_resources": {"guitarists": 1, "bass_players": 0, "drummers": 0, "singers": 1, "coins": 0},
+      "reward_draw_intrigue": 1,
+      "reward_draw_quests": 0,
+      "is_plot_quest": false,
+      "ongoing_benefit_description": null
+    },
+    {
+      "id": "contract_rock_013",
+      "name": "Venue Acquisition Deal",
+      "description": "Complete this deal to acquire a venue — choose from available real estate.",
+      "genre": "rock",
+      "cost": {"guitarists": 2, "bass_players": 1, "drummers": 1, "singers": 1, "coins": 2},
+      "victory_points": 8,
+      "bonus_resources": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
+      "reward_draw_intrigue": 0,
+      "reward_draw_quests": 0,
+      "reward_building": "market_choice",
+      "is_plot_quest": false,
+      "ongoing_benefit_description": null
+    },
+    {
+      "id": "contract_jazz_014",
+      "name": "Mystery Venue Lottery",
+      "description": "Win a mystery venue in a charity lottery — you never know what you'll get!",
+      "genre": "jazz",
+      "cost": {"guitarists": 1, "bass_players": 1, "drummers": 1, "singers": 1, "coins": 1},
+      "victory_points": 6,
+      "bonus_resources": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
+      "reward_draw_intrigue": 0,
+      "reward_draw_quests": 0,
+      "reward_building": "random_draw",
+      "is_plot_quest": false,
+      "ongoing_benefit_description": null
     }
   ]
 }

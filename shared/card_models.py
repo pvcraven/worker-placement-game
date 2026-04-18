@@ -24,7 +24,13 @@ class ContractCard(BaseModel):
     genre: Genre
     cost: ResourceCost
     victory_points: int = Field(ge=0)
-    bonus_resources: ResourceCost = Field(default_factory=ResourceCost)
+    bonus_resources: ResourceCost = Field(
+        default_factory=ResourceCost,
+    )
+    reward_draw_intrigue: int = 0
+    reward_draw_quests: int = 0
+    reward_quest_draw_mode: str = "random"
+    reward_building: str | None = None
     is_plot_quest: bool = False
     ongoing_benefit_description: str | None = None
 

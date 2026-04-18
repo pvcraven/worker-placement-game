@@ -166,64 +166,154 @@ class BuildingPurchaseDialog:
 
 
 class QuestCompletionDialog:
-    """A modal dialog for completing a quest at end of turn."""
+    """A modal dialog for completing a quest at end of turn.
+
+    Renders actual quest cards via CardRenderer and handles
+    click detection on them directly.
+    """
 
     def __init__(
         self,
         quests: list[dict],
         on_select: callable,
         on_skip: callable,
-        ui_manager: arcade.gui.UIManager,
     ) -> None:
-        self.quests = quests
+        self.quests = quests[:6]
         self.on_select = on_select
         self.on_skip = on_skip
-        self.ui = ui_manager
-        self._widget = None
+        self._card_rects: list[
+            tuple[str, float, float, float, float]
+        ] = []
+        self._skip_rect = (0.0, 0.0, 0.0, 0.0)
+        self._visible = False
 
-    def show(self, window_width: float, window_height: float) -> None:
-        v_box = arcade.gui.UIBoxLayout(space_between=8)
+    def show(
+        self, window_width: float, window_height: float,
+    ) -> None:
+        self._visible = True
+        self._ww = window_width
+        self._wh = window_height
+        self._layout()
 
-        label = arcade.gui.UILabel(
-            text="Complete a Quest?",
-            font_size=16,
-            text_color=arcade.color.WHITE,
+    def _layout(self) -> None:
+        from client.ui.card_renderer import (
+            _CARD_HEIGHT,
+            _CARD_WIDTH,
         )
-        v_box.add(label)
-
-        h_box = arcade.gui.UIBoxLayout(vertical=False, space_between=12)
-
-        for quest in self.quests[:6]:
+        self._card_rects.clear()
+        n = len(self.quests)
+        spacing = _CARD_WIDTH + 15
+        total_w = n * spacing
+        panel_h = _CARD_HEIGHT + 120
+        pcx = self._ww / 2
+        pcy = self._wh / 2
+        card_cy = pcy + 20
+        start_x = (
+            pcx - total_w / 2 + _CARD_WIDTH / 2
+        )
+        for i, quest in enumerate(self.quests):
+            cx = start_x + i * spacing
             qid = quest.get("id", "")
-            name = quest.get("name", "???")
-            vp = quest.get("victory_points", 0)
-            cost = quest.get("cost", {})
-            cost_parts = []
-            for key, sym in [("guitarists", "G"), ("bass_players", "B"),
-                             ("drummers", "D"), ("singers", "S"), ("coins", "$")]:
-                val = cost.get(key, 0)
-                if val > 0:
-                    cost_parts.append(f"{val}{sym}")
-            cost_str = " ".join(cost_parts) if cost_parts else "Free"
-
-            btn_text = f"{name}\n{vp} VP | Cost: {cost_str}"
-            btn = arcade.gui.UIFlatButton(
-                text=btn_text, width=180, height=70,
-            )
-            btn.on_click = lambda event, cid=qid: self._select(cid)
-            h_box.add(btn)
-
-        v_box.add(h_box)
-
-        skip_btn = arcade.gui.UIFlatButton(text="Skip", width=280, height=35)
-        skip_btn.on_click = lambda event: self._do_skip()
-        v_box.add(skip_btn)
-
-        bg_box = v_box.with_padding(all=20).with_background(
-            color=(0, 0, 0)
+            left = cx - _CARD_WIDTH / 2
+            bottom = card_cy - _CARD_HEIGHT / 2
+            self._card_rects.append((
+                qid, left, bottom,
+                _CARD_WIDTH, _CARD_HEIGHT,
+            ))
+        skip_w, skip_h = 200, 35
+        self._skip_rect = (
+            pcx - skip_w / 2,
+            pcy - panel_h / 2 + 15,
+            skip_w,
+            skip_h,
         )
-        self._widget = self.ui.add(arcade.gui.UIAnchorLayout())
-        self._widget.add(child=bg_box, anchor_x="center", anchor_y="center")
+
+    def draw(self, ww: float, wh: float) -> None:
+        if not self._visible:
+            return
+        from client.ui.card_renderer import (
+            CardRenderer,
+            _CARD_HEIGHT,
+            _CARD_WIDTH,
+        )
+        n = len(self.quests)
+        spacing = _CARD_WIDTH + 15
+        total_w = n * spacing
+        panel_w = total_w + 40
+        panel_h = _CARD_HEIGHT + 120
+        pcx = ww / 2
+        pcy = wh / 2
+        arcade.draw_rect_filled(
+            arcade.rect.XYWH(pcx, pcy, panel_w, panel_h),
+            (0, 0, 0),
+        )
+        arcade.draw_rect_outline(
+            arcade.rect.XYWH(pcx, pcy, panel_w, panel_h),
+            arcade.color.WHITE,
+            border_width=1,
+        )
+        arcade.Text(
+            "Complete a Quest?",
+            pcx, pcy + panel_h / 2 - 22,
+            arcade.color.WHITE,
+            font_size=16,
+            font_name="Tahoma",
+            anchor_x="center",
+            anchor_y="center",
+        ).draw()
+
+        start_x = pcx - total_w / 2 + _CARD_WIDTH / 2
+        cy = pcy + 20
+        for i, quest in enumerate(self.quests):
+            cx = start_x + i * spacing
+            CardRenderer.draw_contract(
+                cx, cy, quest,
+                highlight=False,
+                cache_key=f"qcd_{i}",
+            )
+
+        # Skip button
+        sl, sb, sw, sh = self._skip_rect
+        scx = sl + sw / 2
+        scy = sb + sh / 2
+        arcade.draw_rect_filled(
+            arcade.rect.XYWH(scx, scy, sw, sh),
+            (60, 60, 60),
+        )
+        arcade.draw_rect_outline(
+            arcade.rect.XYWH(scx, scy, sw, sh),
+            arcade.color.WHITE,
+            border_width=1,
+        )
+        arcade.Text(
+            "Skip", scx, scy,
+            arcade.color.WHITE,
+            font_size=14,
+            font_name="Tahoma",
+            anchor_x="center",
+            anchor_y="center",
+        ).draw()
+
+    def handle_click(
+        self, x: float, y: float,
+    ) -> bool:
+        if not self._visible:
+            return False
+        for qid, left, bottom, cw, ch in self._card_rects:
+            if (
+                left <= x <= left + cw
+                and bottom <= y <= bottom + ch
+            ):
+                self._select(qid)
+                return True
+        sl, sb, sw, sh = self._skip_rect
+        if (
+            sl <= x <= sl + sw
+            and sb <= y <= sb + sh
+        ):
+            self._do_skip()
+            return True
+        return False
 
     def _select(self, contract_id: str) -> None:
         self.hide()
@@ -234,13 +324,84 @@ class QuestCompletionDialog:
         self.on_skip()
 
     def hide(self) -> None:
+        self._visible = False
+        self._card_rects.clear()
+
+
+class RewardChoiceDialog:
+    """A modal dialog for choosing a reward (quest or building)."""
+
+    def __init__(
+        self,
+        title: str,
+        description: str,
+        choices: list[dict],
+        label_key: str,
+        on_select: callable,
+        ui_manager: arcade.gui.UIManager,
+    ) -> None:
+        self.title = title
+        self.description = description
+        self.choices = choices
+        self.label_key = label_key
+        self.on_select = on_select
+        self.ui = ui_manager
+        self._widget = None
+
+    def show(
+        self, window_width: float, window_height: float,
+    ) -> None:
+        v_box = arcade.gui.UIBoxLayout(space_between=8)
+
+        label = arcade.gui.UILabel(
+            text=self.title,
+            font_size=16,
+            text_color=arcade.color.WHITE,
+        )
+        v_box.add(label)
+
+        desc = arcade.gui.UILabel(
+            text=self.description,
+            font_size=13,
+            text_color=arcade.color.LIGHT_GRAY,
+        )
+        v_box.add(desc)
+
+        for item in self.choices[:8]:
+            name = item.get(self.label_key, "???")
+            item_id = item.get("id", "")
+            btn = arcade.gui.UIFlatButton(
+                text=name, width=320, height=35,
+            )
+            btn.on_click = (
+                lambda event, cid=item_id: self._select(cid)
+            )
+            v_box.add(btn)
+
+        bg_box = v_box.with_padding(
+            all=20,
+        ).with_background(color=(0, 0, 0))
+        self._widget = self.ui.add(
+            arcade.gui.UIAnchorLayout(),
+        )
+        self._widget.add(
+            child=bg_box,
+            anchor_x="center",
+            anchor_y="center",
+        )
+
+    def _select(self, choice_id: str) -> None:
+        self.hide()
+        self.on_select(choice_id)
+
+    def hide(self) -> None:
         if self._widget:
             self.ui.remove(self._widget)
             self._widget = None
 
 
 class PlayerTargetDialog:
-    """A modal dialog for selecting a target opponent for intrigue effects."""
+    """A modal dialog for selecting a target opponent."""
 
     def __init__(
         self,
@@ -259,7 +420,9 @@ class PlayerTargetDialog:
         self.ui = ui_manager
         self._widget = None
 
-    def show(self, window_width: float, window_height: float) -> None:
+    def show(
+        self, window_width: float, window_height: float,
+    ) -> None:
         v_box = arcade.gui.UIBoxLayout(space_between=8)
 
         label = arcade.gui.UILabel(
@@ -282,8 +445,10 @@ class PlayerTargetDialog:
             res = target.get("resources", {})
             res_parts = []
             mapping = [
-                ("guitarists", "G"), ("bass_players", "B"),
-                ("drummers", "D"), ("singers", "S"),
+                ("guitarists", "G"),
+                ("bass_players", "B"),
+                ("drummers", "D"),
+                ("singers", "S"),
                 ("coins", "$"),
             ]
             for key, sym in mapping:
@@ -291,14 +456,17 @@ class PlayerTargetDialog:
                 if val > 0:
                     res_parts.append(f"{val}{sym}")
             res_str = (
-                " ".join(res_parts) if res_parts
+                " ".join(res_parts)
+                if res_parts
                 else "no resources"
             )
             btn_text = f"{name} ({res_str})"
             btn = arcade.gui.UIFlatButton(
                 text=btn_text, width=350, height=35,
             )
-            btn.on_click = lambda event, p=pid: self._select(p)
+            btn.on_click = (
+                lambda event, p=pid: self._select(p)
+            )
             v_box.add(btn)
 
         cancel_btn = arcade.gui.UIFlatButton(
@@ -307,11 +475,17 @@ class PlayerTargetDialog:
         cancel_btn.on_click = lambda event: self._cancel()
         v_box.add(cancel_btn)
 
-        bg_box = v_box.with_padding(all=20).with_background(
-            color=(0, 0, 0)
+        bg_box = v_box.with_padding(
+            all=20,
+        ).with_background(color=(0, 0, 0))
+        self._widget = self.ui.add(
+            arcade.gui.UIAnchorLayout(),
         )
-        self._widget = self.ui.add(arcade.gui.UIAnchorLayout())
-        self._widget.add(child=bg_box, anchor_x="center", anchor_y="center")
+        self._widget.add(
+            child=bg_box,
+            anchor_x="center",
+            anchor_y="center",
+        )
 
     def _select(self, player_id: str) -> None:
         self.hide()

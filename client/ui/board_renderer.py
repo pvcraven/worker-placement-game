@@ -311,8 +311,8 @@ class BoardRenderer:
         else:
             self._text(
                 f"space_{space_id}_name", name,
-                cx, cy + 12,
-                arcade.color.WHITE, 13,
+                cx, cy + 14,
+                arcade.color.WHITE, 14,
                 anchor_x="center", anchor_y="center",
                 bold=True,
             ).draw()
@@ -324,7 +324,7 @@ class BoardRenderer:
                 self._text(
                     f"space_{space_id}_reward", reward_str,
                     cx, cy - 14,
-                    arcade.color.LIGHT_GRAY, 11,
+                    arcade.color.WHITE, 14,
                     anchor_x="center", anchor_y="center",
                 ).draw()
 
@@ -358,7 +358,7 @@ class BoardRenderer:
                 f"space_{space_id}_cust",
                 f"Customer: {visitor_str}",
                 cx, cy + 2,
-                arcade.color.LIGHT_GREEN, 10,
+                arcade.color.LIGHT_GREEN, 12,
                 anchor_x="center", anchor_y="center",
             ).draw()
 
@@ -376,7 +376,7 @@ class BoardRenderer:
                 self._text(
                     f"space_{space_id}_own", label,
                     cx, cy - 14,
-                    arcade.color.GOLD, 10,
+                    arcade.color.GOLD, 12,
                     anchor_x="center", anchor_y="center",
                 ).draw()
 

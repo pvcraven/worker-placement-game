@@ -6,14 +6,14 @@ import arcade
 
 _GENRE_COLORS = {
     "jazz": (70, 130, 180),     # Steel blue
-    "pop": (255, 105, 180),     # Hot pink
+    "pop": (180, 60, 120),      # Dark pink
     "soul": (148, 103, 189),    # Purple
     "funk": (180, 110, 0),      # Dark amber
-    "rock": (220, 20, 60),      # Crimson
+    "rock": (150, 20, 40),      # Dark crimson
 }
 
 _CARD_WIDTH = 190
-_CARD_HEIGHT = 200
+_CARD_HEIGHT = 230
 
 
 class CardRenderer:
@@ -81,7 +81,7 @@ class CardRenderer:
             name = name[:18] + ".."
         cls._text(
             f"{cache_key}_name", name,
-            cx, cy + 78,
+            cx, cy + 96,
             arcade.color.WHITE, 13,
             anchor_x="center", anchor_y="center",
         ).draw()
@@ -89,7 +89,7 @@ class CardRenderer:
         # Genre tag
         cls._text(
             f"{cache_key}_genre", genre.upper(),
-            cx, cy + 62,
+            cx, cy + 78,
             arcade.color.WHITE, 11,
             anchor_x="center", anchor_y="center",
         ).draw()
@@ -111,7 +111,7 @@ class CardRenderer:
         cost_str = " ".join(cost_parts) if cost_parts else "Free"
         cls._text(
             f"{cache_key}_cost", f"Cost: {cost_str}",
-            cx, cy + 30,
+            cx, cy + 50,
             arcade.color.WHITE, 11,
             anchor_x="center", anchor_y="center",
         ).draw()
@@ -120,10 +120,44 @@ class CardRenderer:
         vp = card.get("victory_points", 0)
         cls._text(
             f"{cache_key}_vp", f"{vp} VP",
-            cx, cy + 2,
+            cx, cy + 22,
             arcade.color.YELLOW, 18,
             anchor_x="center", anchor_y="center", bold=True,
         ).draw()
+
+        # Bonus rewards line
+        bonus_parts = []
+        bonus_res = card.get("bonus_resources", {})
+        for rk, rs in mapping.items():
+            rv = bonus_res.get(rk, 0)
+            if rv > 0:
+                bonus_parts.append(f"+{rv}{rs}")
+        di = card.get("reward_draw_intrigue", 0)
+        if di:
+            bonus_parts.append(f"+{di} Intrigue")
+        dq = card.get("reward_draw_quests", 0)
+        if dq:
+            mode = card.get(
+                "reward_quest_draw_mode", "random",
+            )
+            tag = "Choose" if mode == "choose" else "Draw"
+            bonus_parts.append(f"{tag} {dq} Quest")
+        rb = card.get("reward_building")
+        if rb == "market_choice":
+            bonus_parts.append("Choose Free Building")
+        elif rb == "random_draw":
+            bonus_parts.append("Draw Free Building")
+        desc_top = cy - 6
+        if bonus_parts:
+            bonus_str = " ".join(bonus_parts)
+            cls._text(
+                f"{cache_key}_bonus", bonus_str,
+                cx, cy - 6,
+                arcade.color.WHITE, 12,
+                anchor_x="center",
+                anchor_y="center",
+            ).draw()
+            desc_top = cy - 22
 
         # Description
         desc = card.get("description", "")
@@ -131,10 +165,11 @@ class CardRenderer:
             desc = desc[:118] + ".."
         cls._text(
             f"{cache_key}_desc", desc,
-            cx, cy - 45,
-            arcade.color.WHITE, 10,
-            anchor_x="center", anchor_y="center",
-            multiline=True, width=_CARD_WIDTH - 16, align="center",
+            cx, desc_top,
+            arcade.color.WHITE, 11,
+            anchor_x="center", anchor_y="top",
+            multiline=True, width=_CARD_WIDTH - 16,
+            align="center",
         ).draw()
 
     @classmethod
@@ -166,14 +201,14 @@ class CardRenderer:
             name = name[:18] + ".."
         cls._text(
             f"{cache_key}_name", name,
-            cx, cy + 78,
+            cx, cy + 96,
             arcade.color.GREEN, 12,
             anchor_x="center", anchor_y="center", bold=True,
         ).draw()
 
         cls._text(
             f"{cache_key}_lbl", "INTRIGUE",
-            cx, cy + 62,
+            cx, cy + 78,
             arcade.color.LIGHT_GREEN, 11,
             anchor_x="center", anchor_y="center",
         ).draw()
@@ -184,7 +219,7 @@ class CardRenderer:
         cls._text(
             f"{cache_key}_desc", desc,
             cx, cy + 20,
-            arcade.color.WHITE, 10,
+            arcade.color.WHITE, 11,
             anchor_x="center", anchor_y="center",
             multiline=True, width=_CARD_WIDTH - 16,
             align="center",

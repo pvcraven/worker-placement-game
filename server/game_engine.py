@@ -27,6 +27,8 @@ from shared.messages import (
     QuestCardSelectedResponse,
     QuestCompletedResponse,
     QuestCompletionPromptResponse,
+    QuestRewardChoicePromptResponse,
+    QuestRewardChoiceResolvedResponse,
     QuestSkippedResponse,
     QuestsResetResponse,
     ReassignmentPhaseStartResponse,
@@ -74,12 +76,122 @@ def _draw_from_quest_deck(state) -> ContractCard | None:
     return None
 
 
-async def _check_quest_completion(server: GameServer, state) -> None:
-    """Check if current player can complete any quests; prompt or advance."""
+def _draw_intrigue_cards(state, player, count: int) -> list[dict]:
+    drawn: list[dict] = []
+    for _ in range(count):
+        if state.board.intrigue_deck:
+            c = state.board.intrigue_deck.pop(0)
+            player.intrigue_hand.append(c)
+            drawn.append(c.model_dump())
+    return drawn
+
+
+def _grant_random_building(state, player) -> dict | None:
+    if not state.board.building_deck:
+        return None
+    tile = state.board.building_deck.pop(0)
+    return _assign_building_to_player(state, player, tile)
+
+
+def _assign_building_to_player(
+    state, player, tile,
+) -> dict:
+    """Assign a building tile to a player, creating an action space."""
+    lot_idx = len(state.board.constructed_buildings)
+    space_id = f"building_{tile.id}"
+    space = ActionSpace(
+        space_id=space_id,
+        name=tile.name,
+        space_type="building",
+        owner_id=player.player_id,
+        building_tile=tile,
+        reward=tile.visitor_reward,
+        reward_special=tile.visitor_reward_special,
+    )
+    state.board.action_spaces[space_id] = space
+    state.board.constructed_buildings.append(space_id)
+    if tile in state.board.face_up_buildings:
+        state.board.face_up_buildings.remove(tile)
+        if state.board.building_deck:
+            new_b = state.board.building_deck.pop(0)
+            new_b.accumulated_vp = 1
+            state.board.face_up_buildings.append(new_b)
+    player.victory_points += tile.accumulated_vp
+    return {
+        "building_id": tile.id,
+        "building_name": tile.name,
+        "lot_index": lot_idx,
+        "space_id": space_id,
+        "visitor_reward": tile.visitor_reward.model_dump(),
+        "owner_bonus": tile.owner_bonus.model_dump(),
+        "accumulated_vp": tile.accumulated_vp,
+    }
+
+
+async def _send_quest_reward_prompt(
+    server, state, player, contract,
+) -> None:
+    """Send interactive reward prompt to the player."""
+    if (
+        contract.reward_draw_quests > 0
+        and contract.reward_quest_draw_mode == "choose"
+    ):
+        choices = [
+            q.model_dump()
+            for q in state.board.face_up_quests
+        ]
+        if choices:
+            state.pending_quest_reward = {
+                "player_id": player.player_id,
+                "reward_type": "choose_quest",
+                "available_choices": choices,
+                "quest_name": contract.name,
+                "contract": contract.model_dump(),
+            }
+            await server.send_to_player(
+                player.player_id,
+                QuestRewardChoicePromptResponse(
+                    reward_type="choose_quest",
+                    available_choices=choices,
+                    quest_name=contract.name,
+                ),
+            )
+            return
+
+    if contract.reward_building == "market_choice":
+        choices = [
+            b.model_dump()
+            for b in state.board.face_up_buildings
+        ]
+        if choices:
+            state.pending_quest_reward = {
+                "player_id": player.player_id,
+                "reward_type": "choose_building",
+                "available_choices": choices,
+                "quest_name": contract.name,
+                "contract": contract.model_dump(),
+            }
+            await server.send_to_player(
+                player.player_id,
+                QuestRewardChoicePromptResponse(
+                    reward_type="choose_building",
+                    available_choices=choices,
+                    quest_name=contract.name,
+                ),
+            )
+            return
+
+
+async def _check_quest_completion(
+    server: GameServer, state,
+) -> None:
+    """Check if current player can complete quests."""
     player = state.current_player()
     if player is None or player.completed_quest_this_turn:
         await _advance_turn(server, state)
-        await _notify_turn_if_needed(server, state, player)
+        await _notify_turn_if_needed(
+            server, state, player,
+        )
         return
 
     completable = [
@@ -88,14 +200,18 @@ async def _check_quest_completion(server: GameServer, state) -> None:
     ]
     if not completable:
         await _advance_turn(server, state)
-        await _notify_turn_if_needed(server, state, player)
+        await _notify_turn_if_needed(
+            server, state, player,
+        )
         return
 
     state.waiting_for_quest_completion = True
     await server.send_to_player(
         player.player_id,
         QuestCompletionPromptResponse(
-            completable_quests=[c.model_dump() for c in completable],
+            completable_quests=[
+                c.model_dump() for c in completable
+            ],
         ),
     )
 
@@ -103,13 +219,15 @@ async def _check_quest_completion(server: GameServer, state) -> None:
 async def _notify_turn_if_needed(
     server: GameServer, state, prev_player,
 ) -> None:
-    """After auto-advance, tell clients whose turn it is."""
+    """After auto-advance, tell clients whose turn."""
     if state.phase != GamePhase.PLACEMENT:
         return
     nxt = state.current_player()
     if not nxt:
         return
-    pid = prev_player.player_id if prev_player else ""
+    pid = (
+        prev_player.player_id if prev_player else ""
+    )
     await server.broadcast_to_game(
         state.game_code,
         QuestSkippedResponse(
@@ -842,13 +960,13 @@ def _resolve_intrigue_effect(state, player, card) -> dict:
 
     elif card.effect_type == "draw_intrigue":
         count = ev.get("count", 1)
-        drawn = []
-        for _ in range(count):
-            if state.board.intrigue_deck:
-                c = state.board.intrigue_deck.pop(0)
-                player.intrigue_hand.append(c)
-                drawn.append(c.model_dump())
-        effect["details"] = {"drawn": drawn, "count": len(drawn)}
+        drawn_cards = _draw_intrigue_cards(
+            state, player, count,
+        )
+        effect["details"] = {
+            "drawn": drawn_cards,
+            "count": len(drawn_cards),
+        }
 
     elif card.effect_type in ("steal_resources", "opponent_loses"):
         if card.effect_target == "all":
@@ -935,16 +1053,46 @@ async def handle_complete_quest(
             round_number=state.current_round,
             player_id=player.player_id,
             action="complete_quest",
-            details=f"{player.display_name} completed '{contract.name}' for {contract.victory_points} VP",
+            details=(
+                f"{player.display_name} completed"
+                f" '{contract.name}'"
+                f" for {contract.victory_points} VP"
+            ),
             timestamp=time.time(),
         )
     )
 
+    drawn_intrigue = _draw_intrigue_cards(
+        state, player, contract.reward_draw_intrigue,
+    )
+    drawn_quests: list[dict] = []
+    if (
+        contract.reward_draw_quests > 0
+        and contract.reward_quest_draw_mode == "random"
+    ):
+        for _ in range(contract.reward_draw_quests):
+            c = _draw_from_quest_deck(state)
+            if c:
+                player.contract_hand.append(c)
+                drawn_quests.append(c.model_dump())
+
+    building_granted = None
+    if contract.reward_building == "random_draw":
+        building_granted = _grant_random_building(
+            state, player,
+        )
+
+    has_interactive = False
+    if (
+        contract.reward_draw_quests > 0
+        and contract.reward_quest_draw_mode == "choose"
+    ):
+        has_interactive = True
+    if contract.reward_building == "market_choice":
+        has_interactive = True
+
     if state.waiting_for_quest_completion:
         state.waiting_for_quest_completion = False
-        await _advance_turn(server, state)
-
-    next_player = state.current_player()
 
     await server.broadcast_to_game(
         state.game_code,
@@ -954,32 +1102,163 @@ async def handle_complete_quest(
             contract_name=contract.name,
             victory_points_earned=contract.victory_points,
             resources_spent=contract.cost.model_dump(),
-            bonus_resources=contract.bonus_resources.model_dump(),
-            next_player_id=next_player.player_id if next_player else None,
+            bonus_resources=(
+                contract.bonus_resources.model_dump()
+            ),
+            drawn_intrigue=drawn_intrigue,
+            drawn_quests=drawn_quests,
+            building_granted=building_granted,
+            pending_choice=has_interactive,
+            next_player_id=None,
         ),
     )
 
+    if has_interactive:
+        await _send_quest_reward_prompt(
+            server, state, player, contract,
+        )
+        return
 
-async def handle_skip_quest_completion(
-    server: GameServer, conn: ClientConnection, msg
+    await _advance_turn(server, state)
+    next_player = state.current_player()
+    if next_player:
+        await _notify_turn_if_needed(
+            server, state, player,
+        )
+
+
+async def handle_quest_reward_choice(
+    server: GameServer, conn: ClientConnection, msg,
 ) -> None:
     state = _get_game_state(server, conn)
     if state is None:
-        await conn.send_error("GAME_NOT_FOUND", "Not in a game.")
+        await conn.send_error(
+            "GAME_NOT_FOUND", "Not in a game.",
+        )
         return
 
-    if not state.waiting_for_quest_completion:
-        await conn.send_error("INVALID_ACTION", "No quest completion to skip.")
+    pending = state.pending_quest_reward
+    if not pending:
+        await conn.send_error(
+            "INVALID_ACTION",
+            "No pending reward choice.",
+        )
+        return
+
+    if pending["player_id"] != conn.player_id:
+        await conn.send_error(
+            "NOT_YOUR_TURN",
+            "Not your reward to choose.",
+        )
         return
 
     player = state.get_player(conn.player_id)
     if player is None:
-        await conn.send_error("INVALID_ACTION", "Player not found.")
+        await conn.send_error(
+            "INVALID_ACTION", "Player not found.",
+        )
+        return
+
+    choice_id = msg.choice_id
+    reward_type = pending["reward_type"]
+    quest_name = pending["quest_name"]
+
+    if reward_type == "choose_quest":
+        chosen = None
+        for q in state.board.face_up_quests:
+            if q.id == choice_id:
+                chosen = q
+                break
+        if chosen is None:
+            await conn.send_error(
+                "INVALID_ACTION",
+                "Quest not in face-up quests.",
+            )
+            return
+        state.board.face_up_quests.remove(chosen)
+        player.contract_hand.append(chosen)
+        replacement = _draw_from_quest_deck(state)
+        if replacement:
+            state.board.face_up_quests.append(
+                replacement,
+            )
+        choice_dict = chosen.model_dump()
+
+    elif reward_type == "choose_building":
+        chosen_b = None
+        for b in state.board.face_up_buildings:
+            if b.id == choice_id:
+                chosen_b = b
+                break
+        if chosen_b is None:
+            await conn.send_error(
+                "INVALID_ACTION",
+                "Building not in market.",
+            )
+            return
+        choice_dict = _assign_building_to_player(
+            state, player, chosen_b,
+        )
+    else:
+        await conn.send_error(
+            "INVALID_ACTION",
+            f"Unknown reward type: {reward_type}",
+        )
+        return
+
+    state.pending_quest_reward = None
+
+    await server.broadcast_to_game(
+        state.game_code,
+        QuestRewardChoiceResolvedResponse(
+            player_id=player.player_id,
+            reward_type=reward_type,
+            choice=choice_dict,
+            quest_name=quest_name,
+        ),
+    )
+
+    await _advance_turn(server, state)
+    await _notify_turn_if_needed(
+        server, state, player,
+    )
+
+
+async def handle_skip_quest_completion(
+    server: GameServer,
+    conn: ClientConnection,
+    msg,
+) -> None:
+    state = _get_game_state(server, conn)
+    if state is None:
+        await conn.send_error(
+            "GAME_NOT_FOUND", "Not in a game.",
+        )
+        return
+
+    if not state.waiting_for_quest_completion:
+        await conn.send_error(
+            "INVALID_ACTION",
+            "No quest completion to skip.",
+        )
+        return
+
+    player = state.get_player(conn.player_id)
+    if player is None:
+        await conn.send_error(
+            "INVALID_ACTION", "Player not found.",
+        )
         return
 
     current = state.current_player()
-    if current is None or current.player_id != conn.player_id:
-        await conn.send_error("NOT_YOUR_TURN", "It is not your turn.")
+    if (
+        current is None
+        or current.player_id != conn.player_id
+    ):
+        await conn.send_error(
+            "NOT_YOUR_TURN",
+            "It is not your turn.",
+        )
         return
 
     state.waiting_for_quest_completion = False
@@ -989,7 +1268,10 @@ async def handle_skip_quest_completion(
             round_number=state.current_round,
             player_id=player.player_id,
             action="skip_quest_completion",
-            details=f"{player.display_name} skipped quest completion",
+            details=(
+                f"{player.display_name}"
+                " skipped quest completion"
+            ),
             timestamp=time.time(),
         )
     )
@@ -1001,7 +1283,11 @@ async def handle_skip_quest_completion(
         state.game_code,
         QuestSkippedResponse(
             player_id=player.player_id,
-            next_player_id=next_player.player_id if next_player else None,
+            next_player_id=(
+                next_player.player_id
+                if next_player
+                else None
+            ),
         ),
     )
 

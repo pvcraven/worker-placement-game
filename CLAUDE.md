@@ -1,6 +1,6 @@
 # Worker Placement Game Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-04-17
+Auto-generated from all feature plans. Last updated: 2026-04-18
 
 ## Active Technologies
 - Python 3.12+ + Arcade (client UI), websockets (networking), Pydantic (validation) (002-garage-quest-display)
@@ -26,8 +26,8 @@ cd src && pytest && ruff check .
 Python 3.12+: Follow standard conventions
 
 ## Recent Changes
+- 008-quest-reward-expansion: Added Python 3.12+ + Arcade (client UI), websockets (networking), Pydantic (data validation/serialization)
 - 007-intrigue-targeting-player-overview: Added Python 3.12+ + Arcade (client UI), websockets (networking), Pydantic (data validation/serialization)
-- 006-backstage-intrigue-mechanics: Added Python 3.12+ + Arcade (client UI), websockets (networking), Pydantic (data validation/serialization)
 - 006-backstage-intrigue-mechanics: Added Python 3.12+ + Arcade (client UI), websockets (networking), Pydantic (data validation/serialization)
 
 

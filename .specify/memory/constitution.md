@@ -1,50 +1,155 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+  Sync Impact Report
+  Version change: 0.0.0 (template) → 1.0.0
+  Modified principles: N/A (initial population)
+  Added sections:
+    - Principle 1: Arcade Rendering Standards
+    - Principle 2: Pydantic Data Modeling
+    - Principle 3: Client-Server Separation
+    - Principle 4: Test-Driven Game Logic
+    - Principle 5: Simplicity First
+    - Section: Technology Stack
+    - Section: Development Workflow
+    - Governance
+  Removed sections: None
+  Templates requiring updates:
+    ✅ plan-template.md — no changes needed (dynamic Constitution Check)
+    ✅ spec-template.md — no changes needed (generic)
+    ✅ tasks-template.md — no changes needed (generic)
+  Follow-up TODOs: None
+-->
+
+# Record Label Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Arcade Rendering Standards
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+All client-side rendering MUST use `arcade.Text` for text display
+and `ShapeElementList` for shape-based graphics.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+- Code MUST NOT call `arcade.draw_text()` or any primitive draw
+  functions (`draw_rectangle_filled`, `draw_circle_filled`, etc.).
+- All text elements MUST be created as `arcade.Text` instances,
+  cached and reused across frames.
+- All geometric shapes MUST be composed into `ShapeElementList`
+  objects for batch rendering.
+- Sprites and sprite lists remain the preferred approach for
+  image-based rendering.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+**Rationale**: Primitive draw calls rebuild GPU state every frame,
+causing poor performance. `arcade.Text` and `ShapeElementList`
+cache GPU buffers and render efficiently at scale.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### II. Pydantic Data Modeling
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+All structured data that crosses boundaries (network, config,
+persistence) MUST be defined as Pydantic models.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+- Raw `dict` usage MUST be replaced with typed Pydantic models
+  when the dict carries more than two keys or is passed between
+  modules.
+- Shared models between client and server MUST live in the
+  `shared/` package.
+- Config files (JSON) MUST be loaded and validated through
+  Pydantic models.
+- Network messages MUST be serialized/deserialized via Pydantic's
+  `model_dump()` / `model_validate()`.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+**Rationale**: Pydantic provides runtime validation, clear schemas,
+and IDE-friendly type hints — eliminating a class of bugs caused by
+untyped dicts and ad-hoc serialization.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### III. Client-Server Separation
+
+The game MUST maintain strict separation between client (Arcade UI),
+server (game engine), and shared (models/messages).
+
+- Game rules and state mutations MUST live exclusively in
+  `server/`.
+- The client MUST NOT modify game state directly; it sends
+  messages and renders state received from the server.
+- All data structures shared between client and server MUST
+  reside in `shared/`.
+- The server MUST be runnable headlessly without any Arcade
+  dependency.
+
+**Rationale**: Clean separation enables headless testing, prevents
+UI logic from corrupting game state, and keeps the shared protocol
+as the single source of truth.
+
+### IV. Test-Driven Game Logic
+
+Server-side game logic MUST have automated test coverage.
+
+- New game rules, state transitions, and validation logic MUST
+  have corresponding pytest tests.
+- Tests MUST run via `pytest` from the project root.
+- Tests MUST NOT depend on the Arcade library or a running
+  client.
+- Code quality MUST be verified with `ruff check .`.
+
+**Rationale**: Game logic bugs are hard to reproduce manually.
+Automated tests catch rule violations and state corruption early.
+
+### V. Simplicity First
+
+Implementations MUST favor the simplest solution that meets
+the current requirement.
+
+- YAGNI: do not build abstractions for hypothetical future
+  features.
+- Prefer flat, readable code over clever patterns.
+- New dependencies MUST be justified by a concrete need, not
+  speculative convenience.
+- In-memory game state on the server is sufficient until a
+  persistence requirement is specified.
+
+**Rationale**: Premature abstraction increases cognitive load and
+maintenance cost without delivering user-facing value.
+
+## Technology Stack
+
+- **Language**: Python 3.12+
+- **Client UI**: Arcade library (local source at
+  `C:\Users\PaCra\Projects\arcade`)
+- **Networking**: websockets (async, JSON messages)
+- **Data Validation**: Pydantic v2
+- **Testing**: pytest + ruff
+- **Environment**: uv for dependency management
+- **Config Format**: JSON files in `config/`
+
+## Development Workflow
+
+- Run tests and linting before committing: `cd src && pytest &&
+  ruff check .`
+- Feature work happens on named branches
+  (`###-feature-name`).
+- Specs live in `specs/###-feature-name/`.
+- Commit after each logical unit of work.
+- Server and client are started in separate terminals for
+  manual testing.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution is the authoritative guide for all development
+decisions in the Record Label project. When a proposed change
+conflicts with a principle above, the principle takes precedence
+unless the constitution is formally amended.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Amendment procedure**:
+
+1. Propose the change with rationale.
+2. Update this document with the new or modified principle.
+3. Increment the version per semantic versioning:
+   - MAJOR: principle removed or redefined incompatibly.
+   - MINOR: new principle or material expansion.
+   - PATCH: wording clarification or typo fix.
+4. Update `LAST_AMENDED_DATE`.
+5. Verify consistency with templates in `.specify/templates/`.
+
+**Compliance**: All feature specs, plans, and task lists MUST
+be reviewed against this constitution before implementation
+begins.
+
+**Version**: 1.0.0 | **Ratified**: 2026-04-18 | **Last Amended**: 2026-04-18
