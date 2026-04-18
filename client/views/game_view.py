@@ -1532,7 +1532,9 @@ class GameView(arcade.View):
 
         col_count = min(len(buildings), 4)
         col_w = panel_w / (col_count + 1)
-        top_y = panel_y + panel_h / 2 - 70
+        top_y = panel_y + panel_h / 2 - 80
+        card_h = panel_h - 100
+        card_w = int(col_w * 0.92)
 
         for i, bld in enumerate(buildings[:4]):
             cx = (
@@ -1540,6 +1542,22 @@ class GameView(arcade.View):
                 - (col_count - 1) * col_w / 2
                 + i * col_w
             )
+
+            card_cy = top_y - card_h / 2 + 10
+            arcade.draw_rect_filled(
+                arcade.rect.XYWH(
+                    cx, card_cy, card_w, card_h,
+                ),
+                (40, 40, 40),
+            )
+            arcade.draw_rect_outline(
+                arcade.rect.XYWH(
+                    cx, card_cy, card_w, card_h,
+                ),
+                (120, 120, 120),
+                border_width=1,
+            )
+
             name = bld.get("name", "???")
             genre = bld.get("genre", "")
             cost = bld.get("cost_coins", 0)
