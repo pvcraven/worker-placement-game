@@ -64,33 +64,47 @@ class CardRenderer:
             arcade.color.YELLOW if highlight else arcade.color.WHITE
         )
 
-        # Card background
+        # Card background — dark gray body
         arcade.draw_rect_filled(
-            arcade.rect.XYWH(cx, cy, _CARD_WIDTH, _CARD_HEIGHT),
+            arcade.rect.XYWH(
+                cx, cy, _CARD_WIDTH, _CARD_HEIGHT,
+            ),
+            (45, 45, 45),
+        )
+        # Genre color band at top
+        band_h = 36
+        band_cy = cy + _CARD_HEIGHT / 2 - band_h / 2
+        arcade.draw_rect_filled(
+            arcade.rect.XYWH(
+                cx, band_cy, _CARD_WIDTH, band_h,
+            ),
             bg_color,
         )
         arcade.draw_rect_outline(
-            arcade.rect.XYWH(cx, cy, _CARD_WIDTH, _CARD_HEIGHT),
+            arcade.rect.XYWH(
+                cx, cy, _CARD_WIDTH, _CARD_HEIGHT,
+            ),
             border_color,
             border_width=2 if highlight else 1,
         )
 
-        # Name
+        # Genre tag (top, bold, in color band)
+        cls._text(
+            f"{cache_key}_genre", genre.upper(),
+            cx, band_cy,
+            arcade.color.WHITE, 14,
+            anchor_x="center", anchor_y="center",
+            bold=True,
+        ).draw()
+
+        # Name (below genre band)
         name = card.get("name", "???")
         if len(name) > 20:
             name = name[:18] + ".."
         cls._text(
             f"{cache_key}_name", name,
-            cx, cy + 96,
-            arcade.color.WHITE, 14,
-            anchor_x="center", anchor_y="center",
-        ).draw()
-
-        # Genre tag
-        cls._text(
-            f"{cache_key}_genre", genre.upper(),
-            cx, cy + 78,
-            arcade.color.WHITE, 12,
+            cx, cy + 74,
+            arcade.color.WHITE, 13,
             anchor_x="center", anchor_y="center",
         ).draw()
 
@@ -166,7 +180,7 @@ class CardRenderer:
         cls._text(
             f"{cache_key}_desc", desc,
             cx, desc_top,
-            arcade.color.WHITE, 12,
+            arcade.color.WHITE, 10,
             anchor_x="center", anchor_y="top",
             multiline=True, width=_CARD_WIDTH - 16,
             align="center",
