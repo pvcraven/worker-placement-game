@@ -1344,13 +1344,26 @@ class GameView(arcade.View):
         if not my_player:
             return
 
-        intrigue_cards = my_player.get("intrigue_hand", [])
-        if not intrigue_cards:
-            self._status_text = "You need an intrigue card to place here"
-            return
-
         board = self.game_state.get("board", {})
         backstage = board.get("backstage_slots", [])
+        for s in backstage:
+            if (
+                s.get("slot_number") == slot_number
+                and s.get("occupied_by") is not None
+            ):
+                self._status_text = (
+                    "That Backstage slot is occupied"
+                )
+                return
+
+        intrigue_cards = my_player.get("intrigue_hand", [])
+        if not intrigue_cards:
+            self._status_text = (
+                "You need an intrigue card"
+                " to place here"
+            )
+            return
+
         for s in backstage:
             if s.get("slot_number", 0) < slot_number and s.get("occupied_by") is None:
                 self._status_text = f"Backstage {s['slot_number']} must be filled first"
