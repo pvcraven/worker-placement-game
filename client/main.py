@@ -24,10 +24,10 @@ from client.network_client import NetworkClient  # noqa: E402
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Worker Placement Game Client")
     parser.add_argument(
-        "--server", default="ws://localhost:8765", help="Server WebSocket URL"
+        "--server", default=None, help="Server WebSocket URL"
     )
     parser.add_argument("--fullscreen", action="store_true", help="Launch fullscreen")
-    parser.add_argument("--name", default="", help="Pre-fill display name")
+    parser.add_argument("--name", default=None, help="Pre-fill display name")
     return parser.parse_args()
 
 
@@ -37,15 +37,21 @@ def main() -> None:
 
     args = parse_args()
 
+    from client.user_config import load_config
+    config = load_config()
+
+    server = args.server or config["server"]
+    name = args.name if args.name is not None else config["name"]
+
     # Create the network client (shared across all views)
-    network = NetworkClient(server_url=args.server)
+    network = NetworkClient(server_url=server)
 
     # Create the window
     window = GameWindow(fullscreen=args.fullscreen)
 
     # Attach network and args to the window so views can access them
     window.network = network  # type: ignore[attr-defined]
-    window.player_name = args.name  # type: ignore[attr-defined]
+    window.player_name = name  # type: ignore[attr-defined]
     window.player_id = None  # type: ignore[attr-defined]
     window.game_code = None  # type: ignore[attr-defined]
 
