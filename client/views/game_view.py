@@ -5,8 +5,7 @@ from __future__ import annotations
 import arcade
 import arcade.gui
 
-from client.ui.board_renderer import BoardRenderer
-from client.ui.card_renderer import CardRenderer
+from client.ui.board_renderer import BoardRenderer, _build_card_sprite_list
 from client.ui.dialogs import (
     CardSelectionDialog,
     PlayerTargetDialog,
@@ -42,6 +41,7 @@ class GameView(arcade.View):
         self._highlighted_ids: list[str] = []
         self._cancel_sprite: arcade.Sprite | None = None
         self._cancel_sprite_list: arcade.SpriteList | None = None
+        self._hand_sprite_list: arcade.SpriteList | None = None
 
     def on_show_view(self) -> None:
         self.ui.enable()
@@ -236,6 +236,11 @@ class GameView(arcade.View):
         spaces = board.get("action_spaces", {})
         if space_id in spaces:
             spaces[space_id]["occupied_by"] = pid
+
+        if self.board_renderer:
+            self.board_renderer.update_board(
+                board, self.game_state.get("players", []),
+            )
 
         # Update player resources and worker count
         self._apply_reward_to_player(pid, reward)
@@ -961,6 +966,7 @@ class GameView(arcade.View):
         # Add building to local action_spaces so it renders
         spaces = board.get("action_spaces", {})
         if new_space_id and new_space_id not in spaces:
+            building_id = msg.get("building_id", "")
             spaces[new_space_id] = {
                 "name": bname,
                 "space_type": "building",
@@ -968,6 +974,7 @@ class GameView(arcade.View):
                 "reward": msg.get("visitor_reward", {}),
                 "owner_bonus": msg.get("owner_bonus", {}),
                 "occupied_by": None,
+                "building_tile": {"id": building_id},
             }
 
         if self.board_renderer:
@@ -1486,13 +1493,11 @@ class GameView(arcade.View):
         if self._show_quests_hand:
             cards = my_player.get("contract_hand", [])
             title = "My Quests"
-            draw_fn = CardRenderer.draw_contract
-            hand_prefix = "hand_quest"
+            card_type = "quests"
         else:
             cards = my_player.get("intrigue_hand", [])
             title = "My Intrigue"
-            draw_fn = CardRenderer.draw_intrigue
-            hand_prefix = "hand_intrigue"
+            card_type = "intrigue"
 
         card_count = min(len(cards), 6)
         card_spacing = 205
@@ -1529,12 +1534,14 @@ class GameView(arcade.View):
 
         total = card_count * card_spacing
         start_x = panel_x - total / 2 + card_spacing / 2
-        for i, card in enumerate(cards[:6]):
-            cx = start_x + i * card_spacing
-            draw_fn(
-                cx, panel_y - 10, card,
-                cache_key=f"{hand_prefix}_{i}",
-            )
+        positions = [
+            (start_x + i * card_spacing, panel_y - 10)
+            for i in range(card_count)
+        ]
+        self._hand_sprite_list = _build_card_sprite_list(
+            cards[:6], card_type, positions,
+        )
+        self._hand_sprite_list.draw()
 
     def _draw_player_overview_panel(
         self, w: float, h: float,

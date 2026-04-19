@@ -38,6 +38,7 @@ OUTPUT_QUESTS = OUTPUT_BASE / "quests"
 OUTPUT_BUILDINGS = OUTPUT_BASE / "buildings"
 OUTPUT_INTRIGUE = OUTPUT_BASE / "intrigue"
 OUTPUT_PRODUCERS = OUTPUT_BASE / "producers"
+OUTPUT_SPACES = OUTPUT_BASE / "spaces"
 
 CONFIG_DIR = PROJECT_ROOT / "config"
 
@@ -61,11 +62,13 @@ FONT_VP = _load_font(26, bold=True)
 FONT_LABEL = _load_font(14, bold=True)
 
 
-def create_card_base() -> tuple[Image.Image, ImageDraw.ImageDraw]:
-    img = Image.new("RGBA", (CARD_WIDTH, CARD_HEIGHT), (0, 0, 0, 0))
+def create_card_base(
+    height: int = CARD_HEIGHT,
+) -> tuple[Image.Image, ImageDraw.ImageDraw]:
+    img = Image.new("RGBA", (CARD_WIDTH, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
     draw.rounded_rectangle(
-        [0, 0, CARD_WIDTH - 1, CARD_HEIGHT - 1],
+        [0, 0, CARD_WIDTH - 1, height - 1],
         radius=CORNER_RADIUS,
         fill=PARCHMENT_COLOR,
     )
@@ -175,7 +178,7 @@ def generate_quest_cards() -> int:
         vp_tw = vp_bbox[2] - vp_bbox[0]
         vp_th = vp_bbox[3] - vp_bbox[1]
         draw.text(
-            (vp_cx - vp_tw // 2, vp_cy - vp_th // 2 - 4),
+            (vp_cx - vp_tw // 2, vp_cy - vp_th // 2 - 5),
             vp_text, fill=(60, 40, 20), font=FONT_TITLE,
         )
         # Genre text centered in band
@@ -232,26 +235,41 @@ def generate_quest_cards() -> int:
     return count
 
 
+BUILDING_CARD_HEIGHT = 150
+
+
 def generate_building_cards() -> int:
     data = json.loads((CONFIG_DIR / "buildings.json").read_text())
     config = BuildingsConfig.model_validate(data)
     OUTPUT_BUILDINGS.mkdir(parents=True, exist_ok=True)
     count = 0
     for card in config.buildings:
-        img, draw = create_card_base()
-        y = 12
-        name = truncate_name(card.name)
-        draw_text_centered(
-            draw, name, y, FONT_TITLE, (100, 60, 10),
+        img, draw = create_card_base(height=BUILDING_CARD_HEIGHT)
+        band_h = 40
+        band_color = (30, 70, 30)
+        draw.rounded_rectangle(
+            [0, 0, CARD_WIDTH - 1, band_h],
+            radius=CORNER_RADIUS,
+            fill=band_color,
         )
-        y += 24
+        draw.rectangle(
+            [0, band_h - CORNER_RADIUS, CARD_WIDTH - 1, band_h],
+            fill=band_color,
+        )
+        y = 8
+        name = truncate_name(card.name)
+        y = draw_text_wrapped(
+            draw, name, y, FONT_TITLE, (255, 255, 255),
+            max_lines=2,
+        )
+        y = band_h + 6
         cost_str = f"Cost: {card.cost_coins} coins"
         draw_text_centered(draw, cost_str, y, FONT_BODY)
         y += 22
         vis_str = format_resources(card.visitor_reward)
         vis_line = f"Visitor: {vis_str}"
         draw_text_centered(
-            draw, vis_line, y, FONT_LABEL, (30, 90, 30),
+            draw, vis_line, y, FONT_LABEL, (20, 60, 20),
         )
         y += 18
         if card.visitor_reward_special:
@@ -259,13 +277,13 @@ def generate_building_cards() -> int:
                 "_", " ",
             ).title()
             draw_text_centered(
-                draw, special, y, FONT_BODY_SMALL, (30, 90, 30),
+                draw, special, y, FONT_BODY_SMALL, (20, 60, 20),
             )
             y += 18
         own_str = format_resources(card.owner_bonus)
         own_line = f"Owner: {own_str}"
         draw_text_centered(
-            draw, own_line, y, FONT_LABEL, (120, 80, 0),
+            draw, own_line, y, FONT_LABEL, (80, 50, 0),
         )
         y += 18
         if card.owner_bonus_special:
@@ -273,10 +291,8 @@ def generate_building_cards() -> int:
                 "_", " ",
             ).title()
             draw_text_centered(
-                draw, special, y, FONT_BODY_SMALL, (120, 80, 0),
+                draw, special, y, FONT_BODY_SMALL, (80, 50, 0),
             )
-            y += 18
-        y = draw_text_wrapped(draw, card.description, y, FONT_BODY_SMALL)
         img.save(OUTPUT_BUILDINGS / f"{card.id}.png")
         count += 1
     return count
@@ -412,16 +428,125 @@ def generate_producer_cards() -> int:
     return count
 
 
+SPECIAL_REWARD_LABELS = {
+    "quest_and_coins": "Quest + 2$",
+    "quest_and_intrigue": "Quest + Intrigue",
+    "reset_quests": "Reset Quests",
+    "purchase_building": "Buy Building",
+    "first_player_marker_and_intrigue": "1st Player + Intrigue",
+    "acquire_contract_or_intrigue": "Contract/Intrigue",
+}
+
+
+def _resource_reward_str(reward: dict) -> str:
+    mapping = [
+        ("guitarists", "G"),
+        ("bass_players", "B"),
+        ("drummers", "D"),
+        ("singers", "S"),
+        ("coins", "$"),
+    ]
+    parts = []
+    for key, sym in mapping:
+        val = reward.get(key, 0)
+        if val > 0:
+            parts.append(f"{val}{sym}")
+    return " ".join(parts) if parts else ""
+
+
+SPACE_CARD_HEIGHT = 100
+
+
+def generate_space_cards() -> int:
+    data = json.loads((CONFIG_DIR / "board.json").read_text())
+    spaces = data.get("permanent_spaces", [])
+    OUTPUT_SPACES.mkdir(parents=True, exist_ok=True)
+    count = 0
+    for space in spaces:
+        img, draw = create_card_base(height=SPACE_CARD_HEIGHT)
+        space_id = space.get("space_id", "")
+        name = space.get("name", space_id)
+
+        band_h = 40
+        band_color = (50, 70, 100)
+        draw.rounded_rectangle(
+            [0, 0, CARD_WIDTH - 1, band_h],
+            radius=CORNER_RADIUS,
+            fill=band_color,
+        )
+        draw.rectangle(
+            [0, band_h - CORNER_RADIUS, CARD_WIDTH - 1, band_h],
+            fill=band_color,
+        )
+
+        y = 8
+        y = draw_text_wrapped(
+            draw, name, y, FONT_TITLE, (255, 255, 255),
+            max_lines=2,
+        )
+
+        y = band_h + 10
+        reward = space.get("reward")
+        reward_special = space.get("reward_special")
+
+        if reward_special:
+            label = SPECIAL_REWARD_LABELS.get(
+                reward_special, reward_special.replace("_", " ").title(),
+            )
+            y = draw_text_wrapped(
+                draw, label, y, FONT_LABEL, TEXT_COLOR,
+                max_lines=2,
+            )
+        elif reward:
+            res_str = _resource_reward_str(reward)
+            if res_str:
+                draw_text_centered(
+                    draw, res_str, y, FONT_VP, TEXT_COLOR,
+                )
+
+        img.save(OUTPUT_SPACES / f"{space_id}.png")
+        count += 1
+
+    # Backstage slots
+    backstage_band_color = (100, 50, 50)
+    for slot_num in range(1, 4):
+        img, draw = create_card_base(height=SPACE_CARD_HEIGHT)
+        band_h = 40
+        draw.rounded_rectangle(
+            [0, 0, CARD_WIDTH - 1, band_h],
+            radius=CORNER_RADIUS,
+            fill=backstage_band_color,
+        )
+        draw.rectangle(
+            [0, band_h - CORNER_RADIUS, CARD_WIDTH - 1, band_h],
+            fill=backstage_band_color,
+        )
+        draw_text_centered(
+            draw, f"Backstage {slot_num}", 8,
+            FONT_TITLE, (255, 255, 255),
+        )
+        draw_text_centered(
+            draw, "Play Intrigue", band_h + 10,
+            FONT_LABEL, TEXT_COLOR,
+        )
+        img.save(OUTPUT_SPACES / f"backstage_slot_{slot_num}.png")
+        count += 1
+
+    return count
+
+
 JSON_FILES = [
     CONFIG_DIR / "contracts.json",
     CONFIG_DIR / "buildings.json",
     CONFIG_DIR / "intrigue.json",
     CONFIG_DIR / "producers.json",
+    CONFIG_DIR / "board.json",
 ]
 
 OUTPUT_DIRS = [
     OUTPUT_QUESTS, OUTPUT_BUILDINGS,
     OUTPUT_INTRIGUE, OUTPUT_PRODUCERS,
+    OUTPUT_SPACES,
 ]
 
 
@@ -449,7 +574,8 @@ def generate_all() -> int:
     b = generate_building_cards()
     i = generate_intrigue_cards()
     p = generate_producer_cards()
-    return q + b + i + p
+    s = generate_space_cards()
+    return q + b + i + p + s
 
 
 def ensure_card_images() -> None:
