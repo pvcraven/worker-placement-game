@@ -411,18 +411,38 @@ def generate_intrigue_cards() -> int:
             draw, card.description, y, FONT_BODY_SMALL, max_lines=4,
         )
         y += 6
-        effect = _intrigue_effect_summary(
-            card.effect_type, card.effect_value,
-        )
-        if effect:
-            draw_text_centered(
-                draw, effect, y, FONT_LABEL, (120, 80, 0),
+        if card.choice_reward:
+            choice_text = _format_choice_reward(
+                card.choice_reward, ResourceCost(),
             )
-            y += 20
-        target_label = TARGET_LABELS.get(card.effect_target, "")
+            y = draw_text_wrapped(
+                draw, choice_text, y,
+                FONT_LABEL, (120, 80, 0), max_lines=2,
+            )
+            if card.effect_type == "resource_choice_multi":
+                opc = card.choice_reward.others_pick_count
+                draw_text_centered(
+                    draw, f"Others: Pick {opc}",
+                    y, FONT_BODY_SMALL, (150, 50, 50),
+                )
+                y += 16
+        else:
+            effect = _intrigue_effect_summary(
+                card.effect_type, card.effect_value,
+            )
+            if effect:
+                draw_text_centered(
+                    draw, effect, y,
+                    FONT_LABEL, (120, 80, 0),
+                )
+                y += 20
+        target_label = TARGET_LABELS.get(
+            card.effect_target, "",
+        )
         if target_label:
             draw_text_centered(
-                draw, target_label, y, FONT_BODY_SMALL, (150, 50, 50),
+                draw, target_label, y,
+                FONT_BODY_SMALL, (150, 50, 50),
             )
         img.save(OUTPUT_INTRIGUE / f"{card.id}.png")
         count += 1
