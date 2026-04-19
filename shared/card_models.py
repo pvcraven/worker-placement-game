@@ -14,6 +14,37 @@ class ResourceCost(BaseModel):
     singers: int = 0
     coins: int = 0
 
+    def total(self) -> int:
+        return (
+            self.guitarists
+            + self.bass_players
+            + self.drummers
+            + self.singers
+            + self.coins
+        )
+
+
+class ResourceBundle(BaseModel):
+    """A predefined bundle of resources offered as one selectable option."""
+
+    label: str
+    resources: ResourceCost
+
+
+class ResourceChoiceReward(BaseModel):
+    """Configuration for a choice-based resource reward."""
+
+    choice_type: str  # "pick", "bundle", "combo", "exchange"
+    allowed_types: list[str] = Field(default_factory=list)
+    pick_count: int = 1
+    total: int = 0
+    bundles: list[ResourceBundle] = Field(
+        default_factory=list,
+    )
+    cost: ResourceCost = Field(default_factory=ResourceCost)
+    gain_count: int = 0
+    others_pick_count: int = 0
+
 
 class ContractCard(BaseModel):
     """A quest/contract card - assemble a band."""
@@ -41,9 +72,10 @@ class IntrigueCard(BaseModel):
     id: str
     name: str
     description: str
-    effect_type: str  # "gain_resources", "steal_resources", "all_players", "vp_bonus"
-    effect_target: str = "self"  # "self", "opponent", "all", "choose_opponent"
+    effect_type: str
+    effect_target: str = "self"
     effect_value: dict = Field(default_factory=dict)
+    choice_reward: ResourceChoiceReward | None = None
 
 
 class BuildingTile(BaseModel):
@@ -53,9 +85,14 @@ class BuildingTile(BaseModel):
     name: str
     description: str
     cost_coins: int = Field(ge=0)
-    visitor_reward: ResourceCost
+    visitor_reward: ResourceCost = Field(
+        default_factory=ResourceCost,
+    )
     visitor_reward_special: str | None = None
-    owner_bonus: ResourceCost
+    visitor_reward_choice: ResourceChoiceReward | None = None
+    owner_bonus: ResourceCost = Field(
+        default_factory=ResourceCost,
+    )
     owner_bonus_special: str | None = None
     accumulated_vp: int = 0
 

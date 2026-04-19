@@ -238,6 +238,38 @@ def generate_quest_cards() -> int:
 BUILDING_CARD_HEIGHT = 150
 
 
+_TYPE_ABBREV = {
+    "guitarists": "G",
+    "bass_players": "B",
+    "drummers": "D",
+    "singers": "S",
+    "coins": "$",
+}
+
+
+def _format_choice_reward(choice, fixed_reward) -> str:
+    ct = choice.choice_type
+    types_str = "/".join(
+        _TYPE_ABBREV.get(t, t) for t in choice.allowed_types
+    )
+    fixed_str = format_resources(fixed_reward)
+    extra = f" + {fixed_str}" if fixed_str != "None" else ""
+
+    if ct == "pick":
+        return f"Pick {choice.pick_count} {types_str}{extra}"
+    if ct == "bundle":
+        labels = [b.label for b in choice.bundles]
+        return "Choose: " + " / ".join(labels[:3])
+    if ct == "combo":
+        cost_str = ""
+        if choice.cost and choice.cost.total() > 0:
+            cost_str = f"Pay {format_resources(choice.cost)}, "
+        return f"{cost_str}Combo {choice.total} {types_str}"
+    if ct == "exchange":
+        return f"Trade {choice.pick_count} -> {choice.gain_count} {types_str}"
+    return "Choice"
+
+
 def generate_building_cards() -> int:
     data = json.loads((CONFIG_DIR / "buildings.json").read_text())
     config = BuildingsConfig.model_validate(data)
@@ -266,8 +298,14 @@ def generate_building_cards() -> int:
         cost_str = f"Cost: {card.cost_coins} coins"
         draw_text_centered(draw, cost_str, y, FONT_BODY)
         y += 22
-        vis_str = format_resources(card.visitor_reward)
-        vis_line = f"Visitor: {vis_str}"
+        if card.visitor_reward_choice:
+            vis_line = _format_choice_reward(
+                card.visitor_reward_choice,
+                card.visitor_reward,
+            )
+        else:
+            vis_str = format_resources(card.visitor_reward)
+            vis_line = f"Visitor: {vis_str}"
         draw_text_centered(
             draw, vis_line, y, FONT_LABEL, (20, 60, 20),
         )

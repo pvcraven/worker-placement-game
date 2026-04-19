@@ -501,6 +501,270 @@ class PlayerTargetDialog:
             self._widget = None
 
 
+_RESOURCE_LABELS = {
+    "guitarists": "Guitarist",
+    "bass_players": "Bass Player",
+    "drummers": "Drummer",
+    "singers": "Singer",
+    "coins": "Coin",
+}
+
+
+class ResourceChoiceDialog:
+    """A modal dialog for choosing resources."""
+
+    def __init__(
+        self,
+        prompt_id: str,
+        title: str,
+        description: str,
+        choice_type: str,
+        allowed_types: list[str],
+        pick_count: int,
+        total: int,
+        bundles: list[dict],
+        is_spend: bool,
+        on_select: callable,
+        ui_manager: arcade.gui.UIManager,
+    ) -> None:
+        self.prompt_id = prompt_id
+        self.title = title
+        self.description = description
+        self.choice_type = choice_type
+        self.allowed_types = allowed_types
+        self.pick_count = pick_count
+        self.total = total
+        self.bundles = bundles
+        self.is_spend = is_spend
+        self.on_select = on_select
+        self.ui = ui_manager
+        self._widget = None
+        self._selection: dict[str, int] = {}
+        self._count_labels: dict[str, arcade.gui.UILabel] = {}
+        self._total_label: arcade.gui.UILabel | None = None
+        self._confirm_btn: arcade.gui.UIFlatButton | None = None
+
+    def show(
+        self, window_width: float, window_height: float,
+    ) -> None:
+        if self.choice_type == "bundle":
+            self._show_bundle()
+        elif self.choice_type == "combo":
+            self._show_combo()
+        else:
+            self._show_pick()
+
+    def _show_pick(self) -> None:
+        v_box = arcade.gui.UIBoxLayout(space_between=8)
+        self._add_header(v_box)
+
+        target = self.pick_count
+        self._selection = {t: 0 for t in self.allowed_types}
+        info = arcade.gui.UILabel(
+            text=f"Pick {target} resource(s):",
+            font_size=13,
+            text_color=arcade.color.LIGHT_GRAY,
+        )
+        v_box.add(info)
+
+        for rtype in self.allowed_types:
+            label = _RESOURCE_LABELS.get(rtype, rtype)
+            btn = arcade.gui.UIFlatButton(
+                text=label, width=320, height=35,
+            )
+            btn.on_click = (
+                lambda e, rt=rtype: self._pick_add(rt)
+            )
+            v_box.add(btn)
+
+        self._total_label = arcade.gui.UILabel(
+            text="Selected: 0 / " + str(target),
+            font_size=13,
+            text_color=arcade.color.GOLD,
+        )
+        v_box.add(self._total_label)
+
+        reset_btn = arcade.gui.UIFlatButton(
+            text="Reset", width=320, height=30,
+        )
+        reset_btn.on_click = lambda e: self._pick_reset()
+        v_box.add(reset_btn)
+
+        self._mount(v_box)
+
+    def _pick_add(self, rtype: str) -> None:
+        target = self.pick_count
+        current = sum(self._selection.values())
+        if current >= target:
+            return
+        self._selection[rtype] = (
+            self._selection.get(rtype, 0) + 1
+        )
+        current += 1
+        if self._total_label:
+            self._total_label.text = (
+                f"Selected: {current} / {target}"
+            )
+        if current == target:
+            self._do_select()
+
+    def _pick_reset(self) -> None:
+        self._selection = {
+            t: 0 for t in self.allowed_types
+        }
+        if self._total_label:
+            self._total_label.text = (
+                f"Selected: 0 / {self.pick_count}"
+            )
+
+    def _show_bundle(self) -> None:
+        v_box = arcade.gui.UIBoxLayout(space_between=8)
+        self._add_header(v_box)
+
+        for bundle in self.bundles:
+            label = bundle.get("label", "???")
+            res = bundle.get("resources", {})
+            btn = arcade.gui.UIFlatButton(
+                text=label, width=320, height=35,
+            )
+            btn.on_click = (
+                lambda e, r=res: self._bundle_select(r)
+            )
+            v_box.add(btn)
+
+        self._mount(v_box)
+
+    def _bundle_select(self, resources: dict) -> None:
+        self._selection = dict(resources)
+        self._do_select()
+
+    def _show_combo(self) -> None:
+        v_box = arcade.gui.UIBoxLayout(space_between=8)
+        self._add_header(v_box)
+        self._selection = {t: 0 for t in self.allowed_types}
+
+        for rtype in self.allowed_types:
+            label = _RESOURCE_LABELS.get(rtype, rtype)
+            row = arcade.gui.UIBoxLayout(
+                vertical=False, space_between=8,
+            )
+            name_lbl = arcade.gui.UILabel(
+                text=f"{label}:", font_size=13, width=120,
+                text_color=arcade.color.WHITE,
+            )
+            row.add(name_lbl)
+
+            minus_btn = arcade.gui.UIFlatButton(
+                text="-", width=40, height=30,
+            )
+            minus_btn.on_click = (
+                lambda e, rt=rtype: self._combo_adjust(
+                    rt, -1,
+                )
+            )
+            row.add(minus_btn)
+
+            count_lbl = arcade.gui.UILabel(
+                text="0", font_size=13, width=30,
+                text_color=arcade.color.GOLD,
+            )
+            self._count_labels[rtype] = count_lbl
+            row.add(count_lbl)
+
+            plus_btn = arcade.gui.UIFlatButton(
+                text="+", width=40, height=30,
+            )
+            plus_btn.on_click = (
+                lambda e, rt=rtype: self._combo_adjust(
+                    rt, 1,
+                )
+            )
+            row.add(plus_btn)
+            v_box.add(row)
+
+        self._total_label = arcade.gui.UILabel(
+            text=f"Total: 0 / {self.total}",
+            font_size=13,
+            text_color=arcade.color.GOLD,
+        )
+        v_box.add(self._total_label)
+
+        self._confirm_btn = arcade.gui.UIFlatButton(
+            text="Confirm", width=320, height=35,
+        )
+        self._confirm_btn.on_click = (
+            lambda e: self._do_select()
+        )
+        v_box.add(self._confirm_btn)
+
+        self._mount(v_box)
+
+    def _combo_adjust(
+        self, rtype: str, delta: int,
+    ) -> None:
+        current_val = self._selection.get(rtype, 0)
+        new_val = current_val + delta
+        if new_val < 0:
+            return
+        current_total = sum(self._selection.values())
+        new_total = current_total + delta
+        if new_total > self.total:
+            return
+        self._selection[rtype] = new_val
+        if rtype in self._count_labels:
+            self._count_labels[rtype].text = str(new_val)
+        if self._total_label:
+            self._total_label.text = (
+                f"Total: {new_total} / {self.total}"
+            )
+
+    def _add_header(
+        self, v_box: arcade.gui.UIBoxLayout,
+    ) -> None:
+        title_lbl = arcade.gui.UILabel(
+            text=self.title,
+            font_size=16,
+            text_color=arcade.color.WHITE,
+        )
+        v_box.add(title_lbl)
+        desc_lbl = arcade.gui.UILabel(
+            text=self.description,
+            font_size=12,
+            text_color=arcade.color.LIGHT_GRAY,
+        )
+        v_box.add(desc_lbl)
+
+    def _mount(
+        self, v_box: arcade.gui.UIBoxLayout,
+    ) -> None:
+        bg_box = v_box.with_padding(
+            all=20,
+        ).with_background(color=(0, 0, 0))
+        self._widget = self.ui.add(
+            arcade.gui.UIAnchorLayout(),
+        )
+        self._widget.add(
+            child=bg_box,
+            anchor_x="center",
+            anchor_y="center",
+        )
+
+    def _do_select(self) -> None:
+        chosen = {
+            k: v for k, v in self._selection.items()
+        }
+        self.hide()
+        self.on_select(self.prompt_id, chosen)
+
+    def hide(self) -> None:
+        if self._widget:
+            self.ui.remove(self._widget)
+            self._widget = None
+        self._count_labels.clear()
+        self._total_label = None
+        self._confirm_btn = None
+
+
 class ConfirmDialog:
     """A simple yes/no confirmation dialog."""
 

@@ -10,6 +10,7 @@ from client.ui.dialogs import (
     CardSelectionDialog,
     PlayerTargetDialog,
     QuestCompletionDialog,
+    ResourceChoiceDialog,
 )
 from client.ui.game_log import GameLogPanel
 from client.ui.resource_bar import ResourceBar
@@ -223,6 +224,10 @@ class GameView(arcade.View):
             self._on_quest_reward_choice_prompt(msg)
         elif action == "quest_reward_choice_resolved":
             self._on_quest_reward_choice_resolved(msg)
+        elif action == "resource_choice_prompt":
+            self._on_resource_choice_prompt(msg)
+        elif action == "resource_choice_resolved":
+            self._on_resource_choice_resolved(msg)
         elif action == "error":
             self._status_text = msg.get("message", "Error")
 
@@ -849,6 +854,80 @@ class GameView(arcade.View):
                     f"{name} chose building '{bn}'"
                     f" as reward for '{quest_name}'"
                 )
+
+        next_pid = msg.get("next_player_id")
+        if next_pid:
+            self._update_current_player(next_pid)
+
+    def _on_resource_choice_prompt(
+        self, msg: dict,
+    ) -> None:
+        pid = msg.get("player_id", "")
+        my_id = getattr(self.window, "player_id", None)
+        if pid != my_id:
+            name = self._player_name(pid)
+            self._status_text = (
+                f"{name} is choosing resources..."
+            )
+            return
+
+        prompt_id = msg.get("prompt_id", "")
+
+        def on_select(p_id: str, chosen: dict) -> None:
+            self.window.network.send({
+                "action": "resource_choice",
+                "prompt_id": p_id,
+                "chosen_resources": chosen,
+            })
+
+        dialog = ResourceChoiceDialog(
+            prompt_id=prompt_id,
+            title=msg.get("title", "Choose Resources"),
+            description=msg.get("description", ""),
+            choice_type=msg.get("choice_type", "pick"),
+            allowed_types=msg.get("allowed_types", []),
+            pick_count=msg.get("pick_count", 1),
+            total=msg.get("total", 0),
+            bundles=msg.get("bundles", []),
+            is_spend=msg.get("is_spend", False),
+            on_select=on_select,
+            ui_manager=self.ui,
+        )
+        dialog.show(self.window.width, self.window.height)
+
+    def _on_resource_choice_resolved(
+        self, msg: dict,
+    ) -> None:
+        pid = msg.get("player_id", "")
+        chosen = msg.get("chosen_resources", {})
+        is_spend = msg.get("is_spend", False)
+        source = msg.get("source_description", "")
+        my_id = getattr(self.window, "player_id", None)
+
+        if pid == my_id:
+            my_player = self._my_player()
+            if my_player:
+                res = my_player.get("resources", {})
+                for key, val in chosen.items():
+                    if key in res:
+                        if is_spend:
+                            res[key] = res.get(key, 0) - val
+                        else:
+                            res[key] = res.get(key, 0) + val
+                if self.resource_bar:
+                    self.resource_bar.update_resources(res)
+
+        if self.game_log_panel:
+            name = self._player_name(pid)
+            parts = []
+            for k, v in chosen.items():
+                if v > 0:
+                    parts.append(f"{v} {k}")
+            res_str = ", ".join(parts) if parts else "none"
+            verb = "turned in" if is_spend else "gained"
+            self.game_log_panel.add_entry(
+                f"{name} {verb} {res_str} from {source}"
+            )
 
         next_pid = msg.get("next_player_id")
         if next_pid:

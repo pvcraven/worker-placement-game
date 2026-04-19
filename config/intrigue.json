@@ -399,6 +399,38 @@
       "effect_type": "all_players_gain",
       "effect_target": "all",
       "effect_value": {"guitarists": 0, "bass_players": 1, "drummers": 0, "singers": 0, "coins": 1}
+    },
+    {
+      "id": "intrigue_051",
+      "name": "Talent Scout's Find",
+      "description": "Your talent scout reports back with several promising leads. Choose the best opportunity.",
+      "effect_type": "resource_choice",
+      "effect_target": "self",
+      "effect_value": {},
+      "choice_reward": {
+        "choice_type": "bundle",
+        "bundles": [
+          {"label": "1 Singer", "resources": {"singers": 1}},
+          {"label": "1 Drummer", "resources": {"drummers": 1}},
+          {"label": "2 Guitarists", "resources": {"guitarists": 2}},
+          {"label": "2 Bassists", "resources": {"bass_players": 2}},
+          {"label": "4 Coins", "resources": {"coins": 4}}
+        ]
+      }
+    },
+    {
+      "id": "intrigue_052",
+      "name": "Industry Showcase",
+      "description": "Host a massive industry showcase event. Everyone benefits, but you benefit most.",
+      "effect_type": "resource_choice_multi",
+      "effect_target": "all",
+      "effect_value": {},
+      "choice_reward": {
+        "choice_type": "pick",
+        "allowed_types": ["guitarists", "bass_players", "drummers", "singers"],
+        "pick_count": 2,
+        "others_pick_count": 1
+      }
     }
   ]
 }
