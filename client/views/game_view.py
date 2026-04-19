@@ -905,7 +905,11 @@ class GameView(arcade.View):
         my_id = getattr(self.window, "player_id", None)
 
         if pid == my_id:
-            my_player = self._my_player()
+            my_player = None
+            for p in self.game_state.get("players", []):
+                if p.get("player_id") == my_id:
+                    my_player = p
+                    break
             if my_player:
                 res = my_player.get("resources", {})
                 for key, val in chosen.items():
