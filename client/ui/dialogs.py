@@ -5,6 +5,8 @@ from __future__ import annotations
 import arcade
 import arcade.gui
 
+from shared.constants import RESOURCE_SYMBOLS
+
 
 class CardSelectionDialog:
     """A modal dialog for selecting a card from a list."""
@@ -119,8 +121,7 @@ class BuildingPurchaseDialog:
                 # Build reward summary
                 reward = building.get("visitor_reward", {})
                 reward_parts = []
-                for key, sym in [("guitarists", "G"), ("bass_players", "B"),
-                                 ("drummers", "D"), ("singers", "S"), ("coins", "$")]:
+                for key, sym in RESOURCE_SYMBOLS:
                     val = reward.get(key, 0)
                     if val > 0:
                         reward_parts.append(f"{val}{sym}")
@@ -444,14 +445,7 @@ class PlayerTargetDialog:
             name = target.get("player_name", "???")
             res = target.get("resources", {})
             res_parts = []
-            mapping = [
-                ("guitarists", "G"),
-                ("bass_players", "B"),
-                ("drummers", "D"),
-                ("singers", "S"),
-                ("coins", "$"),
-            ]
-            for key, sym in mapping:
+            for key, sym in RESOURCE_SYMBOLS:
                 val = res.get(key, 0)
                 if val > 0:
                     res_parts.append(f"{val}{sym}")

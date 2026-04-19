@@ -14,6 +14,7 @@ from client.ui.dialogs import (
 )
 from client.ui.game_log import GameLogPanel
 from client.ui.resource_bar import ResourceBar
+from shared.constants import RESOURCE_SYMBOLS
 
 
 class GameView(arcade.View):
@@ -112,13 +113,7 @@ class GameView(arcade.View):
         players = self.game_state.get("players", [])
         board = self.game_state.get("board", {})
 
-        # Find my player data
-        my_player = None
-        for p in players:
-            if p.get("player_id") == my_id:
-                my_player = p
-                break
-
+        my_player = self._get_my_player()
         if my_player and self.resource_bar:
             self.resource_bar.update_resources(my_player.get("resources", {}))
 
@@ -304,14 +299,7 @@ class GameView(arcade.View):
             owner_name = owner_bonus.get("owner_name", "???")
             bonus = owner_bonus.get("bonus", {})
             bonus_parts = []
-            syms = [
-                ("guitarists", "G"),
-                ("bass_players", "B"),
-                ("drummers", "D"),
-                ("singers", "S"),
-                ("coins", "$"),
-            ]
-            for key, sym in syms:
+            for key, sym in RESOURCE_SYMBOLS:
                 val = bonus.get(key, 0)
                 if val > 0:
                     bonus_parts.append(f"{val}{sym}")
@@ -423,13 +411,8 @@ class GameView(arcade.View):
         effect_value = msg.get("effect_value", {})
         targets = msg.get("eligible_targets", [])
 
-        mapping = [
-            ("guitarists", "G"), ("bass_players", "B"),
-            ("drummers", "D"), ("singers", "S"),
-            ("coins", "$"),
-        ]
         parts = []
-        for k, sym in mapping:
+        for k, sym in RESOURCE_SYMBOLS:
             v = effect_value.get(k, 0)
             if v:
                 parts.append(f"{v}{sym}")
@@ -508,13 +491,8 @@ class GameView(arcade.View):
         if self.game_log_panel:
             name = self._player_name(pid)
             tname = self._player_name(target_pid)
-            mapping = [
-                ("guitarists", "G"), ("bass_players", "B"),
-                ("drummers", "D"), ("singers", "S"),
-                ("coins", "$"),
-            ]
             parts = []
-            for k, sym in mapping:
+            for k, sym in RESOURCE_SYMBOLS:
                 v = affected.get(k, 0)
                 if v:
                     parts.append(f"{v}{sym}")
@@ -691,13 +669,7 @@ class GameView(arcade.View):
         if self.game_log_panel:
             name = self._player_name(pid)
             parts = [f"{vp} VP"]
-            for k, sym in [
-                ("guitarists", "G"),
-                ("bass_players", "B"),
-                ("drummers", "D"),
-                ("singers", "S"),
-                ("coins", "$"),
-            ]:
+            for k, sym in RESOURCE_SYMBOLS:
                 v = bonus.get(k, 0)
                 if v:
                     parts.append(f"+{v}{sym}")
@@ -905,11 +877,7 @@ class GameView(arcade.View):
         my_id = getattr(self.window, "player_id", None)
 
         if pid == my_id:
-            my_player = None
-            for p in self.game_state.get("players", []):
-                if p.get("player_id") == my_id:
-                    my_player = p
-                    break
+            my_player = self._get_my_player()
             if my_player:
                 res = my_player.get("resources", {})
                 for key, val in chosen.items():
@@ -1136,14 +1104,7 @@ class GameView(arcade.View):
             owner_name = owner_bonus.get("owner_name", "???")
             bonus = owner_bonus.get("bonus", {})
             bonus_parts = []
-            syms = [
-                ("guitarists", "G"),
-                ("bass_players", "B"),
-                ("drummers", "D"),
-                ("singers", "S"),
-                ("coins", "$"),
-            ]
-            for key, sym in syms:
+            for key, sym in RESOURCE_SYMBOLS:
                 val = bonus.get(key, 0)
                 if val > 0:
                     bonus_parts.append(f"{val}{sym}")
@@ -1339,12 +1300,7 @@ class GameView(arcade.View):
         """Handle click on a backstage slot — show intrigue card selection."""
         slot_number = int(space_id.split("_")[-1])
 
-        my_id = getattr(self.window, "player_id", None)
-        my_player = None
-        for p in self.game_state.get("players", []):
-            if p.get("player_id") == my_id:
-                my_player = p
-                break
+        my_player = self._get_my_player()
         if not my_player:
             return
 
@@ -1591,12 +1547,7 @@ class GameView(arcade.View):
 
     def _draw_hand_panel(self, w: float, h: float) -> None:
         """Draw the quest or intrigue hand overlay."""
-        my_id = getattr(self.window, "player_id", None)
-        my_player = None
-        for p in self.game_state.get("players", []):
-            if p.get("player_id") == my_id:
-                my_player = p
-                break
+        my_player = self._get_my_player()
         if not my_player:
             return
 
@@ -1789,13 +1740,7 @@ class GameView(arcade.View):
     @staticmethod
     def _resource_str(res: dict) -> str:
         parts = []
-        for key, sym in [
-            ("guitarists", "G"),
-            ("bass_players", "B"),
-            ("drummers", "D"),
-            ("singers", "S"),
-            ("coins", "$"),
-        ]:
+        for key, sym in RESOURCE_SYMBOLS:
             val = res.get(key, 0)
             if val > 0:
                 parts.append(f"{val}{sym}")
@@ -1832,6 +1777,14 @@ class GameView(arcade.View):
         self._text_cache[key] = t
         return t
 
+    def _get_my_player(self) -> dict | None:
+        """Return the local player's data dict, or None."""
+        my_id = getattr(self.window, "player_id", None)
+        for p in self.game_state.get("players", []):
+            if p.get("player_id") == my_id:
+                return p
+        return None
+
     def _player_name(self, player_id: str) -> str:
         for p in self.game_state.get("players", []):
             if p.get("player_id") == player_id:
@@ -1844,20 +1797,12 @@ class GameView(arcade.View):
     ) -> str:
         if effect_type in ("gain_resources", "all_players_gain"):
             parts = []
-            for k, sym in [
-                ("guitarists", "G"), ("bass_players", "B"),
-                ("drummers", "D"), ("singers", "S"),
-                ("coins", "$"),
-            ]:
+            for k, sym in RESOURCE_SYMBOLS:
                 v = details.get(k, 0)
                 if v:
                     parts.append(f"+{v}{sym}")
             gained = details.get("all_gained", {})
-            for k, sym in [
-                ("guitarists", "G"), ("bass_players", "B"),
-                ("drummers", "D"), ("singers", "S"),
-                ("coins", "$"),
-            ]:
+            for k, sym in RESOURCE_SYMBOLS:
                 v = gained.get(k, 0)
                 if v:
                     parts.append(f"+{v}{sym} (all)")

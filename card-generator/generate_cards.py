@@ -18,6 +18,7 @@ from server.models.config import (  # noqa: E402
     ProducersConfig,
 )
 from shared.card_models import ResourceCost  # noqa: E402
+from shared.constants import RESOURCE_SYMBOLS  # noqa: E402
 
 CARD_WIDTH = 190
 CARD_HEIGHT = 230
@@ -76,15 +77,8 @@ def create_card_base(
 
 
 def format_resources(cost: ResourceCost) -> str:
-    mapping = [
-        ("guitarists", "G"),
-        ("bass_players", "B"),
-        ("drummers", "D"),
-        ("singers", "S"),
-        ("coins", "$"),
-    ]
     parts = []
-    for field, sym in mapping:
+    for field, sym in RESOURCE_SYMBOLS:
         val = getattr(cost, field, 0)
         if val > 0:
             parts.append(f"{val}{sym}")
@@ -337,16 +331,9 @@ def generate_building_cards() -> int:
 
 
 def _intrigue_effect_summary(effect_type: str, effect_value: dict) -> str:
-    mapping = [
-        ("guitarists", "G"),
-        ("bass_players", "B"),
-        ("drummers", "D"),
-        ("singers", "S"),
-        ("coins", "$"),
-    ]
     if effect_type in ("gain_resources", "all_players_gain"):
         parts = []
-        for k, sym in mapping:
+        for k, sym in RESOURCE_SYMBOLS:
             v = effect_value.get(k, 0)
             if v:
                 parts.append(f"+{v}{sym}")
@@ -368,14 +355,14 @@ def _intrigue_effect_summary(effect_type: str, effect_value: dict) -> str:
         return f"Draw {n} intrigue"
     if effect_type == "steal_resources":
         parts = []
-        for k, sym in mapping:
+        for k, sym in RESOURCE_SYMBOLS:
             v = effect_value.get(k, 0)
             if v:
                 parts.append(f"{v}{sym}")
         return f"Steal {' '.join(parts)}"
     if effect_type == "opponent_loses":
         parts = []
-        for k, sym in mapping:
+        for k, sym in RESOURCE_SYMBOLS:
             v = effect_value.get(k, 0)
             if v:
                 parts.append(f"{v}{sym}")
@@ -497,15 +484,8 @@ SPECIAL_REWARD_LABELS = {
 
 
 def _resource_reward_str(reward: dict) -> str:
-    mapping = [
-        ("guitarists", "G"),
-        ("bass_players", "B"),
-        ("drummers", "D"),
-        ("singers", "S"),
-        ("coins", "$"),
-    ]
     parts = []
-    for key, sym in mapping:
+    for key, sym in RESOURCE_SYMBOLS:
         val = reward.get(key, 0)
         if val > 0:
             parts.append(f"{val}{sym}")
