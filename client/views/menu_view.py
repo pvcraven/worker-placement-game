@@ -148,7 +148,7 @@ class MenuView(arcade.View):
             "disabled": _server_s,
         }
         self.server_input = arcade.gui.UIInputText(
-            text="ws://localhost:8765",
+            text=getattr(self.window, "network", None) and self.window.network.server_url or "ws://localhost:8765",
             width=350,
             height=35,
             font_size=14,
@@ -174,10 +174,14 @@ class MenuView(arcade.View):
             self.status_label.text = "Please enter a label name."
             return
 
+        server = self.server_input.text.strip()
         self.window.player_name = name
         network = self.window.network
-        network.server_url = self.server_input.text.strip()
+        network.server_url = server
         network.connect()
+
+        from client.user_config import save_config
+        save_config(name=name, server=server)
         network.send({
             "action": "create_game",
             "player_name": name,
@@ -195,11 +199,15 @@ class MenuView(arcade.View):
             self.status_label.text = "Please enter a game code."
             return
 
+        server = self.server_input.text.strip()
         self.window.player_name = name
         self.window.game_code = code
         network = self.window.network
-        network.server_url = self.server_input.text.strip()
+        network.server_url = server
         network.connect()
+
+        from client.user_config import save_config
+        save_config(name=name, server=server)
         network.send({
             "action": "join_game",
             "game_code": code,
