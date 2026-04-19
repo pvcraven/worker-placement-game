@@ -46,3 +46,12 @@ STARTING_WORKERS: dict[int, int] = {2: 4, 3: 3, 4: 2, 5: 2}
 STARTING_INTRIGUE_CARDS = 2
 STARTING_COINS_BASE = 4
 STARTING_COINS_INCREMENT = 2
+
+# Short labels for resource types, used in card rendering and UI
+RESOURCE_SYMBOLS: list[tuple[str, str]] = [
+    ("guitarists", "G"),
+    ("bass_players", "B"),
+    ("drummers", "D"),
+    ("singers", "S"),
+    ("coins", "$"),
+]

@@ -719,6 +719,7 @@ async def handle_resource_choice(
 async def handle_place_worker(
     server: GameServer, conn: ClientConnection, msg
 ) -> None:
+    """Place a worker on a board space: validate, grant rewards, handle specials (buildings, quests, resource choices)."""
     state = _get_game_state(server, conn)
     if state is None:
         await conn.send_error("GAME_NOT_FOUND", "Not in a game.")
@@ -1094,6 +1095,7 @@ async def handle_select_quest_card(
 async def handle_place_worker_backstage(
     server: GameServer, conn: ClientConnection, msg
 ) -> None:
+    """Place a worker on a backstage slot with an intrigue card; resolves the card's effect immediately or defers to target selection."""
     state = _get_game_state(server, conn)
     if state is None:
         await conn.send_error("GAME_NOT_FOUND", "Not in a game.")
@@ -1350,6 +1352,7 @@ def _resolve_intrigue_effect(state, player, card) -> dict:
 async def handle_complete_quest(
     server: GameServer, conn: ClientConnection, msg
 ) -> None:
+    """Complete a quest: deduct resource costs, award VP and bonus rewards, trigger quest-chain draws."""
     state = _get_game_state(server, conn)
     if state is None:
         await conn.send_error("GAME_NOT_FOUND", "Not in a game.")
