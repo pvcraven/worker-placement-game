@@ -1847,6 +1847,7 @@ async def handle_purchase_building(
             visitor_reward=building.visitor_reward.model_dump(),
             owner_bonus=building.owner_bonus.model_dump(),
             owner_id=player.player_id,
+            accumulated_vp=building.accumulated_vp,
             next_player_id=(
                 next_player.player_id if next_player else None
             ),

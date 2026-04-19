@@ -1066,7 +1066,11 @@ class GameView(arcade.View):
 
         if self.game_log_panel:
             name = self._player_name(pid)
-            self.game_log_panel.add_entry(f"{name} built {bname}")
+            vp = msg.get("accumulated_vp", 0)
+            vp_str = f" (+{vp} VP)" if vp else ""
+            self.game_log_panel.add_entry(
+                f"{name} built {bname}{vp_str}",
+            )
 
     def _on_reassignment_phase_start(self, msg: dict) -> None:
         self._status_text = "Reassignment Phase"

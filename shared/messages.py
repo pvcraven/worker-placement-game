@@ -288,6 +288,7 @@ class BuildingConstructedResponse(BaseModel):
     visitor_reward: dict = Field(default_factory=dict)
     owner_bonus: dict = Field(default_factory=dict)
     owner_id: str = ""
+    accumulated_vp: int = 0
     next_player_id: str | None = None
 
 
