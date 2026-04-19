@@ -32,6 +32,8 @@ from shared.messages import (
     QuestSkippedResponse,
     QuestsResetResponse,
     ReassignmentPhaseStartResponse,
+    ResourceChoicePromptResponse,
+    ResourceChoiceResolvedResponse,
     RoundEndResponse,
     TurnTimeoutResponse,
     WorkerPlacedBackstageResponse,
@@ -434,6 +436,282 @@ def _tiebreak_quests(state, player_id: str) -> int:
 
 
 # ------------------------------------------------------------------
+# Resource choice helpers
+# ------------------------------------------------------------------
+
+
+def validate_resource_choice(
+    pending: dict, chosen: dict,
+) -> str | None:
+    """Validate a resource choice. Returns error string or None."""
+    choice_type = pending.get("choice_type", "pick")
+    allowed = pending.get("allowed_types", [])
+
+    if choice_type == "pick":
+        pick_count = pending.get("pick_count", 1)
+        total = sum(
+            v for v in chosen.values() if isinstance(v, int)
+        )
+        if total != pick_count:
+            return (
+                f"Must pick exactly {pick_count} resource(s),"
+                f" got {total}."
+            )
+        for key, val in chosen.items():
+            if not isinstance(val, int) or val < 0:
+                return f"Invalid value for {key}."
+            if val > 0 and key not in allowed:
+                return f"{key} is not an allowed choice."
+        return None
+
+    if choice_type == "bundle":
+        bundles = pending.get("bundles", [])
+        for bundle in bundles:
+            b_res = bundle.get("resources", {})
+            if _resources_match(chosen, b_res):
+                return None
+        return "Selection does not match any available bundle."
+
+    if choice_type == "combo":
+        total_required = pending.get("total", 0)
+        total = sum(
+            v for v in chosen.values() if isinstance(v, int)
+        )
+        if total != total_required:
+            return (
+                f"Must allocate exactly {total_required},"
+                f" got {total}."
+            )
+        for key, val in chosen.items():
+            if not isinstance(val, int) or val < 0:
+                return f"Invalid value for {key}."
+            if val > 0 and key not in allowed:
+                return f"{key} is not an allowed choice."
+        return None
+
+    return f"Unknown choice_type: {choice_type}"
+
+
+def _resources_match(chosen: dict, expected: dict) -> bool:
+    all_keys = set(chosen) | set(expected)
+    for key in all_keys:
+        if chosen.get(key, 0) != expected.get(key, 0):
+            return False
+    return True
+
+
+def _player_non_coin_total(player) -> int:
+    r = player.resources
+    return r.guitarists + r.bass_players + r.drummers + r.singers
+
+
+async def _send_resource_choice_prompt(
+    server,
+    state,
+    player,
+    choice_reward,
+    source_type: str,
+    source_name: str,
+    is_spend: bool = False,
+    pick_count_override: int | None = None,
+    phase: str = "gain",
+) -> None:
+    """Send a resource choice prompt to a player."""
+    import uuid
+    prompt_id = str(uuid.uuid4())[:8]
+
+    ct = choice_reward.choice_type
+    allowed = choice_reward.allowed_types
+    pc = pick_count_override or choice_reward.pick_count
+    total = choice_reward.total
+    bundles_data = [
+        {"label": b.label, "resources": b.resources.model_dump()}
+        for b in choice_reward.bundles
+    ]
+
+    if is_spend:
+        title = f"Turn in {pc} resource(s)"
+        desc = f"Select resources to turn in for {source_name}"
+    elif ct == "bundle":
+        title = "Choose a reward"
+        desc = f"Select one option from {source_name}"
+    elif ct == "combo":
+        title = f"Allocate {total} resource(s)"
+        desc = f"Distribute across allowed types from {source_name}"
+    else:
+        title = f"Pick {pc} resource(s)"
+        desc = f"Choose from {source_name}"
+
+    state.pending_resource_choice = {
+        "prompt_id": prompt_id,
+        "player_id": player.player_id,
+        "source_type": source_type,
+        "source_name": source_name,
+        "choice_type": ct if not is_spend else "pick",
+        "allowed_types": allowed,
+        "pick_count": pc,
+        "total": total,
+        "bundles": bundles_data,
+        "is_spend": is_spend,
+        "phase": phase,
+        "gain_count": choice_reward.gain_count,
+        "others_pick_count": choice_reward.others_pick_count,
+        "remaining_players": [],
+        "choice_reward_dump": choice_reward.model_dump(),
+    }
+
+    await server.send_to_player(
+        player.player_id,
+        ResourceChoicePromptResponse(
+            prompt_id=prompt_id,
+            player_id=player.player_id,
+            choice_type=ct if not is_spend else "pick",
+            title=title,
+            description=desc,
+            allowed_types=allowed,
+            pick_count=pc,
+            total=total,
+            bundles=bundles_data,
+            is_spend=is_spend,
+        ),
+    )
+
+
+async def handle_resource_choice(
+    server, conn, msg,
+) -> None:
+    """Handle a player's resource choice selection."""
+    state = _get_game_state(server, conn)
+    if state is None:
+        await conn.send_error(
+            "GAME_NOT_FOUND", "Not in a game.",
+        )
+        return
+
+    pending = state.pending_resource_choice
+    if pending is None:
+        await conn.send_error(
+            "INVALID_ACTION",
+            "No pending resource choice.",
+        )
+        return
+    if pending["player_id"] != conn.player_id:
+        await conn.send_error(
+            "INVALID_ACTION",
+            "Not your resource choice.",
+        )
+        return
+    if msg.prompt_id != pending["prompt_id"]:
+        await conn.send_error(
+            "INVALID_ACTION", "Prompt ID mismatch.",
+        )
+        return
+
+    chosen = msg.chosen_resources
+    error = validate_resource_choice(pending, chosen)
+    if error:
+        await conn.send_error("INVALID_CHOICE", error)
+        return
+
+    player = state.get_player(conn.player_id)
+    is_spend = pending.get("is_spend", False)
+    chosen_rc = ResourceCost(
+        **{k: v for k, v in chosen.items()
+           if k in ResourceCost.model_fields},
+    )
+
+    if is_spend:
+        if not player.resources.can_afford(chosen_rc):
+            await conn.send_error(
+                "INVALID_CHOICE",
+                "You don't have those resources.",
+            )
+            return
+        player.resources.deduct(chosen_rc)
+    else:
+        player.resources.add(chosen_rc)
+
+    source_name = pending.get("source_name", "")
+
+    await server.broadcast_to_game(
+        state.game_code,
+        ResourceChoiceResolvedResponse(
+            player_id=player.player_id,
+            chosen_resources=chosen,
+            is_spend=is_spend,
+            source_description=source_name,
+            next_player_id=None,
+        ),
+    )
+
+    state.game_log.append(
+        GameLog(
+            round_number=state.current_round,
+            player_id=player.player_id,
+            action="resource_choice",
+            details=(
+                f"{player.display_name} "
+                f"{'turned in' if is_spend else 'chose'}"
+                f" resources from {source_name}"
+            ),
+            timestamp=time.time(),
+        )
+    )
+
+    # Handle exchange phase 2 (spend → gain)
+    if (
+        is_spend
+        and pending.get("phase") == "spend"
+    ):
+        from shared.card_models import ResourceChoiceReward
+        rcr = ResourceChoiceReward(
+            **pending["choice_reward_dump"],
+        )
+        await _send_resource_choice_prompt(
+            server, state, player, rcr,
+            pending["source_type"],
+            source_name,
+            is_spend=False,
+            pick_count_override=rcr.gain_count,
+            phase="gain",
+        )
+        return
+
+    # Handle multi-player remaining
+    remaining = pending.get("remaining_players", [])
+    if remaining:
+        next_pid = remaining.pop(0)
+        next_player = state.get_player(next_pid)
+        if next_player:
+            from shared.card_models import ResourceChoiceReward
+            rcr = ResourceChoiceReward(
+                **pending["choice_reward_dump"],
+            )
+            state.pending_resource_choice = None
+            await _send_resource_choice_prompt(
+                server, state, next_player, rcr,
+                pending["source_type"],
+                source_name,
+                pick_count_override=(
+                    pending.get("others_pick_count", 1)
+                ),
+            )
+            state.pending_resource_choice[
+                "remaining_players"
+            ] = remaining
+            state.pending_resource_choice[
+                "others_pick_count"
+            ] = pending.get("others_pick_count", 1)
+            state.pending_resource_choice[
+                "choice_reward_dump"
+            ] = pending["choice_reward_dump"]
+            return
+
+    state.pending_resource_choice = None
+    await _check_quest_completion(server, state)
+
+
+# ------------------------------------------------------------------
 # Worker placement handler
 # ------------------------------------------------------------------
 
@@ -562,6 +840,46 @@ async def handle_place_worker(
             next_player_id=None,
         ),
     )
+
+    # Resource choice reward on buildings
+    if (
+        space.building_tile
+        and space.building_tile.visitor_reward_choice
+    ):
+        choice = space.building_tile.visitor_reward_choice
+        # Check cost affordability
+        if choice.cost.total() > 0:
+            if not player.resources.can_afford(choice.cost):
+                await conn.send_error(
+                    "INSUFFICIENT_RESOURCES",
+                    "Cannot afford this building's cost.",
+                )
+                return
+            player.resources.deduct(choice.cost)
+        # Check exchange affordability
+        if choice.choice_type == "exchange":
+            if (
+                _player_non_coin_total(player)
+                < choice.pick_count
+            ):
+                await conn.send_error(
+                    "INSUFFICIENT_RESOURCES",
+                    "Not enough non-coin resources.",
+                )
+                return
+            await _send_resource_choice_prompt(
+                server, state, player, choice,
+                "building", space.name,
+                is_spend=True,
+                phase="spend",
+            )
+            return
+
+        await _send_resource_choice_prompt(
+            server, state, player, choice,
+            "building", space.name,
+        )
+        return
 
     await _check_quest_completion(server, state)
 
@@ -925,6 +1243,29 @@ async def handle_place_worker_backstage(
         ),
     )
 
+    if effect_details.get("pending_resource_choice"):
+        choice = card.choice_reward
+        if card.effect_type == "resource_choice_multi":
+            others = [
+                p.player_id
+                for p in state.players
+                if p.player_id != player.player_id
+            ]
+            await _send_resource_choice_prompt(
+                server, state, player, choice,
+                "intrigue", card.name,
+            )
+            if state.pending_resource_choice:
+                state.pending_resource_choice[
+                    "remaining_players"
+                ] = others
+        else:
+            await _send_resource_choice_prompt(
+                server, state, player, choice,
+                "intrigue", card.name,
+            )
+        return
+
     await _check_quest_completion(server, state)
 
 
@@ -991,6 +1332,12 @@ def _resolve_intrigue_effect(state, player, card) -> dict:
         for p in state.players:
             p.resources.add(reward)
         effect["details"] = {"all_gained": reward.model_dump()}
+
+    elif card.effect_type in (
+        "resource_choice", "resource_choice_multi",
+    ):
+        if card.choice_reward:
+            effect["pending_resource_choice"] = True
 
     return effect
 
@@ -1486,8 +1833,11 @@ async def handle_purchase_building(
     )
 
     # Advance turn (deferred from placement on Real Estate Listings)
-    await _advance_turn(server, state)
-    next_player = state.current_player()
+    if state.phase == GamePhase.REASSIGNMENT:
+        next_player = None
+    else:
+        await _advance_turn(server, state)
+        next_player = state.current_player()
 
     await server.broadcast_to_game(
         state.game_code,
@@ -1500,6 +1850,7 @@ async def handle_purchase_building(
             visitor_reward=building.visitor_reward.model_dump(),
             owner_bonus=building.owner_bonus.model_dump(),
             owner_id=player.player_id,
+            accumulated_vp=building.accumulated_vp,
             next_player_id=(
                 next_player.player_id if next_player else None
             ),
@@ -1508,6 +1859,9 @@ async def handle_purchase_building(
 
     # Broadcast updated market
     await _broadcast_building_market(server, state)
+
+    if state.phase == GamePhase.REASSIGNMENT:
+        await _finish_reassignment(server, state)
 
 
 async def handle_cancel_purchase_building(
@@ -1524,6 +1878,30 @@ async def handle_cancel_purchase_building(
         await conn.send_error("INVALID_ACTION", "Player not found.")
         return
 
+    if state.phase == GamePhase.REASSIGNMENT:
+        state.game_log.append(
+            GameLog(
+                round_number=state.current_round,
+                player_id=player.player_id,
+                action="cancel_purchase_building",
+                details=(
+                    f"{player.display_name}"
+                    " skipped building purchase"
+                ),
+                timestamp=time.time(),
+            )
+        )
+        await server.broadcast_to_game(
+            state.game_code,
+            PlacementCancelledResponse(
+                player_id=player.player_id,
+                space_id="realtor",
+                next_player_id=None,
+            ),
+        )
+        await _finish_reassignment(server, state)
+        return
+
     # Unwind: free the space and return the worker
     space = state.board.action_spaces.get("realtor")
     if space and space.occupied_by == player.player_id:
@@ -1535,7 +1913,10 @@ async def handle_cancel_purchase_building(
             round_number=state.current_round,
             player_id=player.player_id,
             action="cancel_purchase_building",
-            details=f"{player.display_name} cancelled building purchase",
+            details=(
+                f"{player.display_name}"
+                " cancelled building purchase"
+            ),
             timestamp=time.time(),
         )
     )
@@ -1547,7 +1928,9 @@ async def handle_cancel_purchase_building(
             player_id=player.player_id,
             space_id="realtor",
             next_player_id=(
-                next_player.player_id if next_player else None
+                next_player.player_id
+                if next_player
+                else None
             ),
         ),
     )
@@ -1743,6 +2126,10 @@ async def handle_reassign_worker(
         ),
     )
 
+    # Handle Real Estate Listings during reassignment
+    if target.reward_special == "purchase_building":
+        return
+
     # Handle Garage spots: pause for quest selection
     if target.space_type == "garage":
         special = target.reward_special
@@ -1768,6 +2155,37 @@ async def handle_reassign_worker(
             "quest_and_coins", "quest_and_intrigue",
         ):
             return
+
+    # Resource choice reward on buildings
+    if (
+        target.building_tile
+        and target.building_tile.visitor_reward_choice
+    ):
+        choice = target.building_tile.visitor_reward_choice
+        if choice.cost.total() > 0:
+            if not player.resources.can_afford(choice.cost):
+                await _finish_reassignment(server, state)
+                return
+            player.resources.deduct(choice.cost)
+        if choice.choice_type == "exchange":
+            if (
+                _player_non_coin_total(player)
+                < choice.pick_count
+            ):
+                await _finish_reassignment(server, state)
+                return
+            await _send_resource_choice_prompt(
+                server, state, player, choice,
+                "building", target.name,
+                is_spend=True,
+                phase="spend",
+            )
+            return
+        await _send_resource_choice_prompt(
+            server, state, player, choice,
+            "building", target.name,
+        )
+        return
 
     await _finish_reassignment(server, state)
 

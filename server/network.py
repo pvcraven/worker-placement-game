@@ -168,6 +168,10 @@ class GameServer:
         from server.game_engine import handle_cancel_intrigue_target
         await handle_cancel_intrigue_target(self, conn, msg)
 
+    async def _handle_resource_choice(self, conn, msg) -> None:
+        from server.game_engine import handle_resource_choice
+        await handle_resource_choice(self, conn, msg)
+
     # ------------------------------------------------------------------
     # System handlers
     # ------------------------------------------------------------------

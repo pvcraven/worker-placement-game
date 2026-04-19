@@ -104,6 +104,12 @@ class QuestRewardChoiceRequest(BaseModel):
     choice_id: str
 
 
+class ResourceChoiceRequest(BaseModel):
+    action: Literal["resource_choice"] = "resource_choice"
+    prompt_id: str
+    chosen_resources: dict = Field(default_factory=dict)
+
+
 class ReconnectRequest(BaseModel):
     action: Literal["reconnect"] = "reconnect"
     game_code: str
@@ -135,6 +141,7 @@ ClientMessage = Annotated[
         ChooseIntrigueTargetRequest,
         QuestRewardChoiceRequest,
         CancelIntrigueTargetRequest,
+        ResourceChoiceRequest,
         ReconnectRequest,
         PingRequest,
     ],
@@ -281,6 +288,7 @@ class BuildingConstructedResponse(BaseModel):
     visitor_reward: dict = Field(default_factory=dict)
     owner_bonus: dict = Field(default_factory=dict)
     owner_id: str = ""
+    accumulated_vp: int = 0
     next_player_id: str | None = None
 
 
@@ -401,6 +409,33 @@ class IntrigueEffectResolvedResponse(BaseModel):
     resources_affected: dict
 
 
+class ResourceChoicePromptResponse(BaseModel):
+    action: Literal["resource_choice_prompt"] = (
+        "resource_choice_prompt"
+    )
+    prompt_id: str
+    player_id: str
+    choice_type: str
+    title: str
+    description: str
+    allowed_types: list[str] = Field(default_factory=list)
+    pick_count: int = 0
+    total: int = 0
+    bundles: list[dict] = Field(default_factory=list)
+    is_spend: bool = False
+
+
+class ResourceChoiceResolvedResponse(BaseModel):
+    action: Literal["resource_choice_resolved"] = (
+        "resource_choice_resolved"
+    )
+    player_id: str
+    chosen_resources: dict
+    is_spend: bool = False
+    source_description: str = ""
+    next_player_id: str | None = None
+
+
 class TurnTimeoutResponse(BaseModel):
     action: Literal["turn_timeout"] = "turn_timeout"
     player_id: str
@@ -441,6 +476,8 @@ ServerMessage = Annotated[
         TurnTimeoutResponse,
         IntrigueTargetPromptResponse,
         IntrigueEffectResolvedResponse,
+        ResourceChoicePromptResponse,
+        ResourceChoiceResolvedResponse,
     ],
     Field(discriminator="action"),
 ]

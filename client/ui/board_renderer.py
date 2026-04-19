@@ -83,6 +83,8 @@ class BoardRenderer:
         self._space_sprite_list: arcade.SpriteList | None = None
         self._backstage_sprite_list: arcade.SpriteList | None = None
         self._realtor_sprite_list: arcade.SpriteList | None = None
+        self._building_vp_texts: list[arcade.Text] = []
+        self._building_vp_dirty = True
 
     def update_board(
         self, board: dict, players: list[dict]
@@ -96,6 +98,7 @@ class BoardRenderer:
     ) -> None:
         self._face_up_buildings = face_up_buildings
         self._deck_remaining = deck_remaining
+        self._building_vp_dirty = True
 
     def draw(
         self, x: float, y: float, w: float, h: float,
@@ -240,6 +243,34 @@ class BoardRenderer:
                 bld_positions,
             )
             self._building_sprite_list.draw()
+            if self._building_vp_dirty:
+                self._building_vp_texts = []
+                for j, b in enumerate(
+                    self._face_up_buildings
+                ):
+                    vp = b.get("accumulated_vp", 0)
+                    if vp > 0:
+                        tx = (
+                            bld_positions[j][0]
+                            - _CARD_WIDTH / 2 + 8
+                        )
+                        ty = (
+                            bld_y
+                            - _BUILDING_CARD_HEIGHT / 2
+                            + 6
+                        )
+                        self._building_vp_texts.append(
+                            arcade.Text(
+                                f"{vp} VP",
+                                tx, ty,
+                                color=(180, 50, 50),
+                                font_size=12,
+                                bold=True,
+                            ),
+                        )
+                self._building_vp_dirty = False
+            for vt in self._building_vp_texts:
+                vt.draw()
             for i, bld in enumerate(self._face_up_buildings):
                 bcx = bld_positions[i][0]
                 bid = bld.get("id", f"building_{i}")

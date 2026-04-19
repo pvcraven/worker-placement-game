@@ -239,6 +239,68 @@
       "visitor_reward_special": "draw_intrigue",
       "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 1},
       "owner_bonus_special": null
+    },
+    {
+      "id": "building_025",
+      "name": "Musician's Union Hall",
+      "description": "A hub where session musicians gather, ready to join any project that needs them.",
+      "cost_coins": 4,
+      "visitor_reward": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 2},
+      "visitor_reward_special": null,
+      "visitor_reward_choice": {
+        "choice_type": "pick",
+        "allowed_types": ["guitarists", "bass_players", "drummers", "singers"],
+        "pick_count": 1
+      },
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 1},
+      "owner_bonus_special": null
+    },
+    {
+      "id": "building_026",
+      "name": "Open Audition Stage",
+      "description": "An open call stage where any talented musician can walk in and audition on the spot.",
+      "cost_coins": 5,
+      "visitor_reward": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
+      "visitor_reward_special": null,
+      "visitor_reward_choice": {
+        "choice_type": "pick",
+        "allowed_types": ["guitarists", "bass_players", "drummers", "singers"],
+        "pick_count": 2
+      },
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 1},
+      "owner_bonus_special": null
+    },
+    {
+      "id": "building_027",
+      "name": "Guitar & Bass Workshop",
+      "description": "An intensive workshop that trains string players for your label's roster.",
+      "cost_coins": 6,
+      "visitor_reward": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
+      "visitor_reward_special": null,
+      "visitor_reward_choice": {
+        "choice_type": "combo",
+        "allowed_types": ["guitarists", "bass_players"],
+        "total": 4,
+        "cost": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 2}
+      },
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 2},
+      "owner_bonus_special": null
+    },
+    {
+      "id": "building_028",
+      "name": "Talent Agency",
+      "description": "A well-connected talent agency that can swap musicians on your roster for better fits.",
+      "cost_coins": 7,
+      "visitor_reward": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
+      "visitor_reward_special": null,
+      "visitor_reward_choice": {
+        "choice_type": "exchange",
+        "allowed_types": ["guitarists", "bass_players", "drummers", "singers"],
+        "pick_count": 2,
+        "gain_count": 3
+      },
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 2},
+      "owner_bonus_special": null
     }
   ]
 }
