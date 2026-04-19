@@ -1149,9 +1149,19 @@ class GameView(arcade.View):
                     f" {' '.join(bonus_parts)}"
                 )
 
-        # Garage quest selection during reassignment
         my_id = getattr(self.window, "player_id", None)
         space_data = spaces.get(to_space, {})
+
+        # Building purchase during reassignment
+        if (
+            space_data.get("reward_special")
+            == "purchase_building"
+            and pid == my_id
+        ):
+            self._enter_building_highlight(pid)
+            return
+
+        # Garage quest selection during reassignment
         if (
             space_data.get("space_type") == "garage"
             and pid == my_id

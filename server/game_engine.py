@@ -1833,8 +1833,11 @@ async def handle_purchase_building(
     )
 
     # Advance turn (deferred from placement on Real Estate Listings)
-    await _advance_turn(server, state)
-    next_player = state.current_player()
+    if state.phase == GamePhase.REASSIGNMENT:
+        next_player = None
+    else:
+        await _advance_turn(server, state)
+        next_player = state.current_player()
 
     await server.broadcast_to_game(
         state.game_code,
@@ -1857,6 +1860,9 @@ async def handle_purchase_building(
     # Broadcast updated market
     await _broadcast_building_market(server, state)
 
+    if state.phase == GamePhase.REASSIGNMENT:
+        await _finish_reassignment(server, state)
+
 
 async def handle_cancel_purchase_building(
     server: GameServer, conn: ClientConnection, msg
@@ -1872,6 +1878,30 @@ async def handle_cancel_purchase_building(
         await conn.send_error("INVALID_ACTION", "Player not found.")
         return
 
+    if state.phase == GamePhase.REASSIGNMENT:
+        state.game_log.append(
+            GameLog(
+                round_number=state.current_round,
+                player_id=player.player_id,
+                action="cancel_purchase_building",
+                details=(
+                    f"{player.display_name}"
+                    " skipped building purchase"
+                ),
+                timestamp=time.time(),
+            )
+        )
+        await server.broadcast_to_game(
+            state.game_code,
+            PlacementCancelledResponse(
+                player_id=player.player_id,
+                space_id="realtor",
+                next_player_id=None,
+            ),
+        )
+        await _finish_reassignment(server, state)
+        return
+
     # Unwind: free the space and return the worker
     space = state.board.action_spaces.get("realtor")
     if space and space.occupied_by == player.player_id:
@@ -1883,7 +1913,10 @@ async def handle_cancel_purchase_building(
             round_number=state.current_round,
             player_id=player.player_id,
             action="cancel_purchase_building",
-            details=f"{player.display_name} cancelled building purchase",
+            details=(
+                f"{player.display_name}"
+                " cancelled building purchase"
+            ),
             timestamp=time.time(),
         )
     )
@@ -1895,7 +1928,9 @@ async def handle_cancel_purchase_building(
             player_id=player.player_id,
             space_id="realtor",
             next_player_id=(
-                next_player.player_id if next_player else None
+                next_player.player_id
+                if next_player
+                else None
             ),
         ),
     )
@@ -2090,6 +2125,10 @@ async def handle_reassign_worker(
             owner_bonus=owner_bonus_info,
         ),
     )
+
+    # Handle Real Estate Listings during reassignment
+    if target.reward_special == "purchase_building":
+        return
 
     # Handle Garage spots: pause for quest selection
     if target.space_type == "garage":
