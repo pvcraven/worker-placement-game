@@ -2,35 +2,35 @@
 
 from __future__ import annotations
 
+import logging
+from pathlib import Path
+
 import arcade
 import arcade.shape_list
 
-from client.ui.card_renderer import CardRenderer
+_log = logging.getLogger(__name__)
+
+_CARD_WIDTH = 190
+_CARD_HEIGHT = 230
+_BUILDING_CARD_HEIGHT = 150
+_SPACE_CARD_HEIGHT = 100
 
 
 # Board layout positions (proportional, relative to board area)
 # Permanent spaces in left column; second column for buildings
 _SPACE_LAYOUT: dict[str, tuple[float, float]] = {
-    "merch_store": (0.08, 0.92),
-    "motown": (0.08, 0.82),
-    "guitar_center": (0.08, 0.72),
-    "talent_show": (0.08, 0.62),
-    "rhythm_pit": (0.08, 0.52),
-    "castle_waterdeep": (0.08, 0.42),
-    "realtor": (0.57, 0.40),
+    "merch_store": (0.08, 0.91),
+    "motown": (0.08, 0.78),
+    "guitar_center": (0.08, 0.65),
+    "talent_show": (0.08, 0.52),
+    "rhythm_pit": (0.08, 0.39),
+    "castle_waterdeep": (0.08, 0.26),
     "the_garage_1": (0.40, 0.92),
     "the_garage_2": (0.54, 0.92),
     "the_garage_3": (0.68, 0.92),
 }
 
-_BACKSTAGE_LAYOUT: list[tuple[float, float]] = [
-    (0.35, 0.28),
-    (0.35, 0.20),
-    (0.35, 0.12),
-]
-
-_SPACE_WIDTH = 170
-_SPACE_HEIGHT = 75
+_BACKSTAGE_Y = [0.46, 0.33, 0.20]
 
 # Colors for player tokens
 _PLAYER_COLORS = [
@@ -40,6 +40,26 @@ _PLAYER_COLORS = [
     arcade.color.ORANGE,
     arcade.color.PURPLE,
 ]
+
+
+def _build_card_sprite_list(
+    cards: list[dict],
+    card_type: str,
+    positions: list[tuple[float, float]],
+) -> arcade.SpriteList:
+    sprite_list = arcade.SpriteList()
+    for card, (cx, cy) in zip(cards, positions):
+        card_id = card.get("id", "")
+        png_path = Path(
+            f"client/assets/card_images/{card_type}/{card_id}.png"
+        )
+        if not png_path.exists():
+            _log.warning("Card image not found: %s", png_path)
+            continue
+        sprite = arcade.Sprite(str(png_path))
+        sprite.position = (cx, cy)
+        sprite_list.append(sprite)
+    return sprite_list
 
 
 class BoardRenderer:
@@ -54,37 +74,15 @@ class BoardRenderer:
         self._building_spaces: list[dict] = []
         self._face_up_buildings: list[dict] = []
         self._deck_remaining: int = 0
-        self._text_cache: dict[str, arcade.Text] = {}
         self._shape_list = arcade.shape_list.ShapeElementList()
         self._shapes_dirty = True
         self._last_draw_rect = (0.0, 0.0, 0.0, 0.0)
-
-    def _text(
-        self,
-        key: str,
-        text: str,
-        x: float,
-        y: float,
-        color,
-        font_size: int,
-        **kwargs,
-    ) -> arcade.Text:
-        """Get or create a cached Text object."""
-        if key in self._text_cache:
-            t = self._text_cache[key]
-            t.text = text
-            t.x = x
-            t.y = y
-            t.color = color
-            return t
-        t = arcade.Text(
-            text, x, y, color,
-            font_size=font_size,
-            font_name="Tahoma",
-            **kwargs,
-        )
-        self._text_cache[key] = t
-        return t
+        self._quest_sprite_list: arcade.SpriteList | None = None
+        self._building_sprite_list: arcade.SpriteList | None = None
+        self._constructed_sprite_list: arcade.SpriteList | None = None
+        self._space_sprite_list: arcade.SpriteList | None = None
+        self._backstage_sprite_list: arcade.SpriteList | None = None
+        self._realtor_sprite_list: arcade.SpriteList | None = None
 
     def update_board(
         self, board: dict, players: list[dict]
@@ -115,6 +113,9 @@ class BoardRenderer:
 
         self._shape_list.draw()
 
+        if self._space_sprite_list:
+            self._space_sprite_list.draw()
+
         spaces = self.board_data.get("action_spaces", {})
         backstage_slots = self.board_data.get(
             "backstage_slots", []
@@ -124,10 +125,28 @@ class BoardRenderer:
             cx = x + px * w
             cy = y + py * h
             space_data = spaces.get(space_id, {})
-            self._draw_space(cx, cy, space_id, space_data)
+            occupied = space_data.get("occupied_by")
+            if occupied:
+                color = self._player_color(occupied)
+                arcade.draw_circle_filled(
+                    cx + _CARD_WIDTH / 2 - 10, cy, 9, color,
+                )
 
-        for i, (px, py) in enumerate(_BACKSTAGE_LAYOUT):
-            cx = x + px * w
+        if self._backstage_sprite_list:
+            self._backstage_sprite_list.draw()
+
+        garage_center_x = x + 0.54 * w
+        n_q = max(
+            len(self.board_data.get("face_up_quests", [])),
+            4,
+        )
+        q_spacing = _CARD_WIDTH + 15
+        bs_cx = (
+            garage_center_x
+            - n_q * q_spacing / 2
+            + _CARD_WIDTH / 2
+        )
+        for i, py in enumerate(_BACKSTAGE_Y):
             cy = y + py * h
             slot_num = i + 1
             slot_data = {}
@@ -135,16 +154,18 @@ class BoardRenderer:
                 if gs.get("slot_number") == slot_num:
                     slot_data = gs
                     break
-            self._draw_backstage_slot(
-                cx, cy, slot_num, slot_data
-            )
-
-        garage_center_x = x + 0.54 * w
+            occupied = slot_data.get("occupied_by")
+            if occupied:
+                color = self._player_color(occupied)
+                arcade.draw_circle_filled(
+                    bs_cx + _CARD_WIDTH / 2 - 10, cy, 9,
+                    color,
+                )
         face_up_quests = self.board_data.get(
             "face_up_quests", []
         )
         if face_up_quests:
-            card_w = 190
+            card_w = _CARD_WIDTH
             spacing = card_w + 15
             total_w = len(face_up_quests) * spacing
             start_x = (
@@ -152,68 +173,122 @@ class BoardRenderer:
             )
             card_y = y + 0.68 * h
             hl = highlighted_ids or []
+            positions = [
+                (start_x + i * spacing, card_y)
+                for i in range(len(face_up_quests))
+            ]
+            self._quest_sprite_list = _build_card_sprite_list(
+                face_up_quests, "quests", positions,
+            )
+            self._quest_sprite_list.draw()
             for i, quest in enumerate(face_up_quests):
-                cx = start_x + i * spacing
+                cx = positions[i][0]
                 qid = quest.get("id", f"quest_{i}")
-                CardRenderer.draw_contract(
-                    cx, card_y, quest,
-                    highlight=qid in hl,
-                    cache_key=f"faceup_{i}",
-                )
+                if qid in hl:
+                    arcade.draw_rect_outline(
+                        arcade.rect.XYWH(
+                            cx, card_y,
+                            _CARD_WIDTH, _CARD_HEIGHT,
+                        ),
+                        arcade.color.YELLOW,
+                        border_width=2,
+                    )
                 self._space_rects[
                     f"quest_card_{qid}"
                 ] = (
                     cx - card_w / 2,
-                    card_y - 100,
+                    card_y - _CARD_HEIGHT / 2,
                     card_w,
-                    200,
+                    _CARD_HEIGHT,
                 )
 
-        # Face-up building cards
+        # Realtor space
+        if self._realtor_sprite_list:
+            self._realtor_sprite_list.draw()
+        realtor_data = spaces.get("realtor", {})
+        if realtor_data.get("occupied_by"):
+            r_rect = self._space_rects.get("realtor")
+            if r_rect:
+                r_cx = r_rect[0] + r_rect[2] / 2
+                r_cy = r_rect[1] + r_rect[3] / 2
+                color = self._player_color(
+                    realtor_data["occupied_by"],
+                )
+                arcade.draw_circle_filled(
+                    r_cx + _CARD_WIDTH / 2 - 10,
+                    r_cy, 9, color,
+                )
+
+        # Face-up building cards — right-align with quest row
+        quest_right = garage_center_x + n_q * q_spacing / 2
         if self._face_up_buildings:
-            bld_w = 190
+            bld_w = _CARD_WIDTH
             bld_spacing = bld_w + 15
-            total_bw = len(self._face_up_buildings) * bld_spacing
-            bld_center_x = x + 0.57 * w
+            n_bld = len(self._face_up_buildings)
+            rightmost_cx = quest_right - bld_w / 2
             bld_start_x = (
-                bld_center_x - total_bw / 2 + bld_w / 2
+                rightmost_cx - (n_bld - 1) * bld_spacing
             )
             bld_y = y + 0.20 * h
             bhl = highlighted_ids or []
-            for i, bld in enumerate(
-                self._face_up_buildings
-            ):
-                bcx = bld_start_x + i * bld_spacing
+            bld_positions = [
+                (bld_start_x + i * bld_spacing, bld_y)
+                for i in range(n_bld)
+            ]
+            self._building_sprite_list = _build_card_sprite_list(
+                self._face_up_buildings, "buildings",
+                bld_positions,
+            )
+            self._building_sprite_list.draw()
+            for i, bld in enumerate(self._face_up_buildings):
+                bcx = bld_positions[i][0]
                 bid = bld.get("id", f"building_{i}")
-                CardRenderer.draw_building(
-                    bcx, bld_y, bld,
-                    highlight=bid in bhl,
-                    cache_key=f"faceup_bld_{i}",
-                )
+                if bid in bhl:
+                    arcade.draw_rect_outline(
+                        arcade.rect.XYWH(
+                            bcx, bld_y,
+                            _CARD_WIDTH,
+                            _BUILDING_CARD_HEIGHT,
+                        ),
+                        arcade.color.YELLOW,
+                        border_width=2,
+                    )
                 self._space_rects[
                     f"building_card_{bid}"
                 ] = (
                     bcx - bld_w / 2,
-                    bld_y - 115,
+                    bld_y - _BUILDING_CARD_HEIGHT / 2,
                     bld_w,
-                    230,
+                    _BUILDING_CARD_HEIGHT,
                 )
 
-        building_start_x = 0.22
-        for i, space_id in enumerate(
-            self.board_data.get(
-                "constructed_buildings", []
+        if self._constructed_sprite_list:
+            self._constructed_sprite_list.draw()
+            merch_top_y = (
+                y + 0.91 * h + _SPACE_CARD_HEIGHT / 2
             )
-        ):
-            space_data = spaces.get(space_id, {})
-            row = i % 7
-            col = i // 7
-            cx = x + (building_start_x + col * 0.14) * w
-            cy = y + (0.92 - row * 0.10) * h
-            self._draw_space(
-                cx, cy, space_id, space_data,
-                is_building=True,
+            first_bld_cy = (
+                merch_top_y - _BUILDING_CARD_HEIGHT / 2
             )
+            bld_row_step = (_BUILDING_CARD_HEIGHT + 10) / h
+            building_start_x = 0.22
+            for i, space_id in enumerate(
+                self.board_data.get(
+                    "constructed_buildings", []
+                )
+            ):
+                space_data = spaces.get(space_id, {})
+                row = i % 5
+                col = i // 5
+                cx = x + (building_start_x + col * 0.14) * w
+                cy = first_bld_cy - row * bld_row_step * h
+                occupied = space_data.get("occupied_by")
+                if occupied:
+                    color = self._player_color(occupied)
+                    arcade.draw_circle_filled(
+                        cx + _CARD_WIDTH / 2 - 14, cy, 9,
+                        color,
+                    )
 
     def _rebuild_shapes(
         self, x: float, y: float, w: float, h: float,
@@ -222,12 +297,7 @@ class BoardRenderer:
         self._shape_list.clear()
         self._space_rects.clear()
 
-        sw, sh = _SPACE_WIDTH, _SPACE_HEIGHT
-        bsh = 60
         spaces = self.board_data.get("action_spaces", {})
-        backstage_slots = self.board_data.get(
-            "backstage_slots", []
-        )
 
         # Background
         self._shape_list.append(
@@ -237,259 +307,108 @@ class BoardRenderer:
             )
         )
 
-        # Permanent action spaces
+        # Permanent action spaces — build sprite list
+        space_cards = []
+        space_positions = []
         for space_id, (px, py) in _SPACE_LAYOUT.items():
             cx = x + px * w
             cy = y + py * h
-            data = spaces.get(space_id, {})
             self._space_rects[space_id] = (
-                cx - sw / 2, cy - sh / 2, sw, sh,
+                cx - _CARD_WIDTH / 2,
+                cy - _SPACE_CARD_HEIGHT / 2,
+                _CARD_WIDTH,
+                _SPACE_CARD_HEIGHT,
             )
-            occupied = data.get("occupied_by")
-            bg = (50, 60, 80)
-            if occupied:
-                bg = (80, 80, 40)
-            self._shape_list.append(
-                arcade.shape_list.create_rectangle_filled(
-                    cx, cy, sw, sh, bg,
-                )
-            )
-            self._shape_list.append(
-                arcade.shape_list.create_rectangle_outline(
-                    cx, cy, sw, sh,
-                    arcade.color.WHITE, border_width=1,
-                )
-            )
+            space_cards.append({"id": space_id})
+            space_positions.append((cx, cy))
+        self._space_sprite_list = _build_card_sprite_list(
+            space_cards, "spaces", space_positions,
+        )
 
-        # Backstage slots
-        for i, (px, py) in enumerate(_BACKSTAGE_LAYOUT):
-            cx = x + px * w
+        # Backstage slots — build sprite list
+        # Align left edge with leftmost face-up quest card
+        garage_cx = x + 0.54 * w
+        n_q = max(
+            len(self.board_data.get("face_up_quests", [])),
+            4,
+        )
+        q_spacing = _CARD_WIDTH + 15
+        bs_cx = (
+            garage_cx
+            - n_q * q_spacing / 2
+            + _CARD_WIDTH / 2
+        )
+        backstage_cards = []
+        backstage_positions = []
+        for i, py in enumerate(_BACKSTAGE_Y):
             cy = y + py * h
             slot_num = i + 1
-            slot_data = {}
-            for gs in backstage_slots:
-                if gs.get("slot_number") == slot_num:
-                    slot_data = gs
-                    break
             sid = f"backstage_slot_{slot_num}"
             self._space_rects[sid] = (
-                cx - sw / 2, cy - bsh / 2, sw, bsh,
+                bs_cx - _CARD_WIDTH / 2,
+                cy - _SPACE_CARD_HEIGHT / 2,
+                _CARD_WIDTH,
+                _SPACE_CARD_HEIGHT,
             )
-            occupied = slot_data.get("occupied_by")
-            bg = (
-                (80, 50, 50)
-                if not occupied
-                else (80, 80, 40)
-            )
-            self._shape_list.append(
-                arcade.shape_list.create_rectangle_filled(
-                    cx, cy, sw, bsh, bg,
-                )
-            )
-            self._shape_list.append(
-                arcade.shape_list.create_rectangle_outline(
-                    cx, cy, sw, bsh,
-                    arcade.color.YELLOW, border_width=1,
-                )
-            )
+            backstage_cards.append({"id": sid})
+            backstage_positions.append((bs_cx, cy))
+        self._backstage_sprite_list = _build_card_sprite_list(
+            backstage_cards, "spaces", backstage_positions,
+        )
 
-        # Constructed buildings
+        # Realtor — centered above face-up building cards
+        quest_right = garage_cx + n_q * q_spacing / 2
+        n_bld = max(len(self._face_up_buildings), 3)
+        bld_spacing = _CARD_WIDTH + 15
+        rightmost_bld_cx = quest_right - _CARD_WIDTH / 2
+        bld_start_cx = rightmost_bld_cx - (n_bld - 1) * bld_spacing
+        realtor_cx = (bld_start_cx + rightmost_bld_cx) / 2
+        realtor_cy = y + 0.40 * h
+        self._space_rects["realtor"] = (
+            realtor_cx - _CARD_WIDTH / 2,
+            realtor_cy - _SPACE_CARD_HEIGHT / 2,
+            _CARD_WIDTH,
+            _SPACE_CARD_HEIGHT,
+        )
+        self._realtor_sprite_list = _build_card_sprite_list(
+            [{"id": "realtor"}], "spaces",
+            [(realtor_cx, realtor_cy)],
+        )
+
+        # Constructed buildings — build sprite list
+        # Align top of first building with top of The Merch Store
+        merch_top_y = (
+            y + 0.91 * h + _SPACE_CARD_HEIGHT / 2
+        )
+        first_building_cy = merch_top_y - _BUILDING_CARD_HEIGHT / 2
         building_start_x = 0.22
+        building_row_step = (_BUILDING_CARD_HEIGHT + 10) / h
+        constructed_cards = []
+        constructed_positions = []
         for i, space_id in enumerate(
             self.board_data.get(
                 "constructed_buildings", []
             )
         ):
             data = spaces.get(space_id, {})
-            row = i % 7
-            col = i // 7
+            row = i % 5
+            col = i // 5
             cx = x + (building_start_x + col * 0.14) * w
-            cy = y + (0.92 - row * 0.10) * h
+            cy = first_building_cy - row * building_row_step * h
             self._space_rects[space_id] = (
-                cx - sw / 2, cy - sh / 2, sw, sh,
+                cx - _CARD_WIDTH / 2,
+                cy - _BUILDING_CARD_HEIGHT / 2,
+                _CARD_WIDTH,
+                _BUILDING_CARD_HEIGHT,
             )
-            occupied = data.get("occupied_by")
-            bg = (60, 80, 60)
-            if occupied:
-                bg = (80, 80, 40)
-            self._shape_list.append(
-                arcade.shape_list.create_rectangle_filled(
-                    cx, cy, sw, sh, bg,
-                )
-            )
-            self._shape_list.append(
-                arcade.shape_list.create_rectangle_outline(
-                    cx, cy, sw, sh,
-                    arcade.color.WHITE, border_width=1,
-                )
-            )
-
-    def _draw_space(
-        self,
-        cx: float,
-        cy: float,
-        space_id: str,
-        data: dict,
-        is_building: bool = False,
-    ) -> None:
-        """Draw text and tokens for a space (rects are batched)."""
-        sw = _SPACE_WIDTH
-        occupied = data.get("occupied_by")
-        name = data.get("name", space_id)
-        if len(name) > 22:
-            name = name[:20] + ".."
-
-        if is_building:
-            self._draw_building_text(cx, cy, space_id, data, name)
-        else:
-            self._text(
-                f"space_{space_id}_name", name,
-                cx, cy + 14,
-                arcade.color.WHITE, 14,
-                anchor_x="center", anchor_y="center",
-                bold=True,
-            ).draw()
-            reward = data.get("reward", {})
-            reward_str = self._reward_summary(
-                reward, data.get("reward_special")
-            )
-            if reward_str:
-                self._text(
-                    f"space_{space_id}_reward", reward_str,
-                    cx, cy - 14,
-                    arcade.color.WHITE, 14,
-                    anchor_x="center", anchor_y="center",
-                ).draw()
-
-        # Worker token
-        if occupied:
-            color = self._player_color(occupied)
-            arcade.draw_circle_filled(
-                cx + sw / 2 - 14, cy, 9, color
-            )
-
-    def _draw_building_text(
-        self,
-        cx: float,
-        cy: float,
-        space_id: str,
-        data: dict,
-        name: str,
-    ) -> None:
-        self._text(
-            f"space_{space_id}_name", name,
-            cx, cy + 20,
-            arcade.color.WHITE, 12,
-            anchor_x="center", anchor_y="center",
-            bold=True,
-        ).draw()
-
-        visitor = data.get("reward", {})
-        visitor_str = self._resource_str(visitor)
-        if visitor_str:
-            self._text(
-                f"space_{space_id}_cust",
-                f"Customer: {visitor_str}",
-                cx, cy + 2,
-                arcade.color.LIGHT_GREEN, 12,
-                anchor_x="center", anchor_y="center",
-            ).draw()
-
-        owner_id = data.get("owner_id")
-        if owner_id:
-            bonus = (
-                data.get("owner_bonus")
-                or data.get("building_tile", {}).get(
-                    "owner_bonus", {}
-                )
-            )
-            bonus_str = self._resource_str(bonus)
-            label = f"Owner: {bonus_str}" if bonus_str else ""
-            if label:
-                self._text(
-                    f"space_{space_id}_own", label,
-                    cx, cy - 14,
-                    arcade.color.GOLD, 12,
-                    anchor_x="center", anchor_y="center",
-                ).draw()
-
-    def _draw_backstage_slot(
-        self,
-        cx: float,
-        cy: float,
-        slot_num: int,
-        data: dict,
-    ) -> None:
-        """Draw text and tokens for a backstage slot (rects are batched)."""
-        sw = _SPACE_WIDTH
-        occupied = data.get("occupied_by")
-
-        self._text(
-            f"backstage_{slot_num}_label",
-            f"Backstage {slot_num}",
-            cx, cy + 8,
-            arcade.color.YELLOW, 13,
-            anchor_x="center", anchor_y="center", bold=True,
-        ).draw()
-
-        if occupied:
-            color = self._player_color(occupied)
-            arcade.draw_circle_filled(
-                cx + sw / 2 - 14, cy, 9, color
-            )
-            card = data.get("intrigue_card_played")
-            if card:
-                self._text(
-                    f"backstage_{slot_num}_card",
-                    card.get("name", "")[:16],
-                    cx, cy - 12,
-                    arcade.color.LIGHT_GRAY, 11,
-                    anchor_x="center",
-                ).draw()
-
-    def _reward_summary(
-        self, reward: dict, special: str | None
-    ) -> str:
-        if special:
-            labels = {
-                "acquire_contract_or_intrigue": (
-                    "Contract/Intrigue"
-                ),
-                "purchase_building": "Buy Building",
-                "first_player_marker_and_intrigue": (
-                    "1st Player + Intrigue"
-                ),
-                "quest_and_coins": "Quest + 2$",
-                "quest_and_intrigue": "Quest + Intrigue",
-                "reset_quests": "Reset Quests",
-            }
-            return labels.get(special, special)
-        parts = []
-        mapping = {
-            "guitarists": "G",
-            "bass_players": "B",
-            "drummers": "D",
-            "singers": "S",
-            "coins": "$",
-        }
-        for key, label in mapping.items():
-            val = reward.get(key, 0)
-            if val > 0:
-                parts.append(f"{val}{label}")
-        return " ".join(parts) if parts else ""
-
-    @staticmethod
-    def _resource_str(res: dict) -> str:
-        parts = []
-        for key, sym in [
-            ("guitarists", "G"), ("bass_players", "B"),
-            ("drummers", "D"), ("singers", "S"),
-            ("coins", "$"),
-        ]:
-            val = res.get(key, 0)
-            if val > 0:
-                parts.append(f"{val}{sym}")
-        return " ".join(parts)
+            tile = data.get("building_tile", {})
+            tile_id = tile.get("id", "") if tile else ""
+            if tile_id:
+                constructed_cards.append({"id": tile_id})
+                constructed_positions.append((cx, cy))
+        self._constructed_sprite_list = _build_card_sprite_list(
+            constructed_cards, "buildings", constructed_positions,
+        )
 
     def _player_color(self, player_id: str) -> tuple:
         for i, p in enumerate(self.players):

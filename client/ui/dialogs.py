@@ -168,9 +168,12 @@ class BuildingPurchaseDialog:
 class QuestCompletionDialog:
     """A modal dialog for completing a quest at end of turn.
 
-    Renders actual quest cards via CardRenderer and handles
+    Renders quest cards as sprites and handles
     click detection on them directly.
     """
+
+    _CARD_WIDTH = 190
+    _CARD_HEIGHT = 230
 
     def __init__(
         self,
@@ -186,6 +189,7 @@ class QuestCompletionDialog:
         ] = []
         self._skip_rect = (0.0, 0.0, 0.0, 0.0)
         self._visible = False
+        self._quest_sprite_list: arcade.SpriteList | None = None
 
     def show(
         self, window_width: float, window_height: float,
@@ -196,29 +200,24 @@ class QuestCompletionDialog:
         self._layout()
 
     def _layout(self) -> None:
-        from client.ui.card_renderer import (
-            _CARD_HEIGHT,
-            _CARD_WIDTH,
-        )
+        cw = self._CARD_WIDTH
+        ch = self._CARD_HEIGHT
         self._card_rects.clear()
         n = len(self.quests)
-        spacing = _CARD_WIDTH + 15
+        spacing = cw + 15
         total_w = n * spacing
-        panel_h = _CARD_HEIGHT + 120
+        panel_h = ch + 120
         pcx = self._ww / 2
         pcy = self._wh / 2
         card_cy = pcy + 20
-        start_x = (
-            pcx - total_w / 2 + _CARD_WIDTH / 2
-        )
+        start_x = pcx - total_w / 2 + cw / 2
         for i, quest in enumerate(self.quests):
             cx = start_x + i * spacing
             qid = quest.get("id", "")
-            left = cx - _CARD_WIDTH / 2
-            bottom = card_cy - _CARD_HEIGHT / 2
+            left = cx - cw / 2
+            bottom = card_cy - ch / 2
             self._card_rects.append((
-                qid, left, bottom,
-                _CARD_WIDTH, _CARD_HEIGHT,
+                qid, left, bottom, cw, ch,
             ))
         skip_w, skip_h = 200, 35
         self._skip_rect = (
@@ -231,16 +230,16 @@ class QuestCompletionDialog:
     def draw(self, ww: float, wh: float) -> None:
         if not self._visible:
             return
-        from client.ui.card_renderer import (
-            CardRenderer,
-            _CARD_HEIGHT,
-            _CARD_WIDTH,
+        from client.ui.board_renderer import (
+            _build_card_sprite_list,
         )
+        cw = self._CARD_WIDTH
+        ch = self._CARD_HEIGHT
         n = len(self.quests)
-        spacing = _CARD_WIDTH + 15
+        spacing = cw + 15
         total_w = n * spacing
         panel_w = total_w + 40
-        panel_h = _CARD_HEIGHT + 120
+        panel_h = ch + 120
         pcx = ww / 2
         pcy = wh / 2
         arcade.draw_rect_filled(
@@ -262,15 +261,16 @@ class QuestCompletionDialog:
             anchor_y="center",
         ).draw()
 
-        start_x = pcx - total_w / 2 + _CARD_WIDTH / 2
+        start_x = pcx - total_w / 2 + cw / 2
         cy = pcy + 20
-        for i, quest in enumerate(self.quests):
-            cx = start_x + i * spacing
-            CardRenderer.draw_contract(
-                cx, cy, quest,
-                highlight=False,
-                cache_key=f"qcd_{i}",
-            )
+        positions = [
+            (start_x + i * spacing, cy)
+            for i in range(n)
+        ]
+        self._quest_sprite_list = _build_card_sprite_list(
+            self.quests, "quests", positions,
+        )
+        self._quest_sprite_list.draw()
 
         # Skip button
         sl, sb, sw, sh = self._skip_rect
