@@ -34,6 +34,8 @@ class GameWindow(arcade.Window):
         self.scale_x: float = width / DESIGN_WIDTH
         self.scale_y: float = height / DESIGN_HEIGHT
         self.ui_scale: float = min(self.scale_x, self.scale_y)
+        self.content_width: float = DESIGN_WIDTH * self.ui_scale
+        self.content_height: float = DESIGN_HEIGHT * self.ui_scale
         self._too_small = False
         self.background_color = arcade.color.DARK_SLATE_GRAY
 
@@ -47,6 +49,8 @@ class GameWindow(arcade.Window):
         self.scale_x = width / DESIGN_WIDTH
         self.scale_y = height / DESIGN_HEIGHT
         self.ui_scale = min(self.scale_x, self.scale_y)
+        self.content_width = DESIGN_WIDTH * self.ui_scale
+        self.content_height = DESIGN_HEIGHT * self.ui_scale
 
     def on_draw(self) -> None:
         self.clear()
