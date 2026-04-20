@@ -1,8 +1,10 @@
 /speckit-specify
-/speckit-clarify (optional)
+/speckit-clarify
 /speckit-plan
 /speckit-tasks
 /speckit-implement
+
+/speckit-git-commit
 
 
 https://github.com/github/spec-kit/releases

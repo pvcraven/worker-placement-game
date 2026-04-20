@@ -14,6 +14,8 @@ class GameLogPanel:
     def __init__(self) -> None:
         self.entries: list[str] = []
         self.scroll_offset: int = 0
+        self._auto_scroll: bool = True
+        self._max_lines: int = _VISIBLE_LINES
         self._text_cache: dict[str, arcade.Text] = {}
 
     def _text(
@@ -48,7 +50,20 @@ class GameLogPanel:
         self.entries.append(text)
         if len(self.entries) > _MAX_ENTRIES:
             self.entries = self.entries[-_MAX_ENTRIES:]
-        self.scroll_offset = max(0, len(self.entries) - _VISIBLE_LINES)
+        if self._auto_scroll:
+            self.scroll_offset = max(
+                0, len(self.entries) - self._max_lines,
+            )
+
+    def scroll(self, direction: int) -> None:
+        """Scroll by direction lines (negative=up, positive=down)."""
+        max_offset = max(
+            0, len(self.entries) - self._max_lines,
+        )
+        self.scroll_offset = max(
+            0, min(self.scroll_offset + direction, max_offset),
+        )
+        self._auto_scroll = self.scroll_offset >= max_offset
 
     def draw(
         self, x: float, y: float, w: float, h: float,
@@ -74,7 +89,10 @@ class GameLogPanel:
         ).draw()
 
         # Log entries
-        max_lines = min(_VISIBLE_LINES, int((h - 50 * s) / line_height))
+        max_lines = min(
+            _VISIBLE_LINES, int((h - 50 * s) / line_height),
+        )
+        self._max_lines = max_lines
         start = self.scroll_offset
         end = min(start + max_lines, len(self.entries))
 

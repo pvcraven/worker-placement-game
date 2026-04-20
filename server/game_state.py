@@ -11,8 +11,8 @@ from server.models.game import GameState
 
 logger = logging.getLogger(__name__)
 
-_CODE_LENGTH = 6
-_CODE_CHARS = string.ascii_uppercase + string.digits
+_CODE_LENGTH = 3
+_CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
 
 
 def _generate_game_code() -> str:
