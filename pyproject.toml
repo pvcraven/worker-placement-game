@@ -4,14 +4,11 @@ version = "0.1.0"
 description = "Multiplayer worker placement board game with a music industry theme"
 requires-python = ">=3.12"
 dependencies = [
-    "arcade",
+    "arcade==4.0.0.dev4",
     "websockets>=12.0",
     "pydantic>=2.0",
     "pillow>=10.0",
 ]
-
-[tool.uv.sources]
-arcade = { path = "C:/Users/PaCra/Projects/arcade", editable = true }
 
 [project.optional-dependencies]
 dev = [
