@@ -1553,13 +1553,23 @@ class GameView(arcade.View):
             my_id = getattr(self.window, "player_id", None)
             workers_left = 0
             vp = 0
+            intrigue_count = 0
+            quests_open = 0
+            quests_closed = 0
             for p in self.game_state.get("players", []):
                 if p.get("player_id") == my_id:
                     workers_left = p.get("available_workers", 0)
                     vp = p.get("victory_points", 0)
+                    intrigue_count = len(p.get("intrigue_hand", []))
+                    quests_open = len(p.get("contract_hand", []))
+                    quests_closed = len(p.get("completed_contracts", []))
                     break
             self.resource_bar.draw(
-                0, 0, cw, bar_h, workers_left, vp, scale=s,
+                0, 0, cw, bar_h, workers_left, vp,
+                intrigue_count=intrigue_count,
+                quests_open=quests_open,
+                quests_closed=quests_closed,
+                scale=s,
             )
 
         if self.game_log_panel:

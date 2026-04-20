@@ -54,7 +54,8 @@ class ResourceBar:
     def draw(
         self, x: float, y: float, w: float, h: float,
         workers_left: int = 0, victory_points: int = 0,
-        scale: float = 1.0,
+        intrigue_count: int = 0, quests_open: int = 0,
+        quests_closed: int = 0, scale: float = 1.0,
     ) -> None:
         s = scale
         # Background
@@ -67,19 +68,19 @@ class ResourceBar:
         swatch = int(20 * s)
         count = len(_RESOURCE_CONFIG)
         section_w = w / count
+        left_shift = section_w * 0.25
         row_y = y + h * 0.33
+        top_y = y + h * 0.72
 
         for i, (key, label, color) in enumerate(_RESOURCE_CONFIG):
-            cx = x + section_w * (i + 0.5)
+            cx = x + section_w * (i + 0.5) - left_shift
             val = self.resources.get(key, 0)
 
-            # Color swatch
             arcade.draw_rect_filled(
                 arcade.rect.XYWH(cx - 30 * s, row_y, swatch, swatch),
                 color,
             )
 
-            # Label and count
             self._text(
                 f"res_{key}", f"{label}: {val}",
                 cx - 15 * s, row_y,
@@ -87,20 +88,18 @@ class ResourceBar:
                 anchor_x="left", anchor_y="center", bold=True,
             ).draw()
 
-        # Workers left above Guitarists column
-        cx0 = x + section_w * 0.5
-        self._text(
-            "workers_left", f"Workers left: {workers_left}",
-            cx0 - 15 * s, y + h * 0.72,
-            arcade.color.WHITE, font_sz,
-            anchor_x="left", anchor_y="center", bold=True,
-        ).draw()
-
-        # VP above Bass column
-        cx1 = x + section_w * 1.5
-        self._text(
-            "vp", f"VP: {victory_points}",
-            cx1 - 15 * s, y + h * 0.72,
-            arcade.color.WHITE, font_sz,
-            anchor_x="left", anchor_y="center", bold=True,
-        ).draw()
+        top_row = [
+            ("workers_left", f"Workers left: {workers_left}"),
+            ("vp", f"VP: {victory_points}"),
+            ("intrigue", f"Intrigue: {intrigue_count}"),
+            ("quests_open", f"Quests Open: {quests_open}"),
+            ("quests_closed", f"Quests Done: {quests_closed}"),
+        ]
+        for i, (key, label) in enumerate(top_row):
+            cx = x + section_w * (i + 0.5) - left_shift
+            self._text(
+                key, label,
+                cx - 15 * s, top_y,
+                arcade.color.WHITE, font_sz,
+                anchor_x="left", anchor_y="center", bold=True,
+            ).draw()
