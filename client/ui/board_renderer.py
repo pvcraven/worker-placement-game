@@ -85,6 +85,8 @@ class BoardRenderer:
         self._realtor_sprite_list: arcade.SpriteList | None = None
         self._building_vp_texts: list[arcade.Text] = []
         self._building_vp_dirty = True
+        self._building_owner_texts: list[arcade.Text] = []
+        self._building_owner_dirty = True
 
     def update_board(
         self, board: dict, players: list[dict]
@@ -92,6 +94,7 @@ class BoardRenderer:
         self.board_data = board
         self.players = players
         self._shapes_dirty = True
+        self._building_owner_dirty = True
 
     def update_building_market(
         self, face_up_buildings: list[dict], deck_remaining: int,
@@ -303,6 +306,8 @@ class BoardRenderer:
             )
             bld_row_step = (_BUILDING_CARD_HEIGHT + 10) / h
             building_start_x = 0.22
+            if self._building_owner_dirty:
+                self._building_owner_texts = []
             for i, space_id in enumerate(
                 self.board_data.get(
                     "constructed_buildings", []
@@ -320,6 +325,25 @@ class BoardRenderer:
                         cx + _CARD_WIDTH / 2 - 14, cy, 9,
                         color,
                     )
+                if self._building_owner_dirty:
+                    owner_id = space_data.get("owner_id", "")
+                    if owner_id:
+                        owner_name = self._player_name(owner_id)
+                        tx = cx - _CARD_WIDTH / 2 + 8
+                        ty = cy - _BUILDING_CARD_HEIGHT / 2 + 6
+                        self._building_owner_texts.append(
+                            arcade.Text(
+                                f"Owner: {owner_name}",
+                                tx, ty,
+                                color=(180, 50, 50),
+                                font_size=12,
+                                bold=True,
+                            ),
+                        )
+            if self._building_owner_dirty:
+                self._building_owner_dirty = False
+            for ot in self._building_owner_texts:
+                ot.draw()
 
     def _rebuild_shapes(
         self, x: float, y: float, w: float, h: float,
@@ -440,6 +464,12 @@ class BoardRenderer:
         self._constructed_sprite_list = _build_card_sprite_list(
             constructed_cards, "buildings", constructed_positions,
         )
+
+    def _player_name(self, player_id: str) -> str:
+        for p in self.players:
+            if p.get("player_id") == player_id:
+                return p.get("display_name", "???")
+        return "???"
 
     def _player_color(self, player_id: str) -> tuple:
         for i, p in enumerate(self.players):

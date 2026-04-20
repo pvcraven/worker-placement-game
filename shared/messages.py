@@ -276,6 +276,7 @@ class PlacementCancelledResponse(BaseModel):
     player_id: str
     space_id: str
     next_player_id: str | None
+    returned_card: dict = Field(default_factory=dict)
 
 
 class BuildingConstructedResponse(BaseModel):
@@ -288,6 +289,7 @@ class BuildingConstructedResponse(BaseModel):
     visitor_reward: dict = Field(default_factory=dict)
     owner_bonus: dict = Field(default_factory=dict)
     owner_id: str = ""
+    cost_coins: int = 0
     accumulated_vp: int = 0
     next_player_id: str | None = None
 
