@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import arcade
 import arcade.gui
 
@@ -38,6 +40,7 @@ class GameView(arcade.View):
         self._show_intrigue_hand = False
         self._reward_choice_dialog = None
         self._show_player_overview = False
+        self._show_producer = False
         self._target_dialog: PlayerTargetDialog | None = None
         self._text_cache: dict[str, arcade.Text] = {}
         self._highlight_mode: str | None = None
@@ -82,6 +85,12 @@ class GameView(arcade.View):
             text="My Intrigue", width=120, height=32,
         )
         intrigue_btn.on_click = lambda _: self._toggle_intrigue()
+        producer_btn = arcade.gui.UIFlatButton(
+            text="Producer", width=100, height=32,
+        )
+        producer_btn.on_click = (
+            lambda _: self._toggle_producer()
+        )
         overview_btn = arcade.gui.UIFlatButton(
             text="Player Overview", width=140, height=32,
         )
@@ -94,6 +103,7 @@ class GameView(arcade.View):
         )
         btn_row.add(quests_btn)
         btn_row.add(intrigue_btn)
+        btn_row.add(producer_btn)
         btn_row.add(overview_btn)
 
         self._btn_anchor = arcade.gui.UIAnchorLayout()
@@ -1509,10 +1519,18 @@ class GameView(arcade.View):
         self._show_quests_hand = not self._show_quests_hand
         self._show_intrigue_hand = False
         self._show_player_overview = False
+        self._show_producer = False
 
     def _toggle_intrigue(self) -> None:
         self._show_intrigue_hand = not self._show_intrigue_hand
         self._show_quests_hand = False
+        self._show_player_overview = False
+        self._show_producer = False
+
+    def _toggle_producer(self) -> None:
+        self._show_producer = not self._show_producer
+        self._show_quests_hand = False
+        self._show_intrigue_hand = False
         self._show_player_overview = False
 
     def _toggle_player_overview(self) -> None:
@@ -1521,6 +1539,7 @@ class GameView(arcade.View):
         )
         self._show_quests_hand = False
         self._show_intrigue_hand = False
+        self._show_producer = False
 
     # ------------------------------------------------------------------
     # Drawing
@@ -1582,6 +1601,8 @@ class GameView(arcade.View):
             self._draw_hand_panel(cw, ch, s)
         if self._show_player_overview:
             self._draw_player_overview_panel(cw, ch, s)
+        if self._show_producer:
+            self._draw_producer_panel(cw, ch, s)
 
         # Cancel button for highlight mode
         if (
@@ -1716,13 +1737,13 @@ class GameView(arcade.View):
         ).draw()
 
         headers = [
-            "Name", "Workers", "Guitarists",
+            "#", "Name", "Workers", "Guitarists",
             "Bass", "Drummers", "Singers",
             "Coins", "Intrigue", "Quests",
             "Completed", "VP",
         ]
         base_col_widths = [
-            200, 90, 105,
+            35, 200, 90, 105,
             85, 100, 90,
             80, 90, 85,
             105, 65,
@@ -1744,10 +1765,30 @@ class GameView(arcade.View):
             ).draw()
             cx += col_widths[i]
 
+        turn_order = self.game_state.get("turn_order", [])
+        cp_idx = self.game_state.get(
+            "current_player_index", 0,
+        )
+        current_pid = (
+            turn_order[cp_idx]
+            if turn_order and cp_idx < len(turn_order)
+            else None
+        )
+
         for row, p in enumerate(players):
             pid = p.get("player_id", "")
             is_me = pid == my_id
             row_y = header_y - row_h - row * row_h
+
+            if pid == current_pid:
+                ax = start_x - 14 * s
+                ar = 6 * s
+                arcade.draw_triangle_filled(
+                    ax, row_y + ar,
+                    ax, row_y - ar,
+                    ax + ar * 1.4, row_y,
+                    arcade.color.GOLD,
+                )
 
             if is_me:
                 arcade.draw_rect_filled(
@@ -1784,7 +1825,10 @@ class GameView(arcade.View):
             )
             vp = p.get("victory_points", 0)
 
+            order = p.get("slot_index", 0) + 1
+
             vals = [
+                str(order),
                 name,
                 str(workers),
                 str(res.get("guitarists", 0)),
@@ -1812,6 +1856,80 @@ class GameView(arcade.View):
                     anchor_y="center",
                 ).draw()
                 cx += col_widths[i]
+
+    def _draw_producer_panel(
+        self, w: float, h: float, s: float = 1.0,
+    ) -> None:
+        my_id = getattr(self.window, "player_id", None)
+        producer = None
+        for p in self.game_state.get("players", []):
+            if p.get("player_id") == my_id:
+                producer = p.get("producer_card")
+                break
+
+        panel_w = 350 * s
+        panel_h = 420 * s
+        px, py = w / 2, h / 2
+
+        arcade.draw_rect_filled(
+            arcade.rect.XYWH(px, py, panel_w, panel_h),
+            (0, 0, 0, 230),
+        )
+        arcade.draw_rect_outline(
+            arcade.rect.XYWH(px, py, panel_w, panel_h),
+            arcade.color.WHITE, border_width=2,
+        )
+
+        self._text(
+            "prod_title", "Your Producer",
+            px, py + panel_h / 2 - 22 * s,
+            arcade.color.WHITE, max(8, int(18 * s)),
+            anchor_x="center", anchor_y="center",
+            bold=True,
+        ).draw()
+
+        if not producer:
+            self._text(
+                "prod_none", "No producer card",
+                px, py,
+                arcade.color.LIGHT_GRAY,
+                max(8, int(14 * s)),
+                anchor_x="center", anchor_y="center",
+            ).draw()
+        else:
+            card_id = producer.get("id", "")
+            png = Path(
+                f"client/assets/card_images/"
+                f"producers/{card_id}.png"
+            )
+            if png.exists():
+                sprite = arcade.Sprite(str(png))
+                sprite.scale = s
+                sprite.position = (px, py - 10 * s)
+                sl = arcade.SpriteList()
+                sl.append(sprite)
+                sl.draw()
+            else:
+                name = producer.get("name", "???")
+                desc = producer.get("description", "")
+                self._text(
+                    "prod_name", name,
+                    px, py + 20 * s,
+                    arcade.color.GOLD,
+                    max(8, int(16 * s)),
+                    anchor_x="center",
+                    anchor_y="center", bold=True,
+                ).draw()
+                self._text(
+                    "prod_desc", desc,
+                    px, py - 20 * s,
+                    arcade.color.LIGHT_GRAY,
+                    max(8, int(12 * s)),
+                    anchor_x="center",
+                    anchor_y="center",
+                    multiline=True,
+                    width=int(panel_w - 40 * s),
+                ).draw()
 
     @staticmethod
     def _resource_str(res: dict) -> str:
