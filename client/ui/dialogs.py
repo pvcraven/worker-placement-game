@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+import logging
+from pathlib import Path
+
 import arcade
 import arcade.gui
 
 from shared.constants import RESOURCE_SYMBOLS
+
+_log = logging.getLogger(__name__)
 
 
 class CardSelectionDialog:
@@ -66,6 +71,132 @@ class CardSelectionDialog:
         if self._widget:
             self.ui.remove(self._widget)
             self._widget = None
+
+
+_CARD_SPACING = 205
+
+
+class CardSpriteSelectionDialog:
+    """A card selection overlay that shows full card images."""
+
+    def __init__(
+        self,
+        title: str,
+        cards: list[dict],
+        card_type: str,
+        on_select: callable,
+        on_cancel: callable | None = None,
+        cancel_label: str = "Cancel",
+    ) -> None:
+        self.title = title
+        self.cards = cards[:6]
+        self.card_type = card_type
+        self.on_select = on_select
+        self.on_cancel = on_cancel
+        self.cancel_label = cancel_label
+        self._sprite_list: arcade.SpriteList | None = None
+        self._card_ids: list[str] = []
+        self._panel_rect: tuple[float, float, float, float] = (0, 0, 0, 0)
+        self._cancel_rect: tuple[float, float, float, float] = (0, 0, 0, 0)
+
+    def draw(self, w: float, h: float) -> None:
+        card_count = max(len(self.cards), 1)
+        needed_w = card_count * _CARD_SPACING + 40
+        panel_w = max(min(w - 40, needed_w), 300)
+        panel_h = 390
+        px, py = w / 2, h / 2
+        self._panel_rect = (px, py, panel_w, panel_h)
+
+        arcade.draw_rect_filled(
+            arcade.rect.XYWH(px, py, panel_w, panel_h),
+            (0, 0, 0, 230),
+        )
+        arcade.draw_rect_outline(
+            arcade.rect.XYWH(px, py, panel_w, panel_h),
+            arcade.color.WHITE, border_width=2,
+        )
+
+        title_obj = arcade.Text(
+            self.title, px, py + panel_h / 2 - 20,
+            arcade.color.WHITE, 16,
+            anchor_x="center", anchor_y="center", bold=True,
+        )
+        title_obj.draw()
+
+        if not self.cards:
+            empty = arcade.Text(
+                "No cards", px, py,
+                arcade.color.LIGHT_GRAY, 14,
+                anchor_x="center", anchor_y="center",
+            )
+            empty.draw()
+        else:
+            total = len(self.cards) * _CARD_SPACING
+            start_x = px - total / 2 + _CARD_SPACING / 2
+            positions = [
+                (start_x + i * _CARD_SPACING, py + 10)
+                for i in range(len(self.cards))
+            ]
+
+            self._card_ids = []
+            self._sprite_list = arcade.SpriteList()
+            for card, (cx, cy) in zip(self.cards, positions):
+                card_id = card.get("id", "")
+                self._card_ids.append(card_id)
+                png_path = Path(
+                    f"client/assets/card_images/{self.card_type}/{card_id}.png"
+                )
+                if not png_path.exists():
+                    _log.warning("Card image not found: %s", png_path)
+                    continue
+                sprite = arcade.Sprite(str(png_path))
+                sprite.position = (cx, cy)
+                self._sprite_list.append(sprite)
+            self._sprite_list.draw()
+
+        hint = arcade.Text(
+            "Click a card to select it",
+            px, py - panel_h / 2 + 55,
+            arcade.color.GOLD, 13,
+            anchor_x="center", anchor_y="center",
+        )
+        hint.draw()
+
+        cancel_w, cancel_h = 120, 32
+        cancel_x = px
+        cancel_y = py - panel_h / 2 + 25
+        self._cancel_rect = (cancel_x, cancel_y, cancel_w, cancel_h)
+        arcade.draw_rect_filled(
+            arcade.rect.XYWH(cancel_x, cancel_y, cancel_w, cancel_h),
+            (44, 62, 80),
+        )
+        arcade.draw_rect_outline(
+            arcade.rect.XYWH(cancel_x, cancel_y, cancel_w, cancel_h),
+            arcade.color.WHITE, border_width=1,
+        )
+        cancel_text = arcade.Text(
+            self.cancel_label, cancel_x, cancel_y,
+            arcade.color.WHITE, 14,
+            anchor_x="center", anchor_y="center",
+        )
+        cancel_text.draw()
+
+    def on_click(self, x: float, y: float) -> bool:
+        cx, cy, cw, ch = self._cancel_rect
+        if abs(x - cx) <= cw / 2 and abs(y - cy) <= ch / 2:
+            if self.on_cancel:
+                self.on_cancel()
+            return True
+
+        if self._sprite_list:
+            hits = arcade.get_sprites_at_point((x, y), self._sprite_list)
+            if hits:
+                idx = self._sprite_list.index(hits[0])
+                if idx < len(self._card_ids):
+                    self.on_select(self._card_ids[idx])
+                    return True
+
+        return False
 
 
 class BuildingPurchaseDialog:
@@ -169,12 +300,8 @@ class BuildingPurchaseDialog:
 class QuestCompletionDialog:
     """A modal dialog for completing a quest at end of turn.
 
-    Renders quest cards as sprites and handles
-    click detection on them directly.
+    Thin wrapper around CardSpriteSelectionDialog.
     """
-
-    _CARD_WIDTH = 190
-    _CARD_HEIGHT = 230
 
     def __init__(
         self,
@@ -182,151 +309,38 @@ class QuestCompletionDialog:
         on_select: callable,
         on_skip: callable,
     ) -> None:
-        self.quests = quests[:6]
-        self.on_select = on_select
-        self.on_skip = on_skip
-        self._card_rects: list[
-            tuple[str, float, float, float, float]
-        ] = []
-        self._skip_rect = (0.0, 0.0, 0.0, 0.0)
         self._visible = False
-        self._quest_sprite_list: arcade.SpriteList | None = None
+        self._inner = CardSpriteSelectionDialog(
+            title="Complete a Quest?",
+            cards=quests,
+            card_type="quests",
+            on_select=on_select,
+            on_cancel=on_skip,
+            cancel_label="Skip",
+        )
 
     def show(
         self, window_width: float, window_height: float,
     ) -> None:
         self._visible = True
-        self._ww = window_width
-        self._wh = window_height
-        self._layout()
-
-    def _layout(self) -> None:
-        cw = self._CARD_WIDTH
-        ch = self._CARD_HEIGHT
-        self._card_rects.clear()
-        n = len(self.quests)
-        spacing = cw + 15
-        total_w = n * spacing
-        panel_h = ch + 120
-        pcx = self._ww / 2
-        pcy = self._wh / 2
-        card_cy = pcy + 20
-        start_x = pcx - total_w / 2 + cw / 2
-        for i, quest in enumerate(self.quests):
-            cx = start_x + i * spacing
-            qid = quest.get("id", "")
-            left = cx - cw / 2
-            bottom = card_cy - ch / 2
-            self._card_rects.append((
-                qid, left, bottom, cw, ch,
-            ))
-        skip_w, skip_h = 200, 35
-        self._skip_rect = (
-            pcx - skip_w / 2,
-            pcy - panel_h / 2 + 15,
-            skip_w,
-            skip_h,
-        )
 
     def draw(self, ww: float, wh: float) -> None:
         if not self._visible:
             return
-        from client.ui.board_renderer import (
-            _build_card_sprite_list,
-        )
-        cw = self._CARD_WIDTH
-        ch = self._CARD_HEIGHT
-        n = len(self.quests)
-        spacing = cw + 15
-        total_w = n * spacing
-        panel_w = total_w + 40
-        panel_h = ch + 120
-        pcx = ww / 2
-        pcy = wh / 2
-        arcade.draw_rect_filled(
-            arcade.rect.XYWH(pcx, pcy, panel_w, panel_h),
-            (0, 0, 0),
-        )
-        arcade.draw_rect_outline(
-            arcade.rect.XYWH(pcx, pcy, panel_w, panel_h),
-            arcade.color.WHITE,
-            border_width=1,
-        )
-        arcade.Text(
-            "Complete a Quest?",
-            pcx, pcy + panel_h / 2 - 22,
-            arcade.color.WHITE,
-            font_size=16,
-            font_name="Tahoma",
-            anchor_x="center",
-            anchor_y="center",
-        ).draw()
-
-        start_x = pcx - total_w / 2 + cw / 2
-        cy = pcy + 20
-        positions = [
-            (start_x + i * spacing, cy)
-            for i in range(n)
-        ]
-        self._quest_sprite_list = _build_card_sprite_list(
-            self.quests, "quests", positions,
-        )
-        self._quest_sprite_list.draw()
-
-        # Skip button
-        sl, sb, sw, sh = self._skip_rect
-        scx = sl + sw / 2
-        scy = sb + sh / 2
-        arcade.draw_rect_filled(
-            arcade.rect.XYWH(scx, scy, sw, sh),
-            (60, 60, 60),
-        )
-        arcade.draw_rect_outline(
-            arcade.rect.XYWH(scx, scy, sw, sh),
-            arcade.color.WHITE,
-            border_width=1,
-        )
-        arcade.Text(
-            "Skip", scx, scy,
-            arcade.color.WHITE,
-            font_size=14,
-            font_name="Tahoma",
-            anchor_x="center",
-            anchor_y="center",
-        ).draw()
+        self._inner.draw(ww, wh)
 
     def handle_click(
         self, x: float, y: float,
     ) -> bool:
         if not self._visible:
             return False
-        for qid, left, bottom, cw, ch in self._card_rects:
-            if (
-                left <= x <= left + cw
-                and bottom <= y <= bottom + ch
-            ):
-                self._select(qid)
-                return True
-        sl, sb, sw, sh = self._skip_rect
-        if (
-            sl <= x <= sl + sw
-            and sb <= y <= sb + sh
-        ):
-            self._do_skip()
+        if self._inner.on_click(x, y):
+            self._visible = False
             return True
         return False
 
-    def _select(self, contract_id: str) -> None:
-        self.hide()
-        self.on_select(contract_id)
-
-    def _do_skip(self) -> None:
-        self.hide()
-        self.on_skip()
-
     def hide(self) -> None:
         self._visible = False
-        self._card_rects.clear()
 
 
 class RewardChoiceDialog:
