@@ -8,6 +8,7 @@ import arcade.gui
 from client.ui.board_renderer import BoardRenderer, _build_card_sprite_list
 from client.ui.dialogs import (
     CardSelectionDialog,
+    CardSpriteSelectionDialog,
     PlayerTargetDialog,
     QuestCompletionDialog,
     ResourceChoiceDialog,
@@ -44,6 +45,7 @@ class GameView(arcade.View):
         self._cancel_sprite: arcade.Sprite | None = None
         self._cancel_sprite_list: arcade.SpriteList | None = None
         self._hand_sprite_list: arcade.SpriteList | None = None
+        self._card_sprite_dialog: CardSpriteSelectionDialog | None = None
 
     def on_show_view(self) -> None:
         self.ui.enable()
@@ -1252,6 +1254,10 @@ class GameView(arcade.View):
         self, x: int, y: int, button: int, modifiers: int,
     ) -> None:
         """Handle clicks on the board to place or reassign workers."""
+        if self._card_sprite_dialog:
+            if self._card_sprite_dialog.on_click(x, y):
+                return
+
         if self._quest_completion_dialog:
             if self._quest_completion_dialog.handle_click(
                 x, y,
@@ -1359,7 +1365,7 @@ class GameView(arcade.View):
                 return
 
         def on_select(card_id: str) -> None:
-            self._quest_dialog = None
+            self._card_sprite_dialog = None
             self.window.network.send({
                 "action": "place_worker_backstage",
                 "slot_number": slot_number,
@@ -1367,16 +1373,15 @@ class GameView(arcade.View):
             })
 
         def on_cancel() -> None:
-            self._quest_dialog = None
+            self._card_sprite_dialog = None
 
-        self._quest_dialog = CardSelectionDialog(
+        self._card_sprite_dialog = CardSpriteSelectionDialog(
             title="Select an Intrigue Card",
             cards=intrigue_cards,
+            card_type="intrigue",
             on_select=on_select,
-            ui_manager=self.ui,
             on_cancel=on_cancel,
         )
-        self._quest_dialog.show(self.window.width, self.window.height)
 
     def _enter_building_highlight(
         self, pid: str,
@@ -1559,6 +1564,10 @@ class GameView(arcade.View):
         # Quest completion card dialog
         if self._quest_completion_dialog:
             self._quest_completion_dialog.draw(w, h)
+
+        # Card sprite selection dialog
+        if self._card_sprite_dialog:
+            self._card_sprite_dialog.draw(w, h)
 
         # Status bar
         arcade.draw_rect_filled(
