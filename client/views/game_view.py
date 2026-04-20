@@ -51,6 +51,10 @@ class GameView(arcade.View):
         self._hand_sprite_list: arcade.SpriteList | None = None
         self._card_sprite_dialog: CardSpriteSelectionDialog | None = None
         self._btn_anchor: arcade.gui.UIAnchorLayout | None = None
+        self._btn_scale: float = 0.0
+        self._turn_sound = arcade.load_sound(
+            "client/assets/sounds/sound1.mp3",
+        )
 
     def on_show_view(self) -> None:
         self.ui.enable()
@@ -78,49 +82,51 @@ class GameView(arcade.View):
         self.resource_bar = ResourceBar()
         self.game_log_panel = GameLogPanel()
 
-        quests_btn = arcade.gui.UIFlatButton(
-            text="My Quests", width=120, height=32,
-        )
-        quests_btn.on_click = lambda _: self._toggle_quests()
-        intrigue_btn = arcade.gui.UIFlatButton(
-            text="My Intrigue", width=120, height=32,
-        )
-        intrigue_btn.on_click = lambda _: self._toggle_intrigue()
-        completed_btn = arcade.gui.UIFlatButton(
-            text="Completed Quests", width=160, height=32,
-        )
-        completed_btn.on_click = (
-            lambda _: self._toggle_completed_quests()
-        )
-        producer_btn = arcade.gui.UIFlatButton(
-            text="Producer", width=100, height=32,
-        )
-        producer_btn.on_click = (
-            lambda _: self._toggle_producer()
-        )
-        overview_btn = arcade.gui.UIFlatButton(
-            text="Player Overview", width=140, height=32,
-        )
-        overview_btn.on_click = (
-            lambda _: self._toggle_player_overview()
-        )
+        self._rebuild_buttons()
+
+    def _rebuild_buttons(self) -> None:
+        s = self.window.ui_scale
+        self._btn_scale = s
+
+        if self._btn_anchor:
+            self.ui.remove(self._btn_anchor)
+
+        btn_h = int(32 * s)
+        sp = int(8 * s)
+        font_sz = max(8, int(12 * s))
+        style = arcade.gui.UIFlatButton.UIStyle
+        btn_style = {
+            k: style(font_size=font_sz)
+            for k in ("normal", "hover", "press", "disabled")
+        }
+        btns = [
+            ("My Quests", int(120 * s), self._toggle_quests),
+            ("My Intrigue", int(120 * s), self._toggle_intrigue),
+            ("Completed Quests", int(160 * s),
+             self._toggle_completed_quests),
+            ("Producer", int(100 * s), self._toggle_producer),
+            ("Player Overview", int(140 * s),
+             self._toggle_player_overview),
+        ]
 
         btn_row = arcade.gui.UIBoxLayout(
-            vertical=False, space_between=8,
+            vertical=False, space_between=sp,
         )
-        btn_row.add(quests_btn)
-        btn_row.add(intrigue_btn)
-        btn_row.add(completed_btn)
-        btn_row.add(producer_btn)
-        btn_row.add(overview_btn)
+        for text, width, callback in btns:
+            btn = arcade.gui.UIFlatButton(
+                text=text, width=width, height=btn_h,
+                style=btn_style,
+            )
+            btn.on_click = lambda _ev, cb=callback: cb()
+            btn_row.add(btn)
 
         self._btn_anchor = arcade.gui.UIAnchorLayout()
         self._btn_anchor.add(
             child=btn_row,
             anchor_x="left",
             anchor_y="bottom",
-            align_x=10,
-            align_y=int(100 * self.window.ui_scale) + 5,
+            align_x=int(10 * s),
+            align_y=int(100 * s) + 5,
         )
         self.ui.add(self._btn_anchor)
 
@@ -1636,7 +1642,9 @@ class GameView(arcade.View):
         board_w = cw - log_w
         board_h = ch - bar_h - status_h
 
-        if self._btn_anchor and self._btn_anchor._children:
+        if s != self._btn_scale:
+            self._rebuild_buttons()
+        elif self._btn_anchor and self._btn_anchor._children:
             self._btn_anchor._children[0].data["align_y"] = bar_h + 5
 
         if self.board_renderer:
@@ -2208,6 +2216,7 @@ class GameView(arcade.View):
             self._status_text = (
                 f"Round {rnd} — YOUR TURN"
             )
+            arcade.play_sound(self._turn_sound)
         else:
             name = self._player_name(next_pid)
             self._status_text = (
