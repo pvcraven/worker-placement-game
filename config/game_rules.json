@@ -5,6 +5,7 @@
   "game_preserve_timeout_seconds": 1800,
   "face_up_quest_count": 5,
   "starting_workers": {
+    "1": 4,
     "2": 4,
     "3": 3,
     "4": 2,

@@ -256,7 +256,8 @@ class GameView(arcade.View):
             space_data.get("space_type") == "garage"
             and pid == my_id
             and space_data.get("reward_special") in (
-                "quest_and_coins", "quest_and_intrigue"
+                "quest_and_coins", "quest_and_intrigue",
+                "reset_quests",
             )
         ):
             board = self.game_state.get("board", {})
@@ -295,18 +296,22 @@ class GameView(arcade.View):
 
         # Owner bonus notification
         owner_bonus = msg.get("owner_bonus", {})
-        if owner_bonus and self.game_log_panel:
-            owner_name = owner_bonus.get("owner_name", "???")
+        if owner_bonus:
+            owner_id = owner_bonus.get("owner_id", "")
             bonus = owner_bonus.get("bonus", {})
-            bonus_parts = []
-            for key, sym in RESOURCE_SYMBOLS:
-                val = bonus.get(key, 0)
-                if val > 0:
-                    bonus_parts.append(f"{val}{sym}")
-            if bonus_parts:
-                self.game_log_panel.add_entry(
-                    f"{owner_name} earned owner bonus: {' '.join(bonus_parts)}"
-                )
+            if owner_id and bonus:
+                self._apply_reward_to_player(owner_id, bonus)
+            if self.game_log_panel:
+                owner_name = owner_bonus.get("owner_name", "???")
+                bonus_parts = []
+                for key, sym in RESOURCE_SYMBOLS:
+                    val = bonus.get(key, 0)
+                    if val > 0:
+                        bonus_parts.append(f"{val}{sym}")
+                if bonus_parts:
+                    self.game_log_panel.add_entry(
+                        f"{owner_name} earned owner bonus: {' '.join(bonus_parts)}"
+                    )
 
     def _on_worker_placed_backstage(self, msg: dict) -> None:
         slot_num = msg.get("slot_number", 0)
@@ -601,6 +606,9 @@ class GameView(arcade.View):
                     c for c in hand
                     if c.get("id") != cid
                 ]
+                p.setdefault(
+                    "completed_contracts", [],
+                ).append({"id": cid, "name": cname})
                 res = p.get("resources", {})
                 for k in (
                     "guitarists", "bass_players",
@@ -968,11 +976,16 @@ class GameView(arcade.View):
             if space_id in spaces:
                 spaces[space_id]["occupied_by"] = None
 
+        returned_card = msg.get("returned_card", {})
         for p in self.game_state.get("players", []):
             if p.get("player_id") == pid:
                 p["available_workers"] = (
                     p.get("available_workers", 0) + 1
                 )
+                if returned_card:
+                    p.setdefault("intrigue_hand", []).append(
+                        returned_card,
+                    )
                 break
 
         if self.board_renderer:
@@ -1007,6 +1020,17 @@ class GameView(arcade.View):
         pid = msg.get("player_id", "")
         bname = msg.get("building_name", "?")
         new_space_id = msg.get("new_space_id", "")
+        cost = msg.get("cost_coins", 0)
+
+        if cost:
+            for p in self.game_state.get("players", []):
+                if p.get("player_id") == pid:
+                    res = p.get("resources", {})
+                    res["coins"] = max(0, res.get("coins", 0) - cost)
+                    my_id = getattr(self.window, "player_id", None)
+                    if pid == my_id and self.resource_bar:
+                        self.resource_bar.update_resources(res)
+                    break
 
         # Update local board state
         board = self.game_state.get("board", {})
@@ -1100,19 +1124,23 @@ class GameView(arcade.View):
 
         # Owner bonus notification
         owner_bonus = msg.get("owner_bonus", {})
-        if owner_bonus and self.game_log_panel:
-            owner_name = owner_bonus.get("owner_name", "???")
+        if owner_bonus:
+            owner_id = owner_bonus.get("owner_id", "")
             bonus = owner_bonus.get("bonus", {})
-            bonus_parts = []
-            for key, sym in RESOURCE_SYMBOLS:
-                val = bonus.get(key, 0)
-                if val > 0:
-                    bonus_parts.append(f"{val}{sym}")
-            if bonus_parts:
-                self.game_log_panel.add_entry(
-                    f"{owner_name} earned owner bonus:"
-                    f" {' '.join(bonus_parts)}"
-                )
+            if owner_id and bonus:
+                self._apply_reward_to_player(owner_id, bonus)
+            if self.game_log_panel:
+                owner_name = owner_bonus.get("owner_name", "???")
+                bonus_parts = []
+                for key, sym in RESOURCE_SYMBOLS:
+                    val = bonus.get(key, 0)
+                    if val > 0:
+                        bonus_parts.append(f"{val}{sym}")
+                if bonus_parts:
+                    self.game_log_panel.add_entry(
+                        f"{owner_name} earned owner bonus:"
+                        f" {' '.join(bonus_parts)}"
+                    )
 
         my_id = getattr(self.window, "player_id", None)
         space_data = spaces.get(to_space, {})
@@ -1132,6 +1160,7 @@ class GameView(arcade.View):
             and pid == my_id
             and space_data.get("reward_special") in (
                 "quest_and_coins", "quest_and_intrigue",
+                "reset_quests",
             )
         ):
             board_data = self.game_state.get("board", {})

@@ -40,6 +40,11 @@ class MenuView(arcade.View):
             self._build_ui()
             self._setup_done = True
 
+    def on_key_press(self, key: int, modifiers: int) -> None:
+        if key == arcade.key.RETURN or key == arcade.key.ENTER:
+            if self.code_input.text.strip():
+                self._on_join(None)
+
     def on_hide_view(self) -> None:
         self.ui.disable()
 
@@ -94,6 +99,7 @@ class MenuView(arcade.View):
             height=45,
             font_size=16,
             text_color=arcade.color.BLACK,
+            caret_color=arcade.color.BLACK,
             style=input_style,
         )
         v_box.add(self.name_input)
@@ -121,6 +127,7 @@ class MenuView(arcade.View):
             height=45,
             font_size=16,
             text_color=arcade.color.BLACK,
+            caret_color=arcade.color.BLACK,
             style=input_style,
         )
         v_box.add(self.code_input)
@@ -153,6 +160,7 @@ class MenuView(arcade.View):
             height=35,
             font_size=14,
             text_color=arcade.color.BLACK,
+            caret_color=arcade.color.BLACK,
             style=server_style,
         )
         v_box.add(self.server_input)

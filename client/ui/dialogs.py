@@ -440,28 +440,36 @@ class PlayerTargetDialog:
         )
         v_box.add(desc_label)
 
-        for target in self.eligible_targets:
-            pid = target.get("player_id", "")
-            name = target.get("player_name", "???")
-            res = target.get("resources", {})
-            res_parts = []
-            for key, sym in RESOURCE_SYMBOLS:
-                val = res.get(key, 0)
-                if val > 0:
-                    res_parts.append(f"{val}{sym}")
-            res_str = (
-                " ".join(res_parts)
-                if res_parts
-                else "no resources"
+        if not self.eligible_targets:
+            no_target_label = arcade.gui.UILabel(
+                text="No opponents have the targeted resources.",
+                font_size=13,
+                text_color=arcade.color.LIGHT_GRAY,
             )
-            btn_text = f"{name} ({res_str})"
-            btn = arcade.gui.UIFlatButton(
-                text=btn_text, width=350, height=35,
-            )
-            btn.on_click = (
-                lambda event, p=pid: self._select(p)
-            )
-            v_box.add(btn)
+            v_box.add(no_target_label)
+        else:
+            for target in self.eligible_targets:
+                pid = target.get("player_id", "")
+                name = target.get("player_name", "???")
+                res = target.get("resources", {})
+                res_parts = []
+                for key, sym in RESOURCE_SYMBOLS:
+                    val = res.get(key, 0)
+                    if val > 0:
+                        res_parts.append(f"{val}{sym}")
+                res_str = (
+                    " ".join(res_parts)
+                    if res_parts
+                    else "no resources"
+                )
+                btn_text = f"{name} ({res_str})"
+                btn = arcade.gui.UIFlatButton(
+                    text=btn_text, width=350, height=35,
+                )
+                btn.on_click = (
+                    lambda event, p=pid: self._select(p)
+                )
+                v_box.add(btn)
 
         cancel_btn = arcade.gui.UIFlatButton(
             text="Cancel", width=350, height=35,

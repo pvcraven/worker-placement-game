@@ -897,19 +897,13 @@ async def _handle_garage_placement(
     special = space.reward_special
 
     if special == "reset_quests":
-        # Spot 3: discard all face-up, draw 4 new
-        deck_reshuffled = False
+        # Spot 3: discard all face-up, draw 4 new, then let player pick
         state.board.quest_discard.extend(
             state.board.face_up_quests
         )
         state.board.face_up_quests.clear()
 
         for _ in range(FACE_UP_QUEST_COUNT):
-            if (
-                not state.board.quest_deck
-                and state.board.quest_discard
-            ):
-                deck_reshuffled = True
             card = _draw_from_quest_deck(state)
             if card:
                 state.board.face_up_quests.append(card)
@@ -921,27 +915,12 @@ async def _handle_garage_placement(
                 action="place_worker",
                 details=(
                     f"{player.display_name} placed worker on "
-                    f"{space.name} — quests reset"
+                    f"{space.name} — quests reset, awaiting selection"
                 ),
                 timestamp=time.time(),
             )
         )
 
-        await _advance_turn(server, state)
-        next_player = state.current_player()
-
-        await server.broadcast_to_game(
-            state.game_code,
-            QuestsResetResponse(
-                player_id=player.player_id,
-                deck_reshuffled=deck_reshuffled,
-                next_player_id=(
-                    next_player.player_id
-                    if next_player
-                    else None
-                ),
-            ),
-        )
         await server.broadcast_to_game(
             state.game_code,
             FaceUpQuestsUpdatedResponse(
@@ -949,6 +928,16 @@ async def _handle_garage_placement(
                     q.model_dump()
                     for q in state.board.face_up_quests
                 ]
+            ),
+        )
+
+        await server.broadcast_to_game(
+            state.game_code,
+            WorkerPlacedResponse(
+                player_id=player.player_id,
+                space_id=space_id,
+                reward_granted={},
+                next_player_id=None,
             ),
         )
     else:
@@ -1167,31 +1156,8 @@ async def handle_place_worker_backstage(
     if effect_details.get("pending"):
         eligible = effect_details.get("eligible_targets", [])
 
-        if not eligible:
-            # No valid targets — auto-unwind backstage placement
-            slot.occupied_by = None
-            slot.intrigue_card_played = None
-            player.intrigue_hand.append(card)
-            player.available_workers += 1
-
-            await server.send_to_player(
-                player.player_id,
-                ErrorResponse(
-                    code="NO_VALID_TARGETS",
-                    message="No opponents have the targeted resources.",
-                ),
-            )
-            await server.broadcast_to_game(
-                state.game_code,
-                PlacementCancelledResponse(
-                    player_id=player.player_id,
-                    space_id=f"backstage_slot_{msg.slot_number}",
-                    next_player_id=None,
-                ),
-            )
-            return
-
-        # Save pending state for target selection
+        # Save pending state for target selection (even if empty —
+        # the client will show "no valid targets" with only Cancel)
         state.pending_intrigue_target = {
             "player_id": player.player_id,
             "slot_number": msg.slot_number,
@@ -1323,7 +1289,7 @@ def _resolve_intrigue_effect(state, player, card) -> dict:
             for p in state.players:
                 if p.player_id == player.player_id:
                     continue
-                has_resource = any(getattr(p.resources, k, 0) > 0 for k in resource_keys)
+                has_resource = all(getattr(p.resources, k, 0) >= ev[k] for k in resource_keys)
                 if has_resource:
                     eligible.append(p.player_id)
             effect["pending"] = True
@@ -1853,6 +1819,7 @@ async def handle_purchase_building(
             visitor_reward=building.visitor_reward.model_dump(),
             owner_bonus=building.owner_bonus.model_dump(),
             owner_id=player.player_id,
+            cost_coins=building.cost_coins,
             accumulated_vp=building.accumulated_vp,
             next_player_id=(
                 next_player.player_id if next_player else None
@@ -2154,6 +2121,7 @@ async def handle_reassign_worker(
                     ]
                 ),
             )
+            return
         elif special in (
             "quest_and_coins", "quest_and_intrigue",
         ):
@@ -2327,5 +2295,6 @@ async def handle_cancel_intrigue_target(
             player_id=player.player_id,
             space_id=f"backstage_slot_{slot_number}",
             next_player_id=None,
+            returned_card=pending["intrigue_card"],
         ),
     )
