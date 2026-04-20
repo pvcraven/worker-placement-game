@@ -33,6 +33,7 @@ class GameLogPanel:
             t.x = x
             t.y = y
             t.color = color
+            t.font_size = font_size
             return t
         t = arcade.Text(
             text, x, y, color,
@@ -47,37 +48,44 @@ class GameLogPanel:
         self.entries.append(text)
         if len(self.entries) > _MAX_ENTRIES:
             self.entries = self.entries[-_MAX_ENTRIES:]
-        # Auto-scroll to bottom
         self.scroll_offset = max(0, len(self.entries) - _VISIBLE_LINES)
 
-    def draw(self, x: float, y: float, w: float, h: float) -> None:
+    def draw(
+        self, x: float, y: float, w: float, h: float,
+        scale: float = 1.0,
+    ) -> None:
+        s = scale
         # Background
         arcade.draw_rect_filled(
             arcade.rect.XYWH(x + w / 2, y + h / 2, w, h),
             (20, 20, 30),
         )
 
+        font_title = max(8, int(16 * s))
+        font_entry = max(8, int(12 * s))
+        line_height = max(14, int(22 * s))
+
         # Title
         self._text(
             "title", "Game Log",
-            x + w / 2, y + h - 20,
-            arcade.color.WHITE, 16,
+            x + w / 2, y + h - 20 * s,
+            arcade.color.WHITE, font_title,
             anchor_x="center", bold=True,
         ).draw()
 
         # Log entries
-        line_height = 22
-        max_lines = min(_VISIBLE_LINES, int((h - 50) / line_height))
+        max_lines = min(_VISIBLE_LINES, int((h - 50 * s) / line_height))
         start = self.scroll_offset
         end = min(start + max_lines, len(self.entries))
 
+        max_chars = max(20, int(60 * s))
         for i, idx in enumerate(range(start, end)):
             text = self.entries[idx]
-            if len(text) > 60:
-                text = text[:58] + ".."
-            ty = y + h - 50 - i * line_height
+            if len(text) > max_chars:
+                text = text[: max_chars - 2] + ".."
+            ty = y + h - 50 * s - i * line_height
             self._text(
                 f"line_{i}", text,
-                x + 8, ty,
-                arcade.color.LIGHT_GRAY, 12,
+                x + 8 * s, ty,
+                arcade.color.LIGHT_GRAY, font_entry,
             ).draw()

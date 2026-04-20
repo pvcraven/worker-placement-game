@@ -11,6 +11,7 @@
 
 - Q: Which text elements should scale with the window? → A: All text everywhere scales (board text, game log, resource bar, status bar).
 - Q: Should dialog boxes scale with the window? → A: Yes, dialog boxes (card selection, target selection, quest completion, etc.) must also scale with the window.
+- Q: How should non-proportional window shapes be handled? → A: Maintain aspect ratio, no stretching. Content anchors to the top-left; extra space from a tall or wide window remains unused.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -112,6 +113,8 @@ All modal dialog boxes — card selection (intrigue, quest completion), player t
 - What happens when the window is maximized on a 4K display? Cards should scale up but cap at a maximum scale to avoid pixelation of card images.
 - What happens when exactly one building has been constructed? It should appear in the first column, first row.
 - What happens when buildings fill both columns completely? Additional buildings should still be visible (overflow handling).
+- What happens when the window is stretched very wide (e.g., ultra-wide monitor)? The game content maintains its aspect ratio and anchors to the top-left; the extra horizontal space on the right remains unused.
+- What happens when the window is stretched very tall? The game content maintains its aspect ratio and anchors to the top-left; the extra vertical space at the bottom remains unused.
 
 ## Requirements *(mandatory)*
 
@@ -127,6 +130,7 @@ All modal dialog boxes — card selection (intrigue, quest completion), player t
 - **FR-009**: All text elements (board labels, game log entries, resource bar, status bar) MUST scale proportionally with the window size.
 - **FR-010**: Text scaling MUST have a minimum font size threshold to prevent illegibility at small window sizes.
 - **FR-011**: All modal dialog boxes (card selection, target selection, quest completion, reward choice, building purchase) MUST scale their dimensions, card images, buttons, and text proportionally with the window size.
+- **FR-012**: The game MUST maintain its native aspect ratio when the window is resized. If the window becomes wider or taller than the native ratio, content MUST NOT stretch; it MUST anchor to the top-left corner with extra space left unused.
 - **FR-008**: The face-up quest display, face-up building market, and backstage slots MUST also scale and reposition correctly with the window.
 
 ### Key Entities
@@ -146,11 +150,13 @@ All modal dialog boxes — card selection (intrigue, quest completion), player t
 - **SC-005**: No visual artifacts, overlapping elements, or clipped text appear during or after window resize.
 - **SC-006**: All text elements across the entire UI scale proportionally at every tested window size.
 - **SC-007**: All dialog boxes scale proportionally with the window, including their card images, buttons, and text.
+- **SC-008**: When the window is resized to a non-native aspect ratio, game content maintains its proportions, anchors to the top-left, and does not stretch or distort.
 
 ## Assumptions
 
 - Card PNG images are high enough resolution to scale up to ~2x without unacceptable pixelation.
 - The minimum supported window size is approximately 800x600 pixels.
 - The resource bar at the bottom and status bar at the top remain at fixed heights (they do not scale).
+- The game has a native aspect ratio (e.g., 16:9 or similar). When the window deviates from this ratio, the game content scales to fit within the smaller dimension and anchors to the top-left.
 - Overlay panels (hand display, player overview) are not part of this change — they are drawn on demand and already center themselves.
 - The number of permanent action spaces and backstage slots does not change (layout is static for those elements).

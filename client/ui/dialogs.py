@@ -31,28 +31,36 @@ class CardSelectionDialog:
         self.ui = ui_manager
         self._widget = None
 
-    def show(self, window_width: float, window_height: float) -> None:
-        v_box = arcade.gui.UIBoxLayout(space_between=8)
+    def show(
+        self, window_width: float, window_height: float,
+        scale: float = 1.0,
+    ) -> None:
+        s = scale
+        v_box = arcade.gui.UIBoxLayout(space_between=int(8 * s))
 
         label = arcade.gui.UILabel(
             text=self.title,
-            font_size=16,
+            font_size=max(8, int(16 * s)),
             text_color=arcade.color.WHITE,
         )
         v_box.add(label)
 
-        for card in self.cards[:8]:  # Show max 8 options
+        for card in self.cards[:8]:
             name = card.get("name", "???")
             card_id = card.get("id", "")
-            btn = arcade.gui.UIFlatButton(text=name, width=280, height=35)
+            btn = arcade.gui.UIFlatButton(
+                text=name, width=int(280 * s), height=int(35 * s),
+            )
             btn.on_click = lambda event, cid=card_id: self._select(cid)
             v_box.add(btn)
 
-        cancel_btn = arcade.gui.UIFlatButton(text="Cancel", width=280, height=35)
+        cancel_btn = arcade.gui.UIFlatButton(
+            text="Cancel", width=int(280 * s), height=int(35 * s),
+        )
         cancel_btn.on_click = lambda event: self._cancel()
         v_box.add(cancel_btn)
 
-        bg_box = v_box.with_padding(all=20).with_background(
+        bg_box = v_box.with_padding(all=int(20 * s)).with_background(
             color=(0, 0, 0)
         )
         self._widget = self.ui.add(arcade.gui.UIAnchorLayout())
@@ -99,11 +107,15 @@ class CardSpriteSelectionDialog:
         self._panel_rect: tuple[float, float, float, float] = (0, 0, 0, 0)
         self._cancel_rect: tuple[float, float, float, float] = (0, 0, 0, 0)
 
-    def draw(self, w: float, h: float) -> None:
+    def draw(
+        self, w: float, h: float, scale: float = 1.0,
+    ) -> None:
+        s = scale
+        spacing = _CARD_SPACING * s
         card_count = max(len(self.cards), 1)
-        needed_w = card_count * _CARD_SPACING + 40
-        panel_w = max(min(w - 40, needed_w), 300)
-        panel_h = 390
+        needed_w = card_count * spacing + 40 * s
+        panel_w = max(min(w - 40 * s, needed_w), 300 * s)
+        panel_h = 390 * s
         px, py = w / 2, h / 2
         self._panel_rect = (px, py, panel_w, panel_h)
 
@@ -117,8 +129,8 @@ class CardSpriteSelectionDialog:
         )
 
         title_obj = arcade.Text(
-            self.title, px, py + panel_h / 2 - 20,
-            arcade.color.WHITE, 16,
+            self.title, px, py + panel_h / 2 - 20 * s,
+            arcade.color.WHITE, max(8, int(16 * s)),
             anchor_x="center", anchor_y="center", bold=True,
         )
         title_obj.draw()
@@ -126,15 +138,15 @@ class CardSpriteSelectionDialog:
         if not self.cards:
             empty = arcade.Text(
                 "No cards", px, py,
-                arcade.color.LIGHT_GRAY, 14,
+                arcade.color.LIGHT_GRAY, max(8, int(14 * s)),
                 anchor_x="center", anchor_y="center",
             )
             empty.draw()
         else:
-            total = len(self.cards) * _CARD_SPACING
-            start_x = px - total / 2 + _CARD_SPACING / 2
+            total = len(self.cards) * spacing
+            start_x = px - total / 2 + spacing / 2
             positions = [
-                (start_x + i * _CARD_SPACING, py + 10)
+                (start_x + i * spacing, py + 10 * s)
                 for i in range(len(self.cards))
             ]
 
@@ -150,21 +162,22 @@ class CardSpriteSelectionDialog:
                     _log.warning("Card image not found: %s", png_path)
                     continue
                 sprite = arcade.Sprite(str(png_path))
+                sprite.scale = s
                 sprite.position = (cx, cy)
                 self._sprite_list.append(sprite)
             self._sprite_list.draw()
 
         hint = arcade.Text(
             "Click a card to select it",
-            px, py - panel_h / 2 + 55,
-            arcade.color.GOLD, 13,
+            px, py - panel_h / 2 + 55 * s,
+            arcade.color.GOLD, max(8, int(13 * s)),
             anchor_x="center", anchor_y="center",
         )
         hint.draw()
 
-        cancel_w, cancel_h = 120, 32
+        cancel_w, cancel_h = int(120 * s), int(32 * s)
         cancel_x = px
-        cancel_y = py - panel_h / 2 + 25
+        cancel_y = py - panel_h / 2 + 25 * s
         self._cancel_rect = (cancel_x, cancel_y, cancel_w, cancel_h)
         arcade.draw_rect_filled(
             arcade.rect.XYWH(cancel_x, cancel_y, cancel_w, cancel_h),
@@ -176,7 +189,7 @@ class CardSpriteSelectionDialog:
         )
         cancel_text = arcade.Text(
             self.cancel_label, cancel_x, cancel_y,
-            arcade.color.WHITE, 14,
+            arcade.color.WHITE, max(8, int(14 * s)),
             anchor_x="center", anchor_y="center",
         )
         cancel_text.draw()
@@ -217,27 +230,33 @@ class BuildingPurchaseDialog:
         self.ui = ui_manager
         self._widget = None
 
-    def show(self, window_width: float, window_height: float) -> None:
-        v_box = arcade.gui.UIBoxLayout(space_between=8)
+    def show(
+        self, window_width: float, window_height: float,
+        scale: float = 1.0,
+    ) -> None:
+        s = scale
+        v_box = arcade.gui.UIBoxLayout(space_between=int(8 * s))
 
         label = arcade.gui.UILabel(
             text="Real Estate Listings",
-            font_size=16,
+            font_size=max(8, int(16 * s)),
             text_color=arcade.color.WHITE,
         )
         v_box.add(label)
 
         coins_label = arcade.gui.UILabel(
             text=f"Your coins: {self.player_coins}",
-            font_size=13,
+            font_size=max(8, int(13 * s)),
             text_color=arcade.color.GOLD,
         )
         v_box.add(coins_label)
 
+        btn_w = int(400 * s)
+        btn_h = int(35 * s)
         if not self.buildings:
             empty_label = arcade.gui.UILabel(
                 text="No buildings available for purchase.",
-                font_size=13,
+                font_size=max(8, int(13 * s)),
                 text_color=arcade.color.LIGHT_GRAY,
             )
             v_box.add(empty_label)
@@ -249,7 +268,6 @@ class BuildingPurchaseDialog:
                 vp = building.get("accumulated_vp", 0)
                 can_afford = self.player_coins >= cost
 
-                # Build reward summary
                 reward = building.get("visitor_reward", {})
                 reward_parts = []
                 for key, sym in RESOURCE_SYMBOLS:
@@ -263,21 +281,21 @@ class BuildingPurchaseDialog:
                     btn_text = f"[Can't afford] {btn_text}"
 
                 btn = arcade.gui.UIFlatButton(
-                    text=btn_text, width=400, height=35,
+                    text=btn_text, width=btn_w, height=btn_h,
                 )
                 if can_afford:
                     btn.on_click = lambda event, b=bid: self._purchase(b)
                 else:
-                    btn.on_click = lambda event: None  # Disabled
+                    btn.on_click = lambda event: None
                 v_box.add(btn)
 
         cancel_btn = arcade.gui.UIFlatButton(
-            text="Cancel", width=400, height=35,
+            text="Cancel", width=btn_w, height=btn_h,
         )
         cancel_btn.on_click = lambda event: self._cancel()
         v_box.add(cancel_btn)
 
-        bg_box = v_box.with_padding(all=20).with_background(
+        bg_box = v_box.with_padding(all=int(20 * s)).with_background(
             color=(0, 0, 0)
         )
         self._widget = self.ui.add(arcade.gui.UIAnchorLayout())
@@ -324,10 +342,12 @@ class QuestCompletionDialog:
     ) -> None:
         self._visible = True
 
-    def draw(self, ww: float, wh: float) -> None:
+    def draw(
+        self, ww: float, wh: float, scale: float = 1.0,
+    ) -> None:
         if not self._visible:
             return
-        self._inner.draw(ww, wh)
+        self._inner.draw(ww, wh, scale=scale)
 
     def handle_click(
         self, x: float, y: float,
@@ -365,28 +385,32 @@ class RewardChoiceDialog:
 
     def show(
         self, window_width: float, window_height: float,
+        scale: float = 1.0,
     ) -> None:
-        v_box = arcade.gui.UIBoxLayout(space_between=8)
+        s = scale
+        v_box = arcade.gui.UIBoxLayout(space_between=int(8 * s))
 
         label = arcade.gui.UILabel(
             text=self.title,
-            font_size=16,
+            font_size=max(8, int(16 * s)),
             text_color=arcade.color.WHITE,
         )
         v_box.add(label)
 
         desc = arcade.gui.UILabel(
             text=self.description,
-            font_size=13,
+            font_size=max(8, int(13 * s)),
             text_color=arcade.color.LIGHT_GRAY,
         )
         v_box.add(desc)
 
+        btn_w = int(320 * s)
+        btn_h = int(35 * s)
         for item in self.choices[:8]:
             name = item.get(self.label_key, "???")
             item_id = item.get("id", "")
             btn = arcade.gui.UIFlatButton(
-                text=name, width=320, height=35,
+                text=name, width=btn_w, height=btn_h,
             )
             btn.on_click = (
                 lambda event, cid=item_id: self._select(cid)
@@ -394,7 +418,7 @@ class RewardChoiceDialog:
             v_box.add(btn)
 
         bg_box = v_box.with_padding(
-            all=20,
+            all=int(20 * s),
         ).with_background(color=(0, 0, 0))
         self._widget = self.ui.add(
             arcade.gui.UIAnchorLayout(),
@@ -437,27 +461,31 @@ class PlayerTargetDialog:
 
     def show(
         self, window_width: float, window_height: float,
+        scale: float = 1.0,
     ) -> None:
-        v_box = arcade.gui.UIBoxLayout(space_between=8)
+        s = scale
+        v_box = arcade.gui.UIBoxLayout(space_between=int(8 * s))
 
         label = arcade.gui.UILabel(
             text=self.title,
-            font_size=16,
+            font_size=max(8, int(16 * s)),
             text_color=arcade.color.WHITE,
         )
         v_box.add(label)
 
         desc_label = arcade.gui.UILabel(
             text=self.effect_description,
-            font_size=12,
+            font_size=max(8, int(12 * s)),
             text_color=arcade.color.GOLD,
         )
         v_box.add(desc_label)
 
+        btn_w = int(350 * s)
+        btn_h = int(35 * s)
         if not self.eligible_targets:
             no_target_label = arcade.gui.UILabel(
                 text="No opponents have the targeted resources.",
-                font_size=13,
+                font_size=max(8, int(13 * s)),
                 text_color=arcade.color.LIGHT_GRAY,
             )
             v_box.add(no_target_label)
@@ -478,7 +506,7 @@ class PlayerTargetDialog:
                 )
                 btn_text = f"{name} ({res_str})"
                 btn = arcade.gui.UIFlatButton(
-                    text=btn_text, width=350, height=35,
+                    text=btn_text, width=btn_w, height=btn_h,
                 )
                 btn.on_click = (
                     lambda event, p=pid: self._select(p)
@@ -486,13 +514,13 @@ class PlayerTargetDialog:
                 v_box.add(btn)
 
         cancel_btn = arcade.gui.UIFlatButton(
-            text="Cancel", width=350, height=35,
+            text="Cancel", width=btn_w, height=btn_h,
         )
         cancel_btn.on_click = lambda event: self._cancel()
         v_box.add(cancel_btn)
 
         bg_box = v_box.with_padding(
-            all=20,
+            all=int(20 * s),
         ).with_background(color=(0, 0, 0))
         self._widget = self.ui.add(
             arcade.gui.UIAnchorLayout(),
@@ -562,7 +590,9 @@ class ResourceChoiceDialog:
 
     def show(
         self, window_width: float, window_height: float,
+        scale: float = 1.0,
     ) -> None:
+        self._scale = scale
         if self.choice_type == "bundle":
             self._show_bundle()
         elif self.choice_type == "combo":
@@ -571,22 +601,25 @@ class ResourceChoiceDialog:
             self._show_pick()
 
     def _show_pick(self) -> None:
-        v_box = arcade.gui.UIBoxLayout(space_between=8)
+        s = getattr(self, "_scale", 1.0)
+        v_box = arcade.gui.UIBoxLayout(space_between=int(8 * s))
         self._add_header(v_box)
 
         target = self.pick_count
         self._selection = {t: 0 for t in self.allowed_types}
         info = arcade.gui.UILabel(
             text=f"Pick {target} resource(s):",
-            font_size=13,
+            font_size=max(8, int(13 * s)),
             text_color=arcade.color.LIGHT_GRAY,
         )
         v_box.add(info)
 
+        btn_w = int(320 * s)
+        btn_h = int(35 * s)
         for rtype in self.allowed_types:
             label = _RESOURCE_LABELS.get(rtype, rtype)
             btn = arcade.gui.UIFlatButton(
-                text=label, width=320, height=35,
+                text=label, width=btn_w, height=btn_h,
             )
             btn.on_click = (
                 lambda e, rt=rtype: self._pick_add(rt)
@@ -595,13 +628,13 @@ class ResourceChoiceDialog:
 
         self._total_label = arcade.gui.UILabel(
             text="Selected: 0 / " + str(target),
-            font_size=13,
+            font_size=max(8, int(13 * s)),
             text_color=arcade.color.GOLD,
         )
         v_box.add(self._total_label)
 
         reset_btn = arcade.gui.UIFlatButton(
-            text="Reset", width=320, height=30,
+            text="Reset", width=btn_w, height=int(30 * s),
         )
         reset_btn.on_click = lambda e: self._pick_reset()
         v_box.add(reset_btn)
@@ -634,14 +667,17 @@ class ResourceChoiceDialog:
             )
 
     def _show_bundle(self) -> None:
-        v_box = arcade.gui.UIBoxLayout(space_between=8)
+        s = getattr(self, "_scale", 1.0)
+        v_box = arcade.gui.UIBoxLayout(space_between=int(8 * s))
         self._add_header(v_box)
 
+        btn_w = int(320 * s)
+        btn_h = int(35 * s)
         for bundle in self.bundles:
             label = bundle.get("label", "???")
             res = bundle.get("resources", {})
             btn = arcade.gui.UIFlatButton(
-                text=label, width=320, height=35,
+                text=label, width=btn_w, height=btn_h,
             )
             btn.on_click = (
                 lambda e, r=res: self._bundle_select(r)
@@ -655,23 +691,28 @@ class ResourceChoiceDialog:
         self._do_select()
 
     def _show_combo(self) -> None:
-        v_box = arcade.gui.UIBoxLayout(space_between=8)
+        s = getattr(self, "_scale", 1.0)
+        v_box = arcade.gui.UIBoxLayout(space_between=int(8 * s))
         self._add_header(v_box)
         self._selection = {t: 0 for t in self.allowed_types}
 
+        font_sm = max(8, int(13 * s))
+        small_btn = int(40 * s)
+        small_btn_h = int(30 * s)
         for rtype in self.allowed_types:
             label = _RESOURCE_LABELS.get(rtype, rtype)
             row = arcade.gui.UIBoxLayout(
-                vertical=False, space_between=8,
+                vertical=False, space_between=int(8 * s),
             )
             name_lbl = arcade.gui.UILabel(
-                text=f"{label}:", font_size=13, width=120,
+                text=f"{label}:", font_size=font_sm,
+                width=int(120 * s),
                 text_color=arcade.color.WHITE,
             )
             row.add(name_lbl)
 
             minus_btn = arcade.gui.UIFlatButton(
-                text="-", width=40, height=30,
+                text="-", width=small_btn, height=small_btn_h,
             )
             minus_btn.on_click = (
                 lambda e, rt=rtype: self._combo_adjust(
@@ -681,14 +722,15 @@ class ResourceChoiceDialog:
             row.add(minus_btn)
 
             count_lbl = arcade.gui.UILabel(
-                text="0", font_size=13, width=30,
+                text="0", font_size=font_sm,
+                width=int(30 * s),
                 text_color=arcade.color.GOLD,
             )
             self._count_labels[rtype] = count_lbl
             row.add(count_lbl)
 
             plus_btn = arcade.gui.UIFlatButton(
-                text="+", width=40, height=30,
+                text="+", width=small_btn, height=small_btn_h,
             )
             plus_btn.on_click = (
                 lambda e, rt=rtype: self._combo_adjust(
@@ -700,13 +742,14 @@ class ResourceChoiceDialog:
 
         self._total_label = arcade.gui.UILabel(
             text=f"Total: 0 / {self.total}",
-            font_size=13,
+            font_size=font_sm,
             text_color=arcade.color.GOLD,
         )
         v_box.add(self._total_label)
 
         self._confirm_btn = arcade.gui.UIFlatButton(
-            text="Confirm", width=320, height=35,
+            text="Confirm", width=int(320 * s),
+            height=int(35 * s),
         )
         self._confirm_btn.on_click = (
             lambda e: self._do_select()
@@ -737,15 +780,16 @@ class ResourceChoiceDialog:
     def _add_header(
         self, v_box: arcade.gui.UIBoxLayout,
     ) -> None:
+        s = getattr(self, "_scale", 1.0)
         title_lbl = arcade.gui.UILabel(
             text=self.title,
-            font_size=16,
+            font_size=max(8, int(16 * s)),
             text_color=arcade.color.WHITE,
         )
         v_box.add(title_lbl)
         desc_lbl = arcade.gui.UILabel(
             text=self.description,
-            font_size=12,
+            font_size=max(8, int(12 * s)),
             text_color=arcade.color.LIGHT_GRAY,
         )
         v_box.add(desc_lbl)
@@ -753,8 +797,9 @@ class ResourceChoiceDialog:
     def _mount(
         self, v_box: arcade.gui.UIBoxLayout,
     ) -> None:
+        s = getattr(self, "_scale", 1.0)
         bg_box = v_box.with_padding(
-            all=20,
+            all=int(20 * s),
         ).with_background(color=(0, 0, 0))
         self._widget = self.ui.add(
             arcade.gui.UIAnchorLayout(),
@@ -795,25 +840,32 @@ class ConfirmDialog:
         self.ui = ui_manager
         self._widget = None
 
-    def show(self) -> None:
-        v_box = arcade.gui.UIBoxLayout(space_between=10)
+    def show(self, scale: float = 1.0) -> None:
+        s = scale
+        v_box = arcade.gui.UIBoxLayout(space_between=int(10 * s))
 
         label = arcade.gui.UILabel(
             text=self.message,
-            font_size=14,
+            font_size=max(8, int(14 * s)),
             text_color=arcade.color.WHITE,
             multiline=True,
-            width=300,
+            width=int(300 * s),
         )
         v_box.add(label)
 
-        h_box = arcade.gui.UIBoxLayout(vertical=False, space_between=20)
+        h_box = arcade.gui.UIBoxLayout(
+            vertical=False, space_between=int(20 * s),
+        )
 
-        yes_btn = arcade.gui.UIFlatButton(text="Yes", width=120, height=40)
+        yes_btn = arcade.gui.UIFlatButton(
+            text="Yes", width=int(120 * s), height=int(40 * s),
+        )
         yes_btn.on_click = lambda event: self._confirm(True)
         h_box.add(yes_btn)
 
-        no_btn = arcade.gui.UIFlatButton(text="No", width=120, height=40)
+        no_btn = arcade.gui.UIFlatButton(
+            text="No", width=int(120 * s), height=int(40 * s),
+        )
         no_btn.on_click = lambda event: self._confirm(False)
         h_box.add(no_btn)
 

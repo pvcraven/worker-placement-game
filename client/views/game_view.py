@@ -46,6 +46,7 @@ class GameView(arcade.View):
         self._cancel_sprite_list: arcade.SpriteList | None = None
         self._hand_sprite_list: arcade.SpriteList | None = None
         self._card_sprite_dialog: CardSpriteSelectionDialog | None = None
+        self._btn_anchor: arcade.gui.UIAnchorLayout | None = None
 
     def on_show_view(self) -> None:
         self.ui.enable()
@@ -73,7 +74,6 @@ class GameView(arcade.View):
         self.resource_bar = ResourceBar()
         self.game_log_panel = GameLogPanel()
 
-        # Hand toggle buttons
         quests_btn = arcade.gui.UIFlatButton(
             text="My Quests", width=120, height=32,
         )
@@ -96,15 +96,15 @@ class GameView(arcade.View):
         btn_row.add(intrigue_btn)
         btn_row.add(overview_btn)
 
-        anchor = arcade.gui.UIAnchorLayout()
-        anchor.add(
+        self._btn_anchor = arcade.gui.UIAnchorLayout()
+        self._btn_anchor.add(
             child=btn_row,
             anchor_x="left",
             anchor_y="bottom",
             align_x=10,
-            align_y=105,
+            align_y=int(100 * self.window.ui_scale) + 5,
         )
-        self.ui.add(anchor)
+        self.ui.add(self._btn_anchor)
 
     def _sync_from_state(self) -> None:
         """Update UI components from current game state."""
@@ -453,6 +453,7 @@ class GameView(arcade.View):
         )
         self._target_dialog.show(
             self.window.width, self.window.height,
+            scale=self.window.ui_scale,
         )
 
     def _on_intrigue_effect_resolved(
@@ -725,6 +726,7 @@ class GameView(arcade.View):
             )
             self._reward_choice_dialog.show(
                 self.window.width, self.window.height,
+                scale=self.window.ui_scale,
             )
         elif reward_type == "choose_building":
             bld_ids = [
@@ -875,7 +877,10 @@ class GameView(arcade.View):
             on_select=on_select,
             ui_manager=self.ui,
         )
-        dialog.show(self.window.width, self.window.height)
+        dialog.show(
+            self.window.width, self.window.height,
+            scale=self.window.ui_scale,
+        )
 
     def _on_resource_choice_resolved(
         self, msg: dict,
@@ -1524,12 +1529,24 @@ class GameView(arcade.View):
     def on_draw(self) -> None:
         self.clear()
 
-        w, h = self.window.width, self.window.height
+        s = self.window.ui_scale
+        cw = self.window.content_width
+        ch = self.window.content_height
+
+        bar_h = int(100 * s)
+        status_h = int(50 * s)
+        log_w = int(450 * s)
+        board_w = cw - log_w
+        board_h = ch - bar_h - status_h
+
+        if self._btn_anchor and self._btn_anchor._children:
+            self._btn_anchor._children[0].data["align_y"] = bar_h + 5
 
         if self.board_renderer:
             self.board_renderer.draw(
-                0, 100, w, h - 160,
+                0, bar_h, board_w, board_h,
                 highlighted_ids=self._highlighted_ids,
+                scale=s,
             )
 
         if self.resource_bar:
@@ -1541,16 +1558,20 @@ class GameView(arcade.View):
                     workers_left = p.get("available_workers", 0)
                     vp = p.get("victory_points", 0)
                     break
-            self.resource_bar.draw(0, 0, w, 100, workers_left, vp)
+            self.resource_bar.draw(
+                0, 0, cw, bar_h, workers_left, vp, scale=s,
+            )
 
         if self.game_log_panel:
-            self.game_log_panel.draw(w - 450, 100, 450, h - 160)
+            self.game_log_panel.draw(
+                cw - log_w, bar_h, log_w, board_h, scale=s,
+            )
 
         # Overlay panels
         if self._show_quests_hand or self._show_intrigue_hand:
-            self._draw_hand_panel(w, h)
+            self._draw_hand_panel(cw, ch, s)
         if self._show_player_overview:
-            self._draw_player_overview_panel(w, h)
+            self._draw_player_overview_panel(cw, ch, s)
 
         # Cancel button for highlight mode
         if (
@@ -1559,31 +1580,36 @@ class GameView(arcade.View):
             and self._cancel_sprite.visible
             and self._cancel_sprite_list
         ):
+            self._cancel_sprite.scale = 0.5 * s
+            self._cancel_sprite.position = (55 * s, 55 * s)
             self._cancel_sprite_list.draw()
 
         # Quest completion card dialog
         if self._quest_completion_dialog:
-            self._quest_completion_dialog.draw(w, h)
+            self._quest_completion_dialog.draw(cw, ch, scale=s)
 
         # Card sprite selection dialog
         if self._card_sprite_dialog:
-            self._card_sprite_dialog.draw(w, h)
+            self._card_sprite_dialog.draw(cw, ch, scale=s)
 
         # Status bar
+        status_y = ch - status_h / 2
         arcade.draw_rect_filled(
-            arcade.rect.XYWH(w / 2, h - 25, w, 50),
+            arcade.rect.XYWH(cw / 2, status_y, cw, status_h),
             arcade.color.BLACK,
         )
         self._text(
             "status", self._status_text,
-            w / 2, h - 25,
-            arcade.color.WHITE, 16,
+            cw / 2, status_y,
+            arcade.color.WHITE, max(8, int(16 * s)),
             anchor_x="center", anchor_y="center",
         ).draw()
 
         self.ui.draw()
 
-    def _draw_hand_panel(self, w: float, h: float) -> None:
+    def _draw_hand_panel(
+        self, w: float, h: float, s: float = 1.0,
+    ) -> None:
         """Draw the quest or intrigue hand overlay."""
         my_player = self._get_my_player()
         if not my_player:
@@ -1599,10 +1625,10 @@ class GameView(arcade.View):
             card_type = "intrigue"
 
         card_count = min(len(cards), 6)
-        card_spacing = 205
-        needed_w = card_count * card_spacing + 40
-        panel_w = max(min(w - 40, needed_w), 300)
-        panel_h = 320
+        card_spacing = int(205 * s)
+        needed_w = card_count * card_spacing + int(40 * s)
+        panel_w = max(min(w - 40 * s, needed_w), 300 * s)
+        panel_h = int(320 * s)
         panel_x = w / 2
         panel_y = h / 2
         arcade.draw_rect_filled(
@@ -1617,8 +1643,8 @@ class GameView(arcade.View):
 
         self._text(
             "hand_title", title,
-            panel_x, panel_y + panel_h / 2 - 20,
-            arcade.color.WHITE, 16,
+            panel_x, panel_y + panel_h / 2 - 20 * s,
+            arcade.color.WHITE, max(8, int(16 * s)),
             anchor_x="center", anchor_y="center", bold=True,
         ).draw()
 
@@ -1626,7 +1652,7 @@ class GameView(arcade.View):
             self._text(
                 "hand_empty", "No cards",
                 panel_x, panel_y,
-                arcade.color.LIGHT_GRAY, 14,
+                arcade.color.LIGHT_GRAY, max(8, int(14 * s)),
                 anchor_x="center", anchor_y="center",
             ).draw()
             return
@@ -1634,25 +1660,25 @@ class GameView(arcade.View):
         total = card_count * card_spacing
         start_x = panel_x - total / 2 + card_spacing / 2
         positions = [
-            (start_x + i * card_spacing, panel_y - 10)
+            (start_x + i * card_spacing, panel_y - 10 * s)
             for i in range(card_count)
         ]
         self._hand_sprite_list = _build_card_sprite_list(
-            cards[:6], card_type, positions,
+            cards[:6], card_type, positions, scale=s,
         )
         self._hand_sprite_list.draw()
 
     def _draw_player_overview_panel(
-        self, w: float, h: float,
+        self, w: float, h: float, s: float = 1.0,
     ) -> None:
         players = self.game_state.get("players", [])
         my_id = getattr(self.window, "player_id", None)
 
-        panel_w = min(w - 40, 1300)
+        panel_w = min(w - 40 * s, 1300 * s)
         row_count = len(players) + 1
-        row_h = 36
+        row_h = int(36 * s)
         panel_h = min(
-            h - 80, 70 + row_count * row_h,
+            h - 80 * s, 70 * s + row_count * row_h,
         )
         panel_x = w / 2
         panel_y = h / 2
@@ -1673,8 +1699,8 @@ class GameView(arcade.View):
 
         self._text(
             "po_title", "Player Overview",
-            panel_x, panel_y + panel_h / 2 - 22,
-            arcade.color.WHITE, 20,
+            panel_x, panel_y + panel_h / 2 - 22 * s,
+            arcade.color.WHITE, max(8, int(20 * s)),
             anchor_x="center", anchor_y="center",
             bold=True,
         ).draw()
@@ -1685,22 +1711,24 @@ class GameView(arcade.View):
             "Coins", "Intrigue", "Quests",
             "Completed", "VP",
         ]
-        col_widths = [
+        base_col_widths = [
             200, 90, 105,
             85, 100, 90,
             80, 90, 85,
             105, 65,
         ]
+        col_widths = [int(cw * s) for cw in base_col_widths]
         total_w = sum(col_widths)
         start_x = panel_x - total_w / 2
-        header_y = panel_y + panel_h / 2 - 52
+        header_y = panel_y + panel_h / 2 - 52 * s
+        font_tbl = max(8, int(14 * s))
 
         cx = start_x
         for i, hdr in enumerate(headers):
             self._text(
                 f"po_h_{i}", hdr,
                 cx + col_widths[i] / 2, header_y,
-                arcade.color.GOLD, 14,
+                arcade.color.GOLD, font_tbl,
                 anchor_x="center", anchor_y="center",
                 bold=True,
             ).draw()
@@ -1769,7 +1797,7 @@ class GameView(arcade.View):
                 self._text(
                     f"po_{row}_{i}", val,
                     cx + col_widths[i] / 2, row_y,
-                    color, 14,
+                    color, font_tbl,
                     anchor_x="center",
                     anchor_y="center",
                 ).draw()
@@ -1805,6 +1833,7 @@ class GameView(arcade.View):
             t.x = x
             t.y = y
             t.color = color
+            t.font_size = font_size
             return t
         t = arcade.Text(
             text, x, y, color,

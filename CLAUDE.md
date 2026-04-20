@@ -1,6 +1,6 @@
 # Worker Placement Game Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-04-19
+Auto-generated from all feature plans. Last updated: 2026-04-20
 
 ## Active Technologies
 - Python 3.12+ + Arcade (client UI), websockets (networking), Pydantic (validation) (002-garage-quest-display)
@@ -13,6 +13,8 @@ Auto-generated from all feature plans. Last updated: 2026-04-19
 - Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), Pydantic v2 (existing) (011-sprite-card-rendering)
 - File system — reads PNGs from `client/assets/card_images/` (011-sprite-card-rendering)
 - Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), websockets, Pydantic v2 (012-resource-choice-rewards)
+- Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), Pydantic v2 (013-board-layout-scaling)
+- N/A (client-side rendering only) (013-board-layout-scaling)
 
 - Python 3.12+ + Arcade (graphics/client UI), websockets (async networking), Pydantic (data validation/serialization) (001-worker-placement-game)
 
@@ -32,9 +34,9 @@ cd src && pytest && ruff check .
 Python 3.12+: Follow standard conventions
 
 ## Recent Changes
+- 013-board-layout-scaling: Added Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), Pydantic v2
 - 012-resource-choice-rewards: Added Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), websockets, Pydantic v2
 - 011-sprite-card-rendering: Added Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), Pydantic v2 (existing)
-- 010-card-image-generator: Added Python 3.12+ + Pillow (PIL), Pydantic v2 (existing), shared/card_models.py (existing)
 
 
 <!-- MANUAL ADDITIONS START -->
