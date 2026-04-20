@@ -41,6 +41,7 @@ class GameView(arcade.View):
         self._reward_choice_dialog = None
         self._show_player_overview = False
         self._show_producer = False
+        self._show_completed_quests = False
         self._target_dialog: PlayerTargetDialog | None = None
         self._text_cache: dict[str, arcade.Text] = {}
         self._highlight_mode: str | None = None
@@ -85,6 +86,12 @@ class GameView(arcade.View):
             text="My Intrigue", width=120, height=32,
         )
         intrigue_btn.on_click = lambda _: self._toggle_intrigue()
+        completed_btn = arcade.gui.UIFlatButton(
+            text="Completed Quests", width=160, height=32,
+        )
+        completed_btn.on_click = (
+            lambda _: self._toggle_completed_quests()
+        )
         producer_btn = arcade.gui.UIFlatButton(
             text="Producer", width=100, height=32,
         )
@@ -103,6 +110,7 @@ class GameView(arcade.View):
         )
         btn_row.add(quests_btn)
         btn_row.add(intrigue_btn)
+        btn_row.add(completed_btn)
         btn_row.add(producer_btn)
         btn_row.add(overview_btn)
 
@@ -1265,6 +1273,25 @@ class GameView(arcade.View):
     # Interaction
     # ------------------------------------------------------------------
 
+    def on_mouse_scroll(
+        self, x: int, y: int,
+        scroll_x: int, scroll_y: int,
+    ) -> None:
+        if not self.game_log_panel:
+            return
+        s = self.window.ui_scale
+        cw = self.window.content_width
+        ch = self.window.content_height
+        bar_h = int(100 * s)
+        status_h = int(50 * s)
+        log_w = int(450 * s)
+        log_x = cw - log_w
+        log_y = bar_h
+        log_h = ch - bar_h - status_h
+        if (log_x <= x <= log_x + log_w
+                and log_y <= y <= log_y + log_h):
+            self.game_log_panel.scroll(-int(scroll_y))
+
     def on_mouse_press(
         self, x: int, y: int, button: int, modifiers: int,
     ) -> None:
@@ -1418,6 +1445,10 @@ class GameView(arcade.View):
             self._status_text = (
                 "You can't afford any buildings"
             )
+            self._show_info_dialog(
+                "You don't have enough coins"
+                " to buy any buildings.",
+            )
             self.window.network.send({
                 "action": "cancel_purchase_building",
             })
@@ -1491,6 +1522,10 @@ class GameView(arcade.View):
                     self._status_text = (
                         "You can't afford that building"
                     )
+                    self._show_info_dialog(
+                        "You don't have enough coins"
+                        " for that building.",
+                    )
         elif self._highlight_mode == "building_reward":
             if clicked.startswith("building_card_"):
                 bid = clicked[len("building_card_"):]
@@ -1515,31 +1550,74 @@ class GameView(arcade.View):
         if self._cancel_sprite:
             self._cancel_sprite.visible = False
 
-    def _toggle_quests(self) -> None:
-        self._show_quests_hand = not self._show_quests_hand
+    def _show_info_dialog(self, message: str) -> None:
+        s = self.window.ui_scale
+        v_box = arcade.gui.UIBoxLayout(
+            space_between=int(10 * s),
+        )
+        label = arcade.gui.UILabel(
+            text=message,
+            font_size=max(8, int(14 * s)),
+            text_color=arcade.color.WHITE,
+            multiline=True,
+            width=int(300 * s),
+        )
+        v_box.add(label)
+
+        ok_btn = arcade.gui.UIFlatButton(
+            text="OK",
+            width=int(120 * s),
+            height=int(40 * s),
+        )
+
+        anchor = arcade.gui.UIAnchorLayout()
+        widget = self.ui.add(anchor)
+
+        def dismiss(_event=None):
+            self.ui.remove(widget)
+
+        ok_btn.on_click = dismiss
+        v_box.add(ok_btn)
+        bg_box = v_box.with_padding(
+            all=int(20 * s),
+        ).with_background(color=(0, 0, 0))
+        anchor.add(
+            child=bg_box,
+            anchor_x="center",
+            anchor_y="center",
+        )
+
+    def _close_all_overlays(self) -> None:
+        self._show_quests_hand = False
         self._show_intrigue_hand = False
         self._show_player_overview = False
         self._show_producer = False
+        self._show_completed_quests = False
+
+    def _toggle_quests(self) -> None:
+        show = not self._show_quests_hand
+        self._close_all_overlays()
+        self._show_quests_hand = show
 
     def _toggle_intrigue(self) -> None:
-        self._show_intrigue_hand = not self._show_intrigue_hand
-        self._show_quests_hand = False
-        self._show_player_overview = False
-        self._show_producer = False
+        show = not self._show_intrigue_hand
+        self._close_all_overlays()
+        self._show_intrigue_hand = show
+
+    def _toggle_completed_quests(self) -> None:
+        show = not self._show_completed_quests
+        self._close_all_overlays()
+        self._show_completed_quests = show
 
     def _toggle_producer(self) -> None:
-        self._show_producer = not self._show_producer
-        self._show_quests_hand = False
-        self._show_intrigue_hand = False
-        self._show_player_overview = False
+        show = not self._show_producer
+        self._close_all_overlays()
+        self._show_producer = show
 
     def _toggle_player_overview(self) -> None:
-        self._show_player_overview = (
-            not self._show_player_overview
-        )
-        self._show_quests_hand = False
-        self._show_intrigue_hand = False
-        self._show_producer = False
+        show = not self._show_player_overview
+        self._close_all_overlays()
+        self._show_player_overview = show
 
     # ------------------------------------------------------------------
     # Drawing
@@ -1603,6 +1681,8 @@ class GameView(arcade.View):
             self._draw_player_overview_panel(cw, ch, s)
         if self._show_producer:
             self._draw_producer_panel(cw, ch, s)
+        if self._show_completed_quests:
+            self._draw_completed_quests_panel(cw, ch, s)
 
         # Cancel button for highlight mode
         if (
@@ -1856,6 +1936,89 @@ class GameView(arcade.View):
                     anchor_y="center",
                 ).draw()
                 cx += col_widths[i]
+
+    def _draw_completed_quests_panel(
+        self, w: float, h: float, s: float = 1.0,
+    ) -> None:
+        my_player = self._get_my_player()
+        if not my_player:
+            return
+
+        cards = my_player.get("completed_contracts", [])
+        title = "Completed Quests"
+        card_type = "quests"
+
+        cols = 8
+        card_spacing = int(205 * s)
+        row_height = int(290 * s)
+        row_count = min(2, (len(cards) + cols - 1) // cols) \
+            if cards else 1
+        needed_w = min(len(cards), cols) * card_spacing \
+            + int(40 * s)
+        panel_w = max(
+            min(w - 40 * s, needed_w), 300 * s,
+        )
+        panel_h = int(
+            60 * s + row_count * row_height,
+        )
+        panel_x = w / 2
+        panel_y = h / 2
+
+        arcade.draw_rect_filled(
+            arcade.rect.XYWH(
+                panel_x, panel_y, panel_w, panel_h,
+            ),
+            (0, 0, 0),
+        )
+        arcade.draw_rect_outline(
+            arcade.rect.XYWH(
+                panel_x, panel_y, panel_w, panel_h,
+            ),
+            arcade.color.WHITE, border_width=2,
+        )
+
+        self._text(
+            "cq_title", title,
+            panel_x, panel_y + panel_h / 2 - 20 * s,
+            arcade.color.WHITE, max(8, int(16 * s)),
+            anchor_x="center", anchor_y="center",
+            bold=True,
+        ).draw()
+
+        if not cards:
+            self._text(
+                "cq_empty", "No completed quests",
+                panel_x, panel_y,
+                arcade.color.LIGHT_GRAY,
+                max(8, int(14 * s)),
+                anchor_x="center", anchor_y="center",
+            ).draw()
+            return
+
+        display_cards = cards[:16]
+        positions = []
+        for i, _card in enumerate(display_cards):
+            row = i // cols
+            col = i % cols
+            row_cards = min(
+                cols, len(display_cards) - row * cols,
+            )
+            total = row_cards * card_spacing
+            start_x = panel_x - total / 2 + card_spacing / 2
+            cx = start_x + col * card_spacing
+            cy = (
+                panel_y + panel_h / 2
+                - 50 * s
+                - row_height * row
+                - row_height / 2
+                + 20 * s
+            )
+            positions.append((cx, cy))
+
+        self._hand_sprite_list = _build_card_sprite_list(
+            display_cards, card_type, positions, scale=s,
+        )
+        self._hand_sprite_list.draw()
 
     def _draw_producer_panel(
         self, w: float, h: float, s: float = 1.0,
