@@ -478,6 +478,18 @@ def validate_resource_choice(
                 return f"{key} is not an allowed choice."
         return None
 
+    if choice_type == "exchange":
+        pick_count = pending.get("pick_count", 1)
+        total = sum(v for v in chosen.values() if isinstance(v, int))
+        if total != pick_count:
+            return f"Must select exactly {pick_count} resource(s), got {total}."
+        for key, val in chosen.items():
+            if not isinstance(val, int) or val < 0:
+                return f"Invalid value for {key}."
+            if val > 0 and key not in allowed:
+                return f"{key} is not an allowed choice."
+        return None
+
     return f"Unknown choice_type: {choice_type}"
 
 
