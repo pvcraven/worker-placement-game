@@ -40,6 +40,7 @@ OUTPUT_BUILDINGS = OUTPUT_BASE / "buildings"
 OUTPUT_INTRIGUE = OUTPUT_BASE / "intrigue"
 OUTPUT_PRODUCERS = OUTPUT_BASE / "producers"
 OUTPUT_SPACES = OUTPUT_BASE / "spaces"
+OUTPUT_MARKERS = OUTPUT_BASE / "markers"
 
 CONFIG_DIR = PROJECT_ROOT / "config"
 
@@ -700,6 +701,7 @@ OUTPUT_DIRS = [
     OUTPUT_INTRIGUE,
     OUTPUT_PRODUCERS,
     OUTPUT_SPACES,
+    OUTPUT_MARKERS,
 ]
 
 
@@ -722,13 +724,44 @@ def _needs_regeneration() -> bool:
     return newest_json > oldest_png
 
 
+PLAYER_COLORS = [
+    ("red", (255, 0, 0)),
+    ("blue", (0, 0, 255)),
+    ("green", (0, 128, 0)),
+    ("orange", (255, 165, 0)),
+    ("purple", (128, 0, 128)),
+]
+
+MARKER_SIZE = 36
+
+
+def generate_worker_markers() -> int:
+    OUTPUT_MARKERS.mkdir(parents=True, exist_ok=True)
+    count = 0
+    for name, color in PLAYER_COLORS:
+        img = Image.new("RGBA", (MARKER_SIZE, MARKER_SIZE), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+        r = MARKER_SIZE // 2 - 1
+        cx, cy = MARKER_SIZE // 2, MARKER_SIZE // 2
+        draw.ellipse(
+            (cx - r, cy - r, cx + r, cy + r),
+            fill=(*color, 255),
+            outline=(255, 255, 255, 200),
+            width=2,
+        )
+        img.save(OUTPUT_MARKERS / f"worker_{name}.png")
+        count += 1
+    return count
+
+
 def generate_all() -> int:
     q = generate_quest_cards()
     b = generate_building_cards()
     i = generate_intrigue_cards()
     p = generate_producer_cards()
     s = generate_space_cards()
-    return q + b + i + p + s
+    m = generate_worker_markers()
+    return q + b + i + p + s + m
 
 
 def ensure_card_images() -> None:

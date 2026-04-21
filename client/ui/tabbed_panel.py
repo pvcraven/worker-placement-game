@@ -37,10 +37,12 @@ class TabbedPanel:
         self._title_text: arcade.Text | None = None
         self._empty_text: arcade.Text | None = None
         self._content_sprite_list: arcade.SpriteList | None = None
+        self._content_card_key: tuple = ()
+        self._producer_sprite_list: arcade.SpriteList | None = None
+        self._producer_card_id: str = ""
         self._last_rect = (0.0, 0.0, 0.0, 0.0)
         self._last_scale = 0.0
         self._last_tab = ""
-        self._last_player_data_key = ""
         self._shapes_dirty = True
 
     def add_entry(self, text: str) -> None:
@@ -75,6 +77,8 @@ class TabbedPanel:
             or self.active_tab != self._last_tab
         ):
             self._shapes_dirty = True
+            self._content_sprite_list = None
+            self._producer_sprite_list = None
 
         tab_bar_h = max(28, int(36 * s))
         title_h = max(20, int(28 * s))
@@ -230,32 +234,34 @@ class TabbedPanel:
         card_type: str,
         scale: float,
     ) -> None:
-        margin = 8 * scale
-        col_w = (w - margin * 3) / 2
-        card_scale = col_w / _CARD_BASE_WIDTH
-        card_h = _CARD_BASE_HEIGHT * card_scale
-        row_gap = 8 * scale
+        card_key = (card_type, tuple(c.get("id", "") for c in cards))
+        if self._content_sprite_list is None or self._content_card_key != card_key:
+            self._content_card_key = card_key
+            margin = 8 * scale
+            col_w = (w - margin * 3) / 2
+            card_scale = col_w / _CARD_BASE_WIDTH
+            card_h = _CARD_BASE_HEIGHT * card_scale
+            row_gap = 8 * scale
+            top_y = y + h - margin - card_h / 2
 
-        sprite_list = arcade.SpriteList()
-        top_y = y + h - margin - card_h / 2
+            self._content_sprite_list = arcade.SpriteList()
+            for i, card in enumerate(cards):
+                card_id = card.get("id", "")
+                png = Path(f"client/assets/card_images/{card_type}/{card_id}.png")
+                if not png.exists():
+                    continue
+                col = i % 2
+                row = i // 2
+                cx = x + margin + col * (col_w + margin) + col_w / 2
+                cy = top_y - row * (card_h + row_gap)
+                if cy - card_h / 2 < y:
+                    break
+                sprite = arcade.Sprite(str(png))
+                sprite.scale = card_scale
+                sprite.position = (cx, cy)
+                self._content_sprite_list.append(sprite)
 
-        for i, card in enumerate(cards):
-            card_id = card.get("id", "")
-            png = Path(f"client/assets/card_images/{card_type}/{card_id}.png")
-            if not png.exists():
-                continue
-            col = i % 2
-            row = i // 2
-            cx = x + margin + col * (col_w + margin) + col_w / 2
-            cy = top_y - row * (card_h + row_gap)
-            if cy - card_h / 2 < y:
-                break
-            sprite = arcade.Sprite(str(png))
-            sprite.scale = card_scale
-            sprite.position = (cx, cy)
-            sprite_list.append(sprite)
-
-        sprite_list.draw()
+        self._content_sprite_list.draw()
 
     def _draw_producer_tab(
         self,
@@ -278,13 +284,18 @@ class TabbedPanel:
         card_id = producer.get("id", "")
         png = Path(f"client/assets/card_images/producers/{card_id}.png")
         if png.exists():
-            sprite = arcade.Sprite(str(png))
-            max_w = w - 20 * scale
-            sprite.scale = min(scale, max_w / sprite.width)
-            sprite.position = (x + w / 2, y + h / 2)
-            sl = arcade.SpriteList()
-            sl.append(sprite)
-            sl.draw()
+            if (
+                self._producer_sprite_list is None
+                or self._producer_card_id != card_id
+            ):
+                self._producer_card_id = card_id
+                sprite = arcade.Sprite(str(png))
+                max_w = w - 20 * scale
+                sprite.scale = min(scale, max_w / sprite.texture.width)
+                sprite.position = (x + w / 2, y + h / 2)
+                self._producer_sprite_list = arcade.SpriteList()
+                self._producer_sprite_list.append(sprite)
+            self._producer_sprite_list.draw()
         else:
             name = producer.get("name", "???")
             desc = producer.get("description", "")

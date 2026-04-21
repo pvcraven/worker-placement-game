@@ -110,6 +110,7 @@ class CardSpriteSelectionDialog:
         self._card_ids: list[str] = []
         self._panel_rect: tuple[float, float, float, float] = (0, 0, 0, 0)
         self._cancel_rect: tuple[float, float, float, float] = (0, 0, 0, 0)
+        self._last_draw_key: tuple = ()
 
     def draw(
         self,
@@ -166,21 +167,24 @@ class CardSpriteSelectionDialog:
                 (start_x + i * spacing, py + 10 * s) for i in range(len(self.cards))
             ]
 
-            self._card_ids = []
-            self._sprite_list = arcade.SpriteList()
-            for card, (cx, cy) in zip(self.cards, positions):
-                card_id = card.get("id", "")
-                self._card_ids.append(card_id)
-                png_path = Path(
-                    f"client/assets/card_images/{self.card_type}/{card_id}.png"
-                )
-                if not png_path.exists():
-                    _log.warning("Card image not found: %s", png_path)
-                    continue
-                sprite = arcade.Sprite(str(png_path))
-                sprite.scale = s
-                sprite.position = (cx, cy)
-                self._sprite_list.append(sprite)
+            draw_key = (w, h, s)
+            if self._sprite_list is None or self._last_draw_key != draw_key:
+                self._last_draw_key = draw_key
+                self._card_ids = []
+                self._sprite_list = arcade.SpriteList()
+                for card, (cx, cy) in zip(self.cards, positions):
+                    card_id = card.get("id", "")
+                    self._card_ids.append(card_id)
+                    png_path = Path(
+                        f"client/assets/card_images/{self.card_type}/{card_id}.png"
+                    )
+                    if not png_path.exists():
+                        _log.warning("Card image not found: %s", png_path)
+                        continue
+                    sprite = arcade.Sprite(str(png_path))
+                    sprite.scale = s
+                    sprite.position = (cx, cy)
+                    self._sprite_list.append(sprite)
             self._sprite_list.draw()
 
         hint = arcade.Text(
