@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import arcade
 import arcade.gui
 
-from client.ui.board_renderer import BoardRenderer, _build_card_sprite_list
+from client.ui.board_renderer import BoardRenderer
 from client.ui.dialogs import (
     CardSelectionDialog,
     CardSpriteSelectionDialog,
@@ -15,8 +13,8 @@ from client.ui.dialogs import (
     QuestCompletionDialog,
     ResourceChoiceDialog,
 )
-from client.ui.game_log import GameLogPanel
 from client.ui.resource_bar import ResourceBar
+from client.ui.tabbed_panel import TabbedPanel
 from shared.constants import RESOURCE_SYMBOLS
 
 
@@ -29,26 +27,21 @@ class GameView(arcade.View):
         self.game_state: dict = {}
         self.board_renderer: BoardRenderer | None = None
         self.resource_bar: ResourceBar | None = None
-        self.game_log_panel: GameLogPanel | None = None
+        self.tabbed_panel: TabbedPanel | None = None
         self._setup_done = False
         self._status_text = ""
         self._quest_dialog: CardSelectionDialog | None = None
         self._quest_completion_dialog: QuestCompletionDialog | None = None
         self._face_up_buildings: list[dict] = []
         self._building_deck_remaining: int = 0
-        self._show_quests_hand = False
-        self._show_intrigue_hand = False
         self._reward_choice_dialog = None
         self._show_player_overview = False
-        self._show_producer = False
-        self._show_completed_quests = False
         self._target_dialog: PlayerTargetDialog | None = None
         self._text_cache: dict[str, arcade.Text] = {}
         self._highlight_mode: str | None = None
         self._highlighted_ids: list[str] = []
         self._cancel_sprite: arcade.Sprite | None = None
         self._cancel_sprite_list: arcade.SpriteList | None = None
-        self._hand_sprite_list: arcade.SpriteList | None = None
         self._card_sprite_dialog: CardSpriteSelectionDialog | None = None
         self._btn_anchor: arcade.gui.UIAnchorLayout | None = None
         self._btn_scale: float = 0.0
@@ -80,7 +73,7 @@ class GameView(arcade.View):
     def _build_ui(self) -> None:
         self.board_renderer = BoardRenderer()
         self.resource_bar = ResourceBar()
-        self.game_log_panel = GameLogPanel()
+        self.tabbed_panel = TabbedPanel()
 
         self._rebuild_buttons()
 
@@ -119,10 +112,6 @@ class GameView(arcade.View):
             for k in ("normal", "hover", "press", "disabled")
         }
         btns = [
-            ("My Quests", int(120 * s), self._toggle_quests),
-            ("My Intrigue", int(120 * s), self._toggle_intrigue),
-            ("Completed Quests", int(160 * s), self._toggle_completed_quests),
-            ("Producer", int(100 * s), self._toggle_producer),
             ("Player Overview", int(140 * s), self._toggle_player_overview),
         ]
 
@@ -246,16 +235,16 @@ class GameView(arcade.View):
             self._sync_from_state()
         elif action == "player_disconnected":
             name = msg.get("player_name", "???")
-            if self.game_log_panel:
-                self.game_log_panel.add_entry(f"{name} disconnected")
+            if self.tabbed_panel:
+                self.tabbed_panel.add_entry(f"{name} disconnected")
         elif action == "player_reconnected":
             name = msg.get("player_name", "???")
-            if self.game_log_panel:
-                self.game_log_panel.add_entry(f"{name} reconnected")
+            if self.tabbed_panel:
+                self.tabbed_panel.add_entry(f"{name} reconnected")
         elif action == "turn_timeout":
             name = msg.get("player_name", "???")
-            if self.game_log_panel:
-                self.game_log_panel.add_entry(f"{name}'s turn was skipped (timeout)")
+            if self.tabbed_panel:
+                self.tabbed_panel.add_entry(f"{name}'s turn was skipped (timeout)")
         elif action == "quest_reward_choice_prompt":
             self._on_quest_reward_choice_prompt(msg)
         elif action == "quest_reward_choice_resolved":
@@ -307,8 +296,8 @@ class GameView(arcade.View):
                 "quest_selection",
                 quest_ids,
             )
-            if self.game_log_panel:
-                self.game_log_panel.add_entry("Click a quest card to select it")
+            if self.tabbed_panel:
+                self.tabbed_panel.add_entry("Click a quest card to select it")
             return
 
         if (
@@ -323,10 +312,10 @@ class GameView(arcade.View):
         next_pid = msg.get("next_player_id")
         self._update_current_player(next_pid)
 
-        if self.game_log_panel:
+        if self.tabbed_panel:
             name = self._player_name(pid)
             space_name = space_data.get("name", space_id)
-            self.game_log_panel.add_entry(f"{name} placed worker on {space_name}")
+            self.tabbed_panel.add_entry(f"{name} placed worker on {space_name}")
 
         # Owner bonus notification
         owner_bonus = msg.get("owner_bonus", {})
@@ -335,7 +324,7 @@ class GameView(arcade.View):
             bonus = owner_bonus.get("bonus", {})
             if owner_id and bonus:
                 self._apply_reward_to_player(owner_id, bonus)
-            if self.game_log_panel:
+            if self.tabbed_panel:
                 owner_name = owner_bonus.get("owner_name", "???")
                 bonus_parts = []
                 for key, sym in RESOURCE_SYMBOLS:
@@ -343,7 +332,7 @@ class GameView(arcade.View):
                     if val > 0:
                         bonus_parts.append(f"{val}{sym}")
                 if bonus_parts:
-                    self.game_log_panel.add_entry(
+                    self.tabbed_panel.add_entry(
                         f"{owner_name} earned owner bonus: {' '.join(bonus_parts)}"
                     )
 
@@ -421,10 +410,10 @@ class GameView(arcade.View):
 
         self._refresh_board(board)
 
-        if self.game_log_panel:
+        if self.tabbed_panel:
             name = self._player_name(pid)
             card_name = card.get("name", "?")
-            self.game_log_panel.add_entry(
+            self.tabbed_panel.add_entry(
                 f"{name} placed worker on Backstage"
                 f" slot {slot_num}, played {card_name}"
             )
@@ -433,7 +422,7 @@ class GameView(arcade.View):
             details = effect.get("details", {})
             effect_str = self._format_intrigue_effect(effect_type, details)
             if effect_str:
-                self.game_log_panel.add_entry(f"  Effect: {effect_str}")
+                self.tabbed_panel.add_entry(f"  Effect: {effect_str}")
 
         next_pid = msg.get("next_player_id")
         self._update_current_player(next_pid)
@@ -530,7 +519,7 @@ class GameView(arcade.View):
                     )
                     break
 
-        if self.game_log_panel:
+        if self.tabbed_panel:
             name = self._player_name(pid)
             tname = self._player_name(target_pid)
             parts = []
@@ -540,9 +529,9 @@ class GameView(arcade.View):
                     parts.append(f"{v}{sym}")
             res_str = " ".join(parts)
             if effect_type == "steal_resources":
-                self.game_log_panel.add_entry(f"{name} stole {res_str} from {tname}")
+                self.tabbed_panel.add_entry(f"{name} stole {res_str} from {tname}")
             else:
-                self.game_log_panel.add_entry(f"{tname} lost {res_str}")
+                self.tabbed_panel.add_entry(f"{tname} lost {res_str}")
 
     def _on_quest_card_selected(self, msg: dict) -> None:
         pid = msg.get("player_id", "")
@@ -577,14 +566,14 @@ class GameView(arcade.View):
         next_pid = msg.get("next_player_id")
         self._update_current_player(next_pid)
 
-        if self.game_log_panel:
+        if self.tabbed_panel:
             name = self._player_name(pid)
             bonus_str = ""
             if bonus.get("coins"):
                 bonus_str = f" (+{bonus['coins']} coins)"
             elif bonus.get("intrigue_card"):
                 bonus_str = " (+1 intrigue card)"
-            self.game_log_panel.add_entry(f"{name} selected a quest{bonus_str}")
+            self.tabbed_panel.add_entry(f"{name} selected a quest{bonus_str}")
 
     def _on_quests_reset(self, msg: dict) -> None:
         pid = msg.get("player_id", "")
@@ -593,10 +582,10 @@ class GameView(arcade.View):
         next_pid = msg.get("next_player_id")
         self._update_current_player(next_pid)
 
-        if self.game_log_panel:
+        if self.tabbed_panel:
             name = self._player_name(pid)
             extra = " (deck reshuffled)" if reshuffled else ""
-            self.game_log_panel.add_entry(f"{name} reset the quest display{extra}")
+            self.tabbed_panel.add_entry(f"{name} reset the quest display{extra}")
 
     def _on_face_up_quests_updated(self, msg: dict) -> None:
         quests = msg.get("face_up_quests", [])
@@ -689,7 +678,7 @@ class GameView(arcade.View):
                     }
             self._refresh_board(board)
 
-        if self.game_log_panel:
+        if self.tabbed_panel:
             name = self._player_name(pid)
             parts = [f"{vp} VP"]
             for k, sym in RESOURCE_SYMBOLS:
@@ -704,7 +693,7 @@ class GameView(arcade.View):
                 bname = building.get("building_name", "?")
                 parts.append(f"building: {bname}")
             reward_str = ", ".join(parts)
-            self.game_log_panel.add_entry(
+            self.tabbed_panel.add_entry(
                 f"{name} completed '{cname}'" f" ({reward_str})"
             )
 
@@ -827,11 +816,11 @@ class GameView(arcade.View):
                     board["face_up_buildings"] = [b for b in fub if b.get("id") != bid]
                 self._refresh_board(board)
 
-        if self.game_log_panel:
+        if self.tabbed_panel:
             name = self._player_name(pid)
             if reward_type == "choose_quest":
                 qn = choice.get("name", "?")
-                self.game_log_panel.add_entry(
+                self.tabbed_panel.add_entry(
                     f"{name} chose quest '{qn}'" f" as reward for '{quest_name}'"
                 )
             elif reward_type == "choose_building":
@@ -839,7 +828,7 @@ class GameView(arcade.View):
                     "building_name",
                     choice.get("name", "?"),
                 )
-                self.game_log_panel.add_entry(
+                self.tabbed_panel.add_entry(
                     f"{name} chose building '{bn}'" f" as reward for '{quest_name}'"
                 )
 
@@ -911,7 +900,7 @@ class GameView(arcade.View):
                 if self.resource_bar:
                     self.resource_bar.update_resources(res)
 
-        if self.game_log_panel:
+        if self.tabbed_panel:
             name = self._player_name(pid)
             parts = []
             for k, v in chosen.items():
@@ -919,7 +908,7 @@ class GameView(arcade.View):
                     parts.append(f"{v} {k}")
             res_str = ", ".join(parts) if parts else "none"
             verb = "turned in" if is_spend else "gained"
-            self.game_log_panel.add_entry(f"{name} {verb} {res_str} from {source}")
+            self.tabbed_panel.add_entry(f"{name} {verb} {res_str} from {source}")
 
         next_pid = msg.get("next_player_id")
         if next_pid:
@@ -967,9 +956,9 @@ class GameView(arcade.View):
 
     def _on_contract_acquired(self, msg: dict) -> None:
         pid = msg.get("player_id", "")
-        if self.game_log_panel:
+        if self.tabbed_panel:
             name = self._player_name(pid)
-            self.game_log_panel.add_entry(
+            self.tabbed_panel.add_entry(
                 f"{name} acquired a contract",
             )
 
@@ -1007,12 +996,12 @@ class GameView(arcade.View):
         next_pid = msg.get("next_player_id")
         self._update_current_player(next_pid)
 
-        if self.game_log_panel:
+        if self.tabbed_panel:
             name = self._player_name(pid)
             if space_id.startswith("backstage_slot_"):
-                self.game_log_panel.add_entry(f"{name} cancelled intrigue targeting")
+                self.tabbed_panel.add_entry(f"{name} cancelled intrigue targeting")
             else:
-                self.game_log_panel.add_entry(f"{name} cancelled placement")
+                self.tabbed_panel.add_entry(f"{name} cancelled placement")
 
     def _on_building_market_update(self, msg: dict) -> None:
         """Handle building market state update from server."""
@@ -1065,11 +1054,11 @@ class GameView(arcade.View):
         next_pid = msg.get("next_player_id")
         self._update_current_player(next_pid)
 
-        if self.game_log_panel:
+        if self.tabbed_panel:
             name = self._player_name(pid)
             vp = msg.get("accumulated_vp", 0)
             vp_str = f" (+{vp} VP)" if vp else ""
-            self.game_log_panel.add_entry(
+            self.tabbed_panel.add_entry(
                 f"{name} built {bname}{vp_str}",
             )
 
@@ -1078,8 +1067,9 @@ class GameView(arcade.View):
         slots = msg.get("backstage_slots", [])
         self.game_state["phase"] = "reassignment"
         self.game_state["reassignment_queue"] = [s["slot_number"] for s in slots]
-        if self.game_log_panel:
-            self.game_log_panel.add_entry("--- Reassignment Phase ---")
+        if self.tabbed_panel:
+            self.tabbed_panel.add_entry("--- Reassignment Phase ---")
+        self._play_reassignment_sound_if_my_turn()
 
     def _on_worker_reassigned(self, msg: dict) -> None:
         pid = msg.get("player_id", "")
@@ -1111,13 +1101,13 @@ class GameView(arcade.View):
 
         self._refresh_board(board)
 
-        if self.game_log_panel:
+        if self.tabbed_panel:
             name = self._player_name(pid)
             space_name = to_space
             space_data = spaces.get(to_space, {})
             if space_data.get("name"):
                 space_name = space_data["name"]
-            self.game_log_panel.add_entry(
+            self.tabbed_panel.add_entry(
                 f"{name} reassigned from Backstage" f" {from_slot} to {space_name}"
             )
 
@@ -1128,7 +1118,7 @@ class GameView(arcade.View):
             bonus = owner_bonus.get("bonus", {})
             if owner_id and bonus:
                 self._apply_reward_to_player(owner_id, bonus)
-            if self.game_log_panel:
+            if self.tabbed_panel:
                 owner_name = owner_bonus.get("owner_name", "???")
                 bonus_parts = []
                 for key, sym in RESOURCE_SYMBOLS:
@@ -1136,12 +1126,14 @@ class GameView(arcade.View):
                     if val > 0:
                         bonus_parts.append(f"{val}{sym}")
                 if bonus_parts:
-                    self.game_log_panel.add_entry(
+                    self.tabbed_panel.add_entry(
                         f"{owner_name} earned owner bonus:" f" {' '.join(bonus_parts)}"
                     )
 
         my_id = getattr(self.window, "player_id", None)
         space_data = spaces.get(to_space, {})
+
+        self._play_reassignment_sound_if_my_turn()
 
         # Building purchase during reassignment
         if space_data.get("reward_special") == "purchase_building" and pid == my_id:
@@ -1169,8 +1161,8 @@ class GameView(arcade.View):
                 "quest_selection",
                 quest_ids,
             )
-            if self.game_log_panel:
-                self.game_log_panel.add_entry("Click a quest card to select it")
+            if self.tabbed_panel:
+                self.tabbed_panel.add_entry("Click a quest card to select it")
 
     def _on_round_end(self, msg: dict) -> None:
         next_round = msg.get("next_round", 0)
@@ -1220,15 +1212,15 @@ class GameView(arcade.View):
         else:
             self._status_text = f"Round {next_round}"
 
-        if self.game_log_panel:
-            self.game_log_panel.add_entry(f"--- Round {next_round} ---")
+        if self.tabbed_panel:
+            self.tabbed_panel.add_entry(f"--- Round {next_round} ---")
             if bonus:
-                self.game_log_panel.add_entry("All players gained a bonus worker!")
+                self.tabbed_panel.add_entry("All players gained a bonus worker!")
 
     def _on_bonus_workers(self, msg: dict) -> None:
         new_count = msg.get("new_worker_count", 0)
-        if self.game_log_panel:
-            self.game_log_panel.add_entry(
+        if self.tabbed_panel:
+            self.tabbed_panel.add_entry(
                 f"Round 5: All players now have {new_count} workers!"
             )
 
@@ -1243,7 +1235,7 @@ class GameView(arcade.View):
         scroll_x: int,
         scroll_y: int,
     ) -> None:
-        if not self.game_log_panel:
+        if not self.tabbed_panel:
             return
         s = self.window.ui_scale
         cw = self.window.content_width
@@ -1255,7 +1247,8 @@ class GameView(arcade.View):
         log_y = bar_h
         log_h = ch - bar_h - status_h
         if log_x <= x <= log_x + log_w and log_y <= y <= log_y + log_h:
-            self.game_log_panel.scroll(-int(scroll_y))
+            if self.tabbed_panel.active_tab == "game_log":
+                self.tabbed_panel.scroll(-int(scroll_y))
 
     def on_mouse_press(
         self,
@@ -1265,6 +1258,9 @@ class GameView(arcade.View):
         modifiers: int,
     ) -> None:
         """Handle clicks on the board to place or reassign workers."""
+        if self.tabbed_panel and self.tabbed_panel.on_click(x, y):
+            return
+
         if self._card_sprite_dialog:
             if self._card_sprite_dialog.on_click(x, y):
                 return
@@ -1427,8 +1423,8 @@ class GameView(arcade.View):
             "building_purchase",
             affordable,
         )
-        if self.game_log_panel:
-            self.game_log_panel.add_entry("Click a building to purchase it")
+        if self.tabbed_panel:
+            self.tabbed_panel.add_entry("Click a building to purchase it")
 
     def _handle_highlight_click(
         self,
@@ -1448,16 +1444,16 @@ class GameView(arcade.View):
                             "action": "cancel_quest_selection",
                         }
                     )
-                    if self.game_log_panel:
-                        self.game_log_panel.add_entry("Quest selection cancelled")
+                    if self.tabbed_panel:
+                        self.tabbed_panel.add_entry("Quest selection cancelled")
                 elif self._highlight_mode == "building_purchase":
                     self.window.network.send(
                         {
                             "action": "cancel_purchase_building",
                         }
                     )
-                    if self.game_log_panel:
-                        self.game_log_panel.add_entry("Building purchase cancelled")
+                    if self.tabbed_panel:
+                        self.tabbed_panel.add_entry("Building purchase cancelled")
                 self._exit_highlight_mode()
                 return
 
@@ -1560,37 +1556,8 @@ class GameView(arcade.View):
             anchor_y="center",
         )
 
-    def _close_all_overlays(self) -> None:
-        self._show_quests_hand = False
-        self._show_intrigue_hand = False
-        self._show_player_overview = False
-        self._show_producer = False
-        self._show_completed_quests = False
-
-    def _toggle_quests(self) -> None:
-        show = not self._show_quests_hand
-        self._close_all_overlays()
-        self._show_quests_hand = show
-
-    def _toggle_intrigue(self) -> None:
-        show = not self._show_intrigue_hand
-        self._close_all_overlays()
-        self._show_intrigue_hand = show
-
-    def _toggle_completed_quests(self) -> None:
-        show = not self._show_completed_quests
-        self._close_all_overlays()
-        self._show_completed_quests = show
-
-    def _toggle_producer(self) -> None:
-        show = not self._show_producer
-        self._close_all_overlays()
-        self._show_producer = show
-
     def _toggle_player_overview(self) -> None:
-        show = not self._show_player_overview
-        self._close_all_overlays()
-        self._show_player_overview = show
+        self._show_player_overview = not self._show_player_overview
 
     # ------------------------------------------------------------------
     # Drawing
@@ -1652,24 +1619,18 @@ class GameView(arcade.View):
                 scale=s,
             )
 
-        if self.game_log_panel:
-            self.game_log_panel.draw(
+        if self.tabbed_panel:
+            self.tabbed_panel.draw(
                 cw - log_w,
                 bar_h,
                 log_w,
                 board_h,
+                player_data=self._get_my_player(),
                 scale=s,
             )
 
-        # Overlay panels
-        if self._show_quests_hand or self._show_intrigue_hand:
-            self._draw_hand_panel(cw, ch, s)
         if self._show_player_overview:
             self._draw_player_overview_panel(cw, ch, s)
-        if self._show_producer:
-            self._draw_producer_panel(cw, ch, s)
-        if self._show_completed_quests:
-            self._draw_completed_quests_panel(cw, ch, s)
 
         # Cancel button for highlight mode
         if (
@@ -1710,81 +1671,6 @@ class GameView(arcade.View):
         self._draw_player_list(ch, status_h, s)
 
         self.ui.draw()
-
-    def _draw_hand_panel(
-        self,
-        w: float,
-        h: float,
-        s: float = 1.0,
-    ) -> None:
-        """Draw the quest or intrigue hand overlay."""
-        my_player = self._get_my_player()
-        if not my_player:
-            return
-
-        if self._show_quests_hand:
-            cards = my_player.get("contract_hand", [])
-            title = "My Quests"
-            card_type = "quests"
-        else:
-            cards = my_player.get("intrigue_hand", [])
-            title = "My Intrigue"
-            card_type = "intrigue"
-
-        card_count = min(len(cards), 6)
-        card_spacing = int(205 * s)
-        needed_w = card_count * card_spacing + int(40 * s)
-        panel_w = max(min(w - 40 * s, needed_w), 300 * s)
-        panel_h = int(320 * s)
-        panel_x = w / 2
-        panel_y = h / 2
-        arcade.draw_rect_filled(
-            arcade.rect.XYWH(panel_x, panel_y, panel_w, panel_h),
-            (0, 0, 0),
-        )
-        arcade.draw_rect_outline(
-            arcade.rect.XYWH(panel_x, panel_y, panel_w, panel_h),
-            arcade.color.WHITE,
-            border_width=2,
-        )
-
-        self._text(
-            "hand_title",
-            title,
-            panel_x,
-            panel_y + panel_h / 2 - 20 * s,
-            arcade.color.WHITE,
-            max(8, int(16 * s)),
-            anchor_x="center",
-            anchor_y="center",
-            bold=True,
-        ).draw()
-
-        if not cards:
-            self._text(
-                "hand_empty",
-                "No cards",
-                panel_x,
-                panel_y,
-                arcade.color.LIGHT_GRAY,
-                max(8, int(14 * s)),
-                anchor_x="center",
-                anchor_y="center",
-            ).draw()
-            return
-
-        total = card_count * card_spacing
-        start_x = panel_x - total / 2 + card_spacing / 2
-        positions = [
-            (start_x + i * card_spacing, panel_y - 10 * s) for i in range(card_count)
-        ]
-        self._hand_sprite_list = _build_card_sprite_list(
-            cards[:6],
-            card_type,
-            positions,
-            scale=s,
-        )
-        self._hand_sprite_list.draw()
 
     def _draw_player_overview_panel(
         self,
@@ -1976,197 +1862,6 @@ class GameView(arcade.View):
                 ).draw()
                 cx += col_widths[i]
 
-    def _draw_completed_quests_panel(
-        self,
-        w: float,
-        h: float,
-        s: float = 1.0,
-    ) -> None:
-        my_player = self._get_my_player()
-        if not my_player:
-            return
-
-        cards = my_player.get("completed_contracts", [])
-        title = "Completed Quests"
-        card_type = "quests"
-
-        cols = 8
-        card_spacing = int(205 * s)
-        row_height = int(290 * s)
-        row_count = min(2, (len(cards) + cols - 1) // cols) if cards else 1
-        needed_w = min(len(cards), cols) * card_spacing + int(40 * s)
-        panel_w = max(
-            min(w - 40 * s, needed_w),
-            300 * s,
-        )
-        panel_h = int(
-            60 * s + row_count * row_height,
-        )
-        panel_x = w / 2
-        panel_y = h / 2
-
-        arcade.draw_rect_filled(
-            arcade.rect.XYWH(
-                panel_x,
-                panel_y,
-                panel_w,
-                panel_h,
-            ),
-            (0, 0, 0),
-        )
-        arcade.draw_rect_outline(
-            arcade.rect.XYWH(
-                panel_x,
-                panel_y,
-                panel_w,
-                panel_h,
-            ),
-            arcade.color.WHITE,
-            border_width=2,
-        )
-
-        self._text(
-            "cq_title",
-            title,
-            panel_x,
-            panel_y + panel_h / 2 - 20 * s,
-            arcade.color.WHITE,
-            max(8, int(16 * s)),
-            anchor_x="center",
-            anchor_y="center",
-            bold=True,
-        ).draw()
-
-        if not cards:
-            self._text(
-                "cq_empty",
-                "No completed quests",
-                panel_x,
-                panel_y,
-                arcade.color.LIGHT_GRAY,
-                max(8, int(14 * s)),
-                anchor_x="center",
-                anchor_y="center",
-            ).draw()
-            return
-
-        display_cards = cards[:16]
-        positions = []
-        for i, _card in enumerate(display_cards):
-            row = i // cols
-            col = i % cols
-            row_cards = min(
-                cols,
-                len(display_cards) - row * cols,
-            )
-            total = row_cards * card_spacing
-            start_x = panel_x - total / 2 + card_spacing / 2
-            cx = start_x + col * card_spacing
-            cy = (
-                panel_y
-                + panel_h / 2
-                - 50 * s
-                - row_height * row
-                - row_height / 2
-                + 20 * s
-            )
-            positions.append((cx, cy))
-
-        self._hand_sprite_list = _build_card_sprite_list(
-            display_cards,
-            card_type,
-            positions,
-            scale=s,
-        )
-        self._hand_sprite_list.draw()
-
-    def _draw_producer_panel(
-        self,
-        w: float,
-        h: float,
-        s: float = 1.0,
-    ) -> None:
-        my_id = getattr(self.window, "player_id", None)
-        producer = None
-        for p in self.game_state.get("players", []):
-            if p.get("player_id") == my_id:
-                producer = p.get("producer_card")
-                break
-
-        panel_w = 350 * s
-        panel_h = 420 * s
-        px, py = w / 2, h / 2
-
-        arcade.draw_rect_filled(
-            arcade.rect.XYWH(px, py, panel_w, panel_h),
-            (0, 0, 0, 230),
-        )
-        arcade.draw_rect_outline(
-            arcade.rect.XYWH(px, py, panel_w, panel_h),
-            arcade.color.WHITE,
-            border_width=2,
-        )
-
-        self._text(
-            "prod_title",
-            "Your Producer",
-            px,
-            py + panel_h / 2 - 22 * s,
-            arcade.color.WHITE,
-            max(8, int(18 * s)),
-            anchor_x="center",
-            anchor_y="center",
-            bold=True,
-        ).draw()
-
-        if not producer:
-            self._text(
-                "prod_none",
-                "No producer card",
-                px,
-                py,
-                arcade.color.LIGHT_GRAY,
-                max(8, int(14 * s)),
-                anchor_x="center",
-                anchor_y="center",
-            ).draw()
-        else:
-            card_id = producer.get("id", "")
-            png = Path(f"client/assets/card_images/" f"producers/{card_id}.png")
-            if png.exists():
-                sprite = arcade.Sprite(str(png))
-                sprite.scale = s
-                sprite.position = (px, py - 10 * s)
-                sl = arcade.SpriteList()
-                sl.append(sprite)
-                sl.draw()
-            else:
-                name = producer.get("name", "???")
-                desc = producer.get("description", "")
-                self._text(
-                    "prod_name",
-                    name,
-                    px,
-                    py + 20 * s,
-                    arcade.color.GOLD,
-                    max(8, int(16 * s)),
-                    anchor_x="center",
-                    anchor_y="center",
-                    bold=True,
-                ).draw()
-                self._text(
-                    "prod_desc",
-                    desc,
-                    px,
-                    py - 20 * s,
-                    arcade.color.LIGHT_GRAY,
-                    max(8, int(12 * s)),
-                    anchor_x="center",
-                    anchor_y="center",
-                    multiline=True,
-                    width=int(panel_w - 40 * s),
-                ).draw()
-
     @staticmethod
     def _resource_str(res: dict) -> str:
         parts = []
@@ -2342,6 +2037,18 @@ class GameView(arcade.View):
                 if player_id == my_id and self.resource_bar:
                     self.resource_bar.update_resources(res)
                 break
+
+    def _play_reassignment_sound_if_my_turn(self) -> None:
+        queue = self.game_state.get("reassignment_queue", [])
+        if not queue:
+            return
+        my_id = getattr(self.window, "player_id", None)
+        board = self.game_state.get("board", {})
+        for s in board.get("backstage_slots", []):
+            if s.get("slot_number") == queue[0]:
+                if s.get("occupied_by") == my_id:
+                    arcade.play_sound(self._turn_sound)
+                return
 
     def _update_current_player(self, next_pid: str | None) -> None:
         if next_pid is None:

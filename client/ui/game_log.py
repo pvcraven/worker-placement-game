@@ -78,6 +78,7 @@ class GameLogPanel:
         w: float,
         h: float,
         scale: float = 1.0,
+        show_title: bool = True,
     ) -> None:
         s = scale
         # Background
@@ -90,22 +91,24 @@ class GameLogPanel:
         font_entry = max(8, int(12 * s))
         line_height = max(14, int(22 * s))
 
-        # Title
-        self._text(
-            "title",
-            "Game Log",
-            x + w / 2,
-            y + h - 20 * s,
-            arcade.color.WHITE,
-            font_title,
-            anchor_x="center",
-            bold=True,
-        ).draw()
+        if show_title:
+            self._text(
+                "title",
+                "Game Log",
+                x + w / 2,
+                y + h - 20 * s,
+                arcade.color.WHITE,
+                font_title,
+                anchor_x="center",
+                bold=True,
+            ).draw()
+
+        top_margin = 50 * s if show_title else 10 * s
 
         # Log entries
         max_lines = min(
             _VISIBLE_LINES,
-            int((h - 50 * s) / line_height),
+            int((h - top_margin) / line_height),
         )
         self._max_lines = max_lines
         start = self.scroll_offset
@@ -116,7 +119,7 @@ class GameLogPanel:
             text = self.entries[idx]
             if len(text) > max_chars:
                 text = text[: max_chars - 2] + ".."
-            ty = y + h - 50 * s - i * line_height
+            ty = y + h - top_margin - i * line_height
             self._text(
                 f"line_{i}",
                 text,
