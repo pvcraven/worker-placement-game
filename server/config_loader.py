@@ -53,14 +53,20 @@ def _warn_suspicious_contracts(contracts: list[ContractCard]) -> None:
     for c in contracts:
         cost = c.cost
         total_cost = (
-            cost.guitarists + cost.bass_players + cost.drummers + cost.singers + cost.coins
+            cost.guitarists
+            + cost.bass_players
+            + cost.drummers
+            + cost.singers
+            + cost.coins
         )
         if total_cost == 0:
             logger.warning("Contract '%s' (%s) has zero cost", c.name, c.id)
         if c.victory_points > 20:
             logger.warning(
                 "Contract '%s' (%s) has unusually high VP: %d",
-                c.name, c.id, c.victory_points,
+                c.name,
+                c.id,
+                c.victory_points,
             )
         if not c.description:
             logger.warning("Contract '%s' (%s) has empty description", c.name, c.id)
@@ -71,7 +77,9 @@ def _warn_suspicious_intrigue(cards: list[IntrigueCard]) -> None:
         if not c.effect_value:
             logger.warning("Intrigue card '%s' (%s) has no effect value", c.name, c.id)
         if not c.description:
-            logger.warning("Intrigue card '%s' (%s) has empty description", c.name, c.id)
+            logger.warning(
+                "Intrigue card '%s' (%s) has empty description", c.name, c.id
+            )
 
 
 def _warn_suspicious_buildings(buildings: list[BuildingTile]) -> None:
@@ -98,7 +106,8 @@ def _warn_suspicious_buildings(buildings: list[BuildingTile]) -> None:
         ):
             logger.warning(
                 "Building '%s' (%s) has no visitor reward and no owner bonus",
-                b.name, b.id,
+                b.name,
+                b.id,
             )
 
 

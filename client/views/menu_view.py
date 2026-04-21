@@ -5,23 +5,38 @@ from __future__ import annotations
 import arcade
 import arcade.gui
 
-
 _BTN_STYLE = {
     "normal": arcade.gui.UIFlatButton.UIStyle(
-        font_size=18, font_name=("Arial",), font_color=arcade.color.WHITE,
-        bg=(44, 62, 80, 255), border=None, border_width=0,
+        font_size=18,
+        font_name=("Arial",),
+        font_color=arcade.color.WHITE,
+        bg=(44, 62, 80, 255),
+        border=None,
+        border_width=0,
     ),
     "hover": arcade.gui.UIFlatButton.UIStyle(
-        font_size=18, font_name=("Arial",), font_color=arcade.color.WHITE,
-        bg=(52, 73, 94, 255), border=(149, 165, 166, 255), border_width=2,
+        font_size=18,
+        font_name=("Arial",),
+        font_color=arcade.color.WHITE,
+        bg=(52, 73, 94, 255),
+        border=(149, 165, 166, 255),
+        border_width=2,
     ),
     "press": arcade.gui.UIFlatButton.UIStyle(
-        font_size=18, font_name=("Arial",), font_color=(44, 62, 80, 255),
-        bg=(236, 240, 241, 255), border=(149, 165, 166, 255), border_width=2,
+        font_size=18,
+        font_name=("Arial",),
+        font_color=(44, 62, 80, 255),
+        bg=(236, 240, 241, 255),
+        border=(149, 165, 166, 255),
+        border_width=2,
     ),
     "disabled": arcade.gui.UIFlatButton.UIStyle(
-        font_size=18, font_name=("Arial",), font_color=(189, 195, 199, 255),
-        bg=(127, 140, 141, 255), border=None, border_width=0,
+        font_size=18,
+        font_name=("Arial",),
+        font_color=(189, 195, 199, 255),
+        bg=(127, 140, 141, 255),
+        border=None,
+        border_width=0,
     ),
 }
 
@@ -85,7 +100,9 @@ class MenuView(arcade.View):
         v_box.add(name_label)
 
         _input_s = arcade.gui.UIInputText.UIStyle(
-            bg=arcade.color.WHITE, border=arcade.color.WHITE, border_width=2,
+            bg=arcade.color.WHITE,
+            border=arcade.color.WHITE,
+            border_width=2,
         )
         input_style = {
             "normal": _input_s,
@@ -108,7 +125,9 @@ class MenuView(arcade.View):
         v_box.add(spacer2)
 
         # Create Game button
-        create_btn = arcade.gui.UIFlatButton(text="Create Game", width=350, height=55, style=_BTN_STYLE)
+        create_btn = arcade.gui.UIFlatButton(
+            text="Create Game", width=350, height=55, style=_BTN_STYLE
+        )
         create_btn.on_click = self._on_create
         v_box.add(create_btn)
 
@@ -132,7 +151,9 @@ class MenuView(arcade.View):
         )
         v_box.add(self.code_input)
 
-        join_btn = arcade.gui.UIFlatButton(text="Join Game", width=350, height=55, style=_BTN_STYLE)
+        join_btn = arcade.gui.UIFlatButton(
+            text="Join Game", width=350, height=55, style=_BTN_STYLE
+        )
         join_btn.on_click = self._on_join
         v_box.add(join_btn)
 
@@ -146,7 +167,9 @@ class MenuView(arcade.View):
         v_box.add(server_label)
 
         _server_s = arcade.gui.UIInputText.UIStyle(
-            bg=arcade.color.WHITE_SMOKE, border=arcade.color.WHITE_SMOKE, border_width=2,
+            bg=arcade.color.WHITE_SMOKE,
+            border=arcade.color.WHITE_SMOKE,
+            border_width=2,
         )
         server_style = {
             "normal": _server_s,
@@ -155,7 +178,9 @@ class MenuView(arcade.View):
             "disabled": _server_s,
         }
         self.server_input = arcade.gui.UIInputText(
-            text=getattr(self.window, "network", None) and self.window.network.server_url or "ws://localhost:8765",
+            text=getattr(self.window, "network", None)
+            and self.window.network.server_url
+            or "ws://localhost:8765",
             width=350,
             height=35,
             font_size=14,
@@ -189,12 +214,15 @@ class MenuView(arcade.View):
         network.connect()
 
         from client.user_config import save_config
+
         save_config(name=name, server=server)
-        network.send({
-            "action": "create_game",
-            "player_name": name,
-            "max_players": 4,
-        })
+        network.send(
+            {
+                "action": "create_game",
+                "player_name": name,
+                "max_players": 4,
+            }
+        )
         self.status_label.text = "Creating game..."
 
     def _on_join(self, event) -> None:
@@ -215,12 +243,15 @@ class MenuView(arcade.View):
         network.connect()
 
         from client.user_config import save_config
+
         save_config(name=name, server=server)
-        network.send({
-            "action": "join_game",
-            "game_code": code,
-            "player_name": name,
-        })
+        network.send(
+            {
+                "action": "join_game",
+                "game_code": code,
+                "player_name": name,
+            }
+        )
         self.status_label.text = "Joining game..."
 
     def on_update(self, delta_time: float) -> None:

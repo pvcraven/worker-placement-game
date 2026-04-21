@@ -5,23 +5,38 @@ from __future__ import annotations
 import arcade
 import arcade.gui
 
-
 _BTN_STYLE = {
     "normal": arcade.gui.UIFlatButton.UIStyle(
-        font_size=18, font_name=("Arial",), font_color=arcade.color.WHITE,
-        bg=(44, 62, 80, 255), border=None, border_width=0,
+        font_size=18,
+        font_name=("Arial",),
+        font_color=arcade.color.WHITE,
+        bg=(44, 62, 80, 255),
+        border=None,
+        border_width=0,
     ),
     "hover": arcade.gui.UIFlatButton.UIStyle(
-        font_size=18, font_name=("Arial",), font_color=arcade.color.WHITE,
-        bg=(52, 73, 94, 255), border=(149, 165, 166, 255), border_width=2,
+        font_size=18,
+        font_name=("Arial",),
+        font_color=arcade.color.WHITE,
+        bg=(52, 73, 94, 255),
+        border=(149, 165, 166, 255),
+        border_width=2,
     ),
     "press": arcade.gui.UIFlatButton.UIStyle(
-        font_size=18, font_name=("Arial",), font_color=(44, 62, 80, 255),
-        bg=(236, 240, 241, 255), border=(149, 165, 166, 255), border_width=2,
+        font_size=18,
+        font_name=("Arial",),
+        font_color=(44, 62, 80, 255),
+        bg=(236, 240, 241, 255),
+        border=(149, 165, 166, 255),
+        border_width=2,
     ),
     "disabled": arcade.gui.UIFlatButton.UIStyle(
-        font_size=18, font_name=("Arial",), font_color=(189, 195, 199, 255),
-        bg=(127, 140, 141, 255), border=None, border_width=0,
+        font_size=18,
+        font_name=("Arial",),
+        font_color=(189, 195, 199, 255),
+        bg=(127, 140, 141, 255),
+        border=None,
+        border_width=0,
     ),
 }
 
@@ -88,13 +103,17 @@ class LobbyView(arcade.View):
         v_box.add(spacer2)
 
         # Ready button
-        self.ready_btn = arcade.gui.UIFlatButton(text="Ready", width=300, height=55, style=_BTN_STYLE)
+        self.ready_btn = arcade.gui.UIFlatButton(
+            text="Ready", width=300, height=55, style=_BTN_STYLE
+        )
         self.ready_btn.on_click = self._on_ready
         v_box.add(self.ready_btn)
         self._is_ready = False
 
         # Start button (host only)
-        self.start_btn = arcade.gui.UIFlatButton(text="Start Game", width=300, height=55, style=_BTN_STYLE)
+        self.start_btn = arcade.gui.UIFlatButton(
+            text="Start Game", width=300, height=55, style=_BTN_STYLE
+        )
         self.start_btn.on_click = self._on_start
         v_box.add(self.start_btn)
 
@@ -113,10 +132,12 @@ class LobbyView(arcade.View):
     def _on_ready(self, event) -> None:
         self._is_ready = not self._is_ready
         self.ready_btn.text = "Unready" if self._is_ready else "Ready"
-        self.window.network.send({
-            "action": "player_ready",
-            "ready": self._is_ready,
-        })
+        self.window.network.send(
+            {
+                "action": "player_ready",
+                "ready": self._is_ready,
+            }
+        )
 
     def _on_start(self, event) -> None:
         self.window.network.send({"action": "start_game"})
@@ -150,7 +171,7 @@ class LobbyView(arcade.View):
             elif action == "game_started":
                 self.window.game_state = msg.get("game_state", {})
                 self.window.show_game()
-                for remaining in messages[i + 1:]:
+                for remaining in messages[i + 1 :]:
                     network.incoming.put(remaining)
                 return
             elif action == "error":

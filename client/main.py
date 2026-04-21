@@ -23,9 +23,7 @@ from client.network_client import NetworkClient  # noqa: E402
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Worker Placement Game Client")
-    parser.add_argument(
-        "--server", default=None, help="Server WebSocket URL"
-    )
+    parser.add_argument("--server", default=None, help="Server WebSocket URL")
     parser.add_argument("--fullscreen", action="store_true", help="Launch fullscreen")
     parser.add_argument("--name", default=None, help="Pre-fill display name")
     return parser.parse_args()
@@ -33,11 +31,13 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     from generate_cards import ensure_card_images
+
     ensure_card_images()
 
     args = parse_args()
 
     from client.user_config import load_config
+
     config = load_config()
 
     server = args.server or config["server"]
@@ -59,6 +59,7 @@ def main() -> None:
     window.show_menu()
 
     import arcade
+
     arcade.run()
 
 

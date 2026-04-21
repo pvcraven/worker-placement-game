@@ -38,7 +38,10 @@ class GameLogPanel:
             t.font_size = font_size
             return t
         t = arcade.Text(
-            text, x, y, color,
+            text,
+            x,
+            y,
+            color,
             font_size=font_size,
             font_name="Tahoma",
             **kwargs,
@@ -52,21 +55,28 @@ class GameLogPanel:
             self.entries = self.entries[-_MAX_ENTRIES:]
         if self._auto_scroll:
             self.scroll_offset = max(
-                0, len(self.entries) - self._max_lines,
+                0,
+                len(self.entries) - self._max_lines,
             )
 
     def scroll(self, direction: int) -> None:
         """Scroll by direction lines (negative=up, positive=down)."""
         max_offset = max(
-            0, len(self.entries) - self._max_lines,
+            0,
+            len(self.entries) - self._max_lines,
         )
         self.scroll_offset = max(
-            0, min(self.scroll_offset + direction, max_offset),
+            0,
+            min(self.scroll_offset + direction, max_offset),
         )
         self._auto_scroll = self.scroll_offset >= max_offset
 
     def draw(
-        self, x: float, y: float, w: float, h: float,
+        self,
+        x: float,
+        y: float,
+        w: float,
+        h: float,
         scale: float = 1.0,
     ) -> None:
         s = scale
@@ -82,15 +92,20 @@ class GameLogPanel:
 
         # Title
         self._text(
-            "title", "Game Log",
-            x + w / 2, y + h - 20 * s,
-            arcade.color.WHITE, font_title,
-            anchor_x="center", bold=True,
+            "title",
+            "Game Log",
+            x + w / 2,
+            y + h - 20 * s,
+            arcade.color.WHITE,
+            font_title,
+            anchor_x="center",
+            bold=True,
         ).draw()
 
         # Log entries
         max_lines = min(
-            _VISIBLE_LINES, int((h - 50 * s) / line_height),
+            _VISIBLE_LINES,
+            int((h - 50 * s) / line_height),
         )
         self._max_lines = max_lines
         start = self.scroll_offset
@@ -103,7 +118,10 @@ class GameLogPanel:
                 text = text[: max_chars - 2] + ".."
             ty = y + h - 50 * s - i * line_height
             self._text(
-                f"line_{i}", text,
-                x + 8 * s, ty,
-                arcade.color.LIGHT_GRAY, font_entry,
+                f"line_{i}",
+                text,
+                x + 8 * s,
+                ty,
+                arcade.color.LIGHT_GRAY,
+                font_entry,
             ).draw()

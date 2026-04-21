@@ -82,16 +82,20 @@ class GameWindow(arcade.Window):
 
     def show_menu(self) -> None:
         from client.views.menu_view import MenuView
+
         self.show_view(MenuView())
 
     def show_lobby(self) -> None:
         from client.views.lobby_view import LobbyView
+
         self.show_view(LobbyView())
 
     def show_game(self) -> None:
         from client.views.game_view import GameView
+
         self.show_view(GameView())
 
     def show_results(self) -> None:
         from client.views.results_view import ResultsView
+
         self.show_view(ResultsView())

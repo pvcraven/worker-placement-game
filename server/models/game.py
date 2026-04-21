@@ -13,7 +13,6 @@ from shared.card_models import (
 )
 from shared.constants import TOTAL_ROUNDS, GamePhase
 
-
 # ---------------------------------------------------------------------------
 # Player
 # ---------------------------------------------------------------------------
@@ -154,6 +153,7 @@ class GameState(BaseModel):
     turn_order: list[str] = Field(default_factory=list)
     game_log: list[GameLog] = Field(default_factory=list)
     reassignment_queue: list[int] = Field(default_factory=list)
+    reassignment_active_player_id: str | None = None
     pending_intrigue_target: dict | None = None
     producer_deck: list[ProducerCard] = Field(default_factory=list)
     waiting_for_quest_completion: bool = False

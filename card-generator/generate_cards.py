@@ -163,8 +163,7 @@ def generate_quest_cards() -> int:
         vp_r = 15
         vp_cx, vp_cy = 20, band_h // 2
         draw.ellipse(
-            [vp_cx - vp_r, vp_cy - vp_r,
-             vp_cx + vp_r, vp_cy + vp_r],
+            [vp_cx - vp_r, vp_cy - vp_r, vp_cx + vp_r, vp_cy + vp_r],
             fill=(240, 220, 140),
         )
         vp_text = str(card.victory_points)
@@ -173,16 +172,26 @@ def generate_quest_cards() -> int:
         vp_th = vp_bbox[3] - vp_bbox[1]
         draw.text(
             (vp_cx - vp_tw // 2, vp_cy - vp_th // 2 - 5),
-            vp_text, fill=(60, 40, 20), font=FONT_TITLE,
+            vp_text,
+            fill=(60, 40, 20),
+            font=FONT_TITLE,
         )
         # Genre text centered in band
         draw_text_centered(
-            draw, genre.upper(), 8, FONT_GENRE, (255, 255, 255),
+            draw,
+            genre.upper(),
+            8,
+            FONT_GENRE,
+            (255, 255, 255),
         )
         # Title (allow 2 lines)
         y = band_h + 4
         y = draw_text_wrapped(
-            draw, card.name, y, FONT_TITLE, max_lines=2,
+            draw,
+            card.name,
+            y,
+            FONT_TITLE,
+            max_lines=2,
         )
         y += 6
         cost_str = f"Cost: {format_resources(card.cost)}"
@@ -210,18 +219,30 @@ def generate_quest_cards() -> int:
         if reward_parts:
             reward_str = "Reward: " + " ".join(reward_parts)
             draw_text_centered(
-                draw, reward_str, y, FONT_BODY, (100, 60, 10),
+                draw,
+                reward_str,
+                y,
+                FONT_BODY,
+                (100, 60, 10),
             )
             y += 18
         if card.is_plot_quest:
             draw_text_centered(
-                draw, "[PLOT QUEST]", y, FONT_BODY_SMALL, (150, 50, 50),
+                draw,
+                "[PLOT QUEST]",
+                y,
+                FONT_BODY_SMALL,
+                (150, 50, 50),
             )
             y += 16
         if card.ongoing_benefit_description:
             y = draw_text_wrapped(
-                draw, card.ongoing_benefit_description, y,
-                FONT_BODY_SMALL, (80, 50, 20), max_lines=2,
+                draw,
+                card.ongoing_benefit_description,
+                y,
+                FONT_BODY_SMALL,
+                (80, 50, 20),
+                max_lines=2,
             )
         y = draw_text_wrapped(draw, card.description, y, FONT_BODY_SMALL)
         img.save(OUTPUT_QUESTS / f"{card.id}.png")
@@ -243,9 +264,7 @@ _TYPE_ABBREV = {
 
 def _format_choice_reward(choice, fixed_reward) -> str:
     ct = choice.choice_type
-    types_str = "/".join(
-        _TYPE_ABBREV.get(t, t) for t in choice.allowed_types
-    )
+    types_str = "/".join(_TYPE_ABBREV.get(t, t) for t in choice.allowed_types)
     fixed_str = format_resources(fixed_reward)
     extra = f" + {fixed_str}" if fixed_str != "None" else ""
 
@@ -285,7 +304,11 @@ def generate_building_cards() -> int:
         y = 8
         name = truncate_name(card.name)
         y = draw_text_wrapped(
-            draw, name, y, FONT_TITLE, (255, 255, 255),
+            draw,
+            name,
+            y,
+            FONT_TITLE,
+            (255, 255, 255),
             max_lines=2,
         )
         y = band_h + 6
@@ -301,29 +324,47 @@ def generate_building_cards() -> int:
             vis_str = format_resources(card.visitor_reward)
             vis_line = f"Visitor: {vis_str}"
         draw_text_centered(
-            draw, vis_line, y, FONT_LABEL, (20, 60, 20),
+            draw,
+            vis_line,
+            y,
+            FONT_LABEL,
+            (20, 60, 20),
         )
         y += 18
         if card.visitor_reward_special:
             special = card.visitor_reward_special.replace(
-                "_", " ",
+                "_",
+                " ",
             ).title()
             draw_text_centered(
-                draw, special, y, FONT_BODY_SMALL, (20, 60, 20),
+                draw,
+                special,
+                y,
+                FONT_BODY_SMALL,
+                (20, 60, 20),
             )
             y += 18
         own_str = format_resources(card.owner_bonus)
         own_line = f"Owner: {own_str}"
         draw_text_centered(
-            draw, own_line, y, FONT_LABEL, (80, 50, 0),
+            draw,
+            own_line,
+            y,
+            FONT_LABEL,
+            (80, 50, 0),
         )
         y += 18
         if card.owner_bonus_special:
             special = card.owner_bonus_special.replace(
-                "_", " ",
+                "_",
+                " ",
             ).title()
             draw_text_centered(
-                draw, special, y, FONT_BODY_SMALL, (80, 50, 0),
+                draw,
+                special,
+                y,
+                FONT_BODY_SMALL,
+                (80, 50, 0),
             )
         img.save(OUTPUT_BUILDINGS / f"{card.id}.png")
         count += 1
@@ -387,49 +428,77 @@ def generate_intrigue_cards() -> int:
         y = 12
         name = truncate_name(card.name)
         draw_text_centered(
-            draw, name, y, FONT_TITLE, (30, 80, 30),
+            draw,
+            name,
+            y,
+            FONT_TITLE,
+            (30, 80, 30),
         )
         y += 22
         draw_text_centered(
-            draw, "INTRIGUE", y, FONT_BODY, (60, 120, 60),
+            draw,
+            "INTRIGUE",
+            y,
+            FONT_BODY,
+            (60, 120, 60),
         )
         y += 22
         y = draw_text_wrapped(
-            draw, card.description, y, FONT_BODY_SMALL, max_lines=4,
+            draw,
+            card.description,
+            y,
+            FONT_BODY_SMALL,
+            max_lines=4,
         )
         y += 6
         if card.choice_reward:
             choice_text = _format_choice_reward(
-                card.choice_reward, ResourceCost(),
+                card.choice_reward,
+                ResourceCost(),
             )
             y = draw_text_wrapped(
-                draw, choice_text, y,
-                FONT_LABEL, (120, 80, 0), max_lines=2,
+                draw,
+                choice_text,
+                y,
+                FONT_LABEL,
+                (120, 80, 0),
+                max_lines=2,
             )
             if card.effect_type == "resource_choice_multi":
                 opc = card.choice_reward.others_pick_count
                 draw_text_centered(
-                    draw, f"Others: Pick {opc}",
-                    y, FONT_BODY_SMALL, (150, 50, 50),
+                    draw,
+                    f"Others: Pick {opc}",
+                    y,
+                    FONT_BODY_SMALL,
+                    (150, 50, 50),
                 )
                 y += 16
         else:
             effect = _intrigue_effect_summary(
-                card.effect_type, card.effect_value,
+                card.effect_type,
+                card.effect_value,
             )
             if effect:
                 draw_text_centered(
-                    draw, effect, y,
-                    FONT_LABEL, (120, 80, 0),
+                    draw,
+                    effect,
+                    y,
+                    FONT_LABEL,
+                    (120, 80, 0),
                 )
                 y += 20
         target_label = TARGET_LABELS.get(
-            card.effect_target, "",
+            card.effect_target,
+            "",
         )
         if target_label:
             draw_text_centered(
-                draw, target_label, y,
-                FONT_BODY_SMALL, (150, 50, 50),
+                draw,
+                target_label,
+                y,
+                FONT_BODY_SMALL,
+                (150, 50, 50),
             )
         img.save(OUTPUT_INTRIGUE / f"{card.id}.png")
         count += 1
@@ -446,27 +515,43 @@ def generate_producer_cards() -> int:
         y = 12
         name = truncate_name(card.name)
         draw_text_centered(
-            draw, name, y, FONT_TITLE, (100, 50, 100),
+            draw,
+            name,
+            y,
+            FONT_TITLE,
+            (100, 50, 100),
         )
         y += 22
         draw_text_centered(
-            draw, "PRODUCER", y, FONT_BODY, (130, 80, 130),
+            draw,
+            "PRODUCER",
+            y,
+            FONT_BODY,
+            (130, 80, 130),
         )
         y += 24
-        genres = ", ".join(
-            g.value.title() for g in card.bonus_genres
-        )
+        genres = ", ".join(g.value.title() for g in card.bonus_genres)
         draw_text_centered(
-            draw, f"Genres: {genres}", y, FONT_LABEL,
+            draw,
+            f"Genres: {genres}",
+            y,
+            FONT_LABEL,
         )
         y += 22
         vp_str = f"{card.bonus_vp_per_contract}VP/contract"
         draw_text_centered(
-            draw, vp_str, y, FONT_VP, (120, 80, 0),
+            draw,
+            vp_str,
+            y,
+            FONT_VP,
+            (120, 80, 0),
         )
         y += 32
         y = draw_text_wrapped(
-            draw, card.description, y, FONT_BODY_SMALL,
+            draw,
+            card.description,
+            y,
+            FONT_BODY_SMALL,
         )
         img.save(OUTPUT_PRODUCERS / f"{card.id}.png")
         count += 1
@@ -519,7 +604,11 @@ def generate_space_cards() -> int:
 
         y = 8
         y = draw_text_wrapped(
-            draw, name, y, FONT_TITLE, (255, 255, 255),
+            draw,
+            name,
+            y,
+            FONT_TITLE,
+            (255, 255, 255),
             max_lines=2,
         )
 
@@ -529,17 +618,26 @@ def generate_space_cards() -> int:
 
         if reward_special:
             label = SPECIAL_REWARD_LABELS.get(
-                reward_special, reward_special.replace("_", " ").title(),
+                reward_special,
+                reward_special.replace("_", " ").title(),
             )
             y = draw_text_wrapped(
-                draw, label, y, FONT_LABEL, TEXT_COLOR,
+                draw,
+                label,
+                y,
+                FONT_LABEL,
+                TEXT_COLOR,
                 max_lines=2,
             )
         elif reward:
             res_str = _resource_reward_str(reward)
             if res_str:
                 draw_text_centered(
-                    draw, res_str, y, FONT_VP, TEXT_COLOR,
+                    draw,
+                    res_str,
+                    y,
+                    FONT_VP,
+                    TEXT_COLOR,
                 )
 
         img.save(OUTPUT_SPACES / f"{space_id}.png")
@@ -560,12 +658,18 @@ def generate_space_cards() -> int:
             fill=backstage_band_color,
         )
         draw_text_centered(
-            draw, f"Backstage {slot_num}", 8,
-            FONT_TITLE, (255, 255, 255),
+            draw,
+            f"Backstage {slot_num}",
+            8,
+            FONT_TITLE,
+            (255, 255, 255),
         )
         draw_text_centered(
-            draw, "Play Intrigue", band_h + 10,
-            FONT_LABEL, TEXT_COLOR,
+            draw,
+            "Play Intrigue",
+            band_h + 10,
+            FONT_LABEL,
+            TEXT_COLOR,
         )
         img.save(OUTPUT_SPACES / f"backstage_slot_{slot_num}.png")
         count += 1
@@ -582,8 +686,10 @@ JSON_FILES = [
 ]
 
 OUTPUT_DIRS = [
-    OUTPUT_QUESTS, OUTPUT_BUILDINGS,
-    OUTPUT_INTRIGUE, OUTPUT_PRODUCERS,
+    OUTPUT_QUESTS,
+    OUTPUT_BUILDINGS,
+    OUTPUT_INTRIGUE,
+    OUTPUT_PRODUCERS,
     OUTPUT_SPACES,
 ]
 

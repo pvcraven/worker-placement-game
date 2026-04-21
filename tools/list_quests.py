@@ -6,6 +6,7 @@ from pathlib import Path
 config = Path(__file__).resolve().parent.parent / "config" / "contracts.json"
 data = json.loads(config.read_text())
 
+
 def resource_points(res: dict) -> float:
     return (
         res.get("singers", 0) * 1.0
@@ -34,7 +35,7 @@ print("-" * 85)
 for c in contracts:
     rc = resource_points(c["cost"])
     rw = reward_points(c)
-    vp = c['victory_points']
+    vp = c["victory_points"]
     value = rw + vp
     benefit = value - rc
     print(

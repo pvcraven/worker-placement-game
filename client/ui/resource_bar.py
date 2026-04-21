@@ -40,7 +40,10 @@ class ResourceBar:
             t.font_size = font_size
             return t
         t = arcade.Text(
-            text, x, y, color,
+            text,
+            x,
+            y,
+            color,
             font_size=font_size,
             font_name="Tahoma",
             **kwargs,
@@ -52,10 +55,17 @@ class ResourceBar:
         self.resources = resources
 
     def draw(
-        self, x: float, y: float, w: float, h: float,
-        workers_left: int = 0, victory_points: int = 0,
-        intrigue_count: int = 0, quests_open: int = 0,
-        quests_closed: int = 0, scale: float = 1.0,
+        self,
+        x: float,
+        y: float,
+        w: float,
+        h: float,
+        workers_left: int = 0,
+        victory_points: int = 0,
+        intrigue_count: int = 0,
+        quests_open: int = 0,
+        quests_closed: int = 0,
+        scale: float = 1.0,
     ) -> None:
         s = scale
         # Background
@@ -82,10 +92,15 @@ class ResourceBar:
             )
 
             self._text(
-                f"res_{key}", f"{label}: {val}",
-                cx - 15 * s, row_y,
-                arcade.color.WHITE, font_sz,
-                anchor_x="left", anchor_y="center", bold=True,
+                f"res_{key}",
+                f"{label}: {val}",
+                cx - 15 * s,
+                row_y,
+                arcade.color.WHITE,
+                font_sz,
+                anchor_x="left",
+                anchor_y="center",
+                bold=True,
             ).draw()
 
         top_row = [
@@ -98,8 +113,13 @@ class ResourceBar:
         for i, (key, label) in enumerate(top_row):
             cx = x + section_w * (i + 0.5) - left_shift
             self._text(
-                key, label,
-                cx - 15 * s, top_y,
-                arcade.color.WHITE, font_sz,
-                anchor_x="left", anchor_y="center", bold=True,
+                key,
+                label,
+                cx - 15 * s,
+                top_y,
+                arcade.color.WHITE,
+                font_sz,
+                anchor_x="left",
+                anchor_y="center",
+                bold=True,
             ).draw()

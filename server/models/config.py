@@ -101,8 +101,6 @@ class GameRulesConfig(BaseModel):
     turn_timeout_seconds: int = 60
     game_preserve_timeout_seconds: int = 1800
     face_up_quest_count: int = 5
-    starting_workers: dict[str, int] = Field(
-        default={"2": 4, "3": 3, "4": 2, "5": 2}
-    )
+    starting_workers: dict[str, int] = Field(default={"2": 4, "3": 3, "4": 2, "5": 2})
     min_players: int = 1
     max_players: int = 5
