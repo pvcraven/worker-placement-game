@@ -9,7 +9,6 @@ from typing import Annotated, Literal, Union
 
 from pydantic import BaseModel, Field, TypeAdapter
 
-
 # ---------------------------------------------------------------------------
 # Client -> Server messages
 # ---------------------------------------------------------------------------
@@ -252,9 +251,7 @@ class QuestCompletedResponse(BaseModel):
 
 
 class QuestCompletionPromptResponse(BaseModel):
-    action: Literal["quest_completion_prompt"] = (
-        "quest_completion_prompt"
-    )
+    action: Literal["quest_completion_prompt"] = "quest_completion_prompt"
     completable_quests: list[dict]
 
 
@@ -373,18 +370,14 @@ class PlayerReconnectedResponse(BaseModel):
 
 
 class QuestRewardChoicePromptResponse(BaseModel):
-    action: Literal["quest_reward_choice_prompt"] = (
-        "quest_reward_choice_prompt"
-    )
+    action: Literal["quest_reward_choice_prompt"] = "quest_reward_choice_prompt"
     reward_type: str
     available_choices: list[dict]
     quest_name: str
 
 
 class QuestRewardChoiceResolvedResponse(BaseModel):
-    action: Literal["quest_reward_choice_resolved"] = (
-        "quest_reward_choice_resolved"
-    )
+    action: Literal["quest_reward_choice_resolved"] = "quest_reward_choice_resolved"
     player_id: str
     reward_type: str
     choice: dict
@@ -393,18 +386,14 @@ class QuestRewardChoiceResolvedResponse(BaseModel):
 
 
 class IntrigueTargetPromptResponse(BaseModel):
-    action: Literal["intrigue_target_prompt"] = (
-        "intrigue_target_prompt"
-    )
+    action: Literal["intrigue_target_prompt"] = "intrigue_target_prompt"
     effect_type: str
     effect_value: dict
     eligible_targets: list[dict]
 
 
 class IntrigueEffectResolvedResponse(BaseModel):
-    action: Literal["intrigue_effect_resolved"] = (
-        "intrigue_effect_resolved"
-    )
+    action: Literal["intrigue_effect_resolved"] = "intrigue_effect_resolved"
     player_id: str
     target_player_id: str
     effect_type: str
@@ -412,9 +401,7 @@ class IntrigueEffectResolvedResponse(BaseModel):
 
 
 class ResourceChoicePromptResponse(BaseModel):
-    action: Literal["resource_choice_prompt"] = (
-        "resource_choice_prompt"
-    )
+    action: Literal["resource_choice_prompt"] = "resource_choice_prompt"
     prompt_id: str
     player_id: str
     choice_type: str
@@ -428,9 +415,7 @@ class ResourceChoicePromptResponse(BaseModel):
 
 
 class ResourceChoiceResolvedResponse(BaseModel):
-    action: Literal["resource_choice_resolved"] = (
-        "resource_choice_resolved"
-    )
+    action: Literal["resource_choice_resolved"] = "resource_choice_resolved"
     player_id: str
     chosen_resources: dict
     is_spend: bool = False

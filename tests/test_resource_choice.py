@@ -17,8 +17,10 @@ def pick_one_pending() -> dict:
     return {
         "choice_type": "pick",
         "allowed_types": [
-            "guitarists", "bass_players",
-            "drummers", "singers",
+            "guitarists",
+            "bass_players",
+            "drummers",
+            "singers",
         ],
         "pick_count": 1,
     }
@@ -29,8 +31,10 @@ def pick_two_pending() -> dict:
     return {
         "choice_type": "pick",
         "allowed_types": [
-            "guitarists", "bass_players",
-            "drummers", "singers",
+            "guitarists",
+            "bass_players",
+            "drummers",
+            "singers",
         ],
         "pick_count": 2,
     }
@@ -87,28 +91,34 @@ def combo_pending() -> dict:
 class TestPickMode:
     def test_valid_single_pick(self, pick_one_pending):
         err = validate_resource_choice(
-            pick_one_pending, {"guitarists": 1},
+            pick_one_pending,
+            {"guitarists": 1},
         )
         assert err is None
 
     def test_valid_pick_different_type(
-        self, pick_one_pending,
+        self,
+        pick_one_pending,
     ):
         err = validate_resource_choice(
-            pick_one_pending, {"singers": 1},
+            pick_one_pending,
+            {"singers": 1},
         )
         assert err is None
 
     def test_valid_multi_pick_same_type(
-        self, pick_two_pending,
+        self,
+        pick_two_pending,
     ):
         err = validate_resource_choice(
-            pick_two_pending, {"guitarists": 2},
+            pick_two_pending,
+            {"guitarists": 2},
         )
         assert err is None
 
     def test_valid_multi_pick_split(
-        self, pick_two_pending,
+        self,
+        pick_two_pending,
     ):
         err = validate_resource_choice(
             pick_two_pending,
@@ -117,50 +127,60 @@ class TestPickMode:
         assert err is None
 
     def test_reject_wrong_count_too_many(
-        self, pick_one_pending,
+        self,
+        pick_one_pending,
     ):
         err = validate_resource_choice(
-            pick_one_pending, {"guitarists": 2},
+            pick_one_pending,
+            {"guitarists": 2},
         )
         assert err is not None
         assert "exactly 1" in err
 
     def test_reject_wrong_count_too_few(
-        self, pick_two_pending,
+        self,
+        pick_two_pending,
     ):
         err = validate_resource_choice(
-            pick_two_pending, {"guitarists": 1},
+            pick_two_pending,
+            {"guitarists": 1},
         )
         assert err is not None
         assert "exactly 2" in err
 
     def test_reject_disallowed_type(
-        self, pick_one_pending,
+        self,
+        pick_one_pending,
     ):
         err = validate_resource_choice(
-            pick_one_pending, {"coins": 1},
+            pick_one_pending,
+            {"coins": 1},
         )
         assert err is not None
         assert "not an allowed" in err
 
     def test_reject_zero_picks(self, pick_one_pending):
         err = validate_resource_choice(
-            pick_one_pending, {},
+            pick_one_pending,
+            {},
         )
         assert err is not None
 
     def test_reject_negative_value(
-        self, pick_one_pending,
+        self,
+        pick_one_pending,
     ):
         err = validate_resource_choice(
-            pick_one_pending, {"guitarists": -1},
+            pick_one_pending,
+            {"guitarists": -1},
         )
         assert err is not None
 
 
 class TestBundleMode:
     def test_valid_bundle_selection(
-        self, bundle_pending,
+        self,
+        bundle_pending,
     ):
         err = validate_resource_choice(
             bundle_pending,
@@ -188,29 +208,35 @@ class TestBundleMode:
         assert err is None
 
     def test_reject_no_matching_bundle(
-        self, bundle_pending,
+        self,
+        bundle_pending,
     ):
         err = validate_resource_choice(
-            bundle_pending, {"drummers": 3},
+            bundle_pending,
+            {"drummers": 3},
         )
         assert err is not None
         assert "does not match" in err
 
     def test_reject_partial_bundle(
-        self, bundle_pending,
+        self,
+        bundle_pending,
     ):
         err = validate_resource_choice(
-            bundle_pending, {"singers": 2},
+            bundle_pending,
+            {"singers": 2},
         )
         assert err is not None
 
 
 class TestComboMode:
     def test_valid_combo_full_one_type(
-        self, combo_pending,
+        self,
+        combo_pending,
     ):
         err = validate_resource_choice(
-            combo_pending, {"guitarists": 4},
+            combo_pending,
+            {"guitarists": 4},
         )
         assert err is None
 
@@ -222,7 +248,8 @@ class TestComboMode:
         assert err is None
 
     def test_valid_combo_even_split(
-        self, combo_pending,
+        self,
+        combo_pending,
     ):
         err = validate_resource_choice(
             combo_pending,
@@ -231,24 +258,29 @@ class TestComboMode:
         assert err is None
 
     def test_reject_combo_over_total(
-        self, combo_pending,
+        self,
+        combo_pending,
     ):
         err = validate_resource_choice(
-            combo_pending, {"guitarists": 5},
+            combo_pending,
+            {"guitarists": 5},
         )
         assert err is not None
         assert "exactly 4" in err
 
     def test_reject_combo_under_total(
-        self, combo_pending,
+        self,
+        combo_pending,
     ):
         err = validate_resource_choice(
-            combo_pending, {"guitarists": 2},
+            combo_pending,
+            {"guitarists": 2},
         )
         assert err is not None
 
     def test_reject_combo_disallowed_type(
-        self, combo_pending,
+        self,
+        combo_pending,
     ):
         err = validate_resource_choice(
             combo_pending,
@@ -295,8 +327,10 @@ class TestResourceChoiceRewardModel:
         r = ResourceChoiceReward(
             choice_type="exchange",
             allowed_types=[
-                "guitarists", "bass_players",
-                "drummers", "singers",
+                "guitarists",
+                "bass_players",
+                "drummers",
+                "singers",
             ],
             pick_count=2,
             gain_count=3,

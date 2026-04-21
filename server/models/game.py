@@ -13,7 +13,6 @@ from shared.card_models import (
 )
 from shared.constants import TOTAL_ROUNDS, GamePhase
 
-
 # ---------------------------------------------------------------------------
 # Player
 # ---------------------------------------------------------------------------

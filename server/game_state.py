@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 import random
-import string
 import time
 
 from server.models.game import GameState
@@ -41,7 +40,9 @@ class SessionManager:
             last_activity=time.time(),
         )
         self.sessions[code] = state
-        logger.info("Created session %s (code: %s, max: %d)", game_id, code, max_players)
+        logger.info(
+            "Created session %s (code: %s, max: %d)", game_id, code, max_players
+        )
         return state
 
     def get_session(self, game_code: str) -> GameState | None:

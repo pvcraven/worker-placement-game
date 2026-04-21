@@ -78,9 +78,7 @@ async def create_game(server: GameServer, conn: ClientConnection, msg) -> None:
             slot_index=0,
         )
     )
-    logger.info(
-        "Player '%s' created game %s", msg.player_name, state.game_code
-    )
+    logger.info("Player '%s' created game %s", msg.player_name, state.game_code)
 
 
 async def join_game(server: GameServer, conn: ClientConnection, msg) -> None:
@@ -141,7 +139,9 @@ async def join_game(server: GameServer, conn: ClientConnection, msg) -> None:
     )
     logger.info(
         "Player '%s' joined game %s (slot %d)",
-        msg.player_name, state.game_code, slot_index,
+        msg.player_name,
+        state.game_code,
+        slot_index,
     )
 
 
@@ -207,9 +207,7 @@ async def start_game(server: GameServer, conn: ClientConnection, msg) -> None:
     await server.broadcast_to_game(
         state.game_code,
         BuildingMarketUpdateResponse(
-            face_up_buildings=[
-                b.model_dump() for b in state.board.face_up_buildings
-            ],
+            face_up_buildings=[b.model_dump() for b in state.board.face_up_buildings],
             deck_remaining=len(state.board.building_deck),
         ),
     )
@@ -250,9 +248,7 @@ def _initialize_game(state, config) -> None:
     ]
 
     # Building lots
-    board.building_lots = [
-        f"lot_{i}" for i in range(config.board.building_lot_count)
-    ]
+    board.building_lots = [f"lot_{i}" for i in range(config.board.building_lot_count)]
 
     # Shuffle and deal quest cards (face-up quests at The Garage)
     quest_cards = list(config.contracts)
@@ -366,4 +362,6 @@ async def reconnect(server: GameServer, conn: ClientConnection, msg) -> None:
             player_name=player.display_name,
         ),
     )
-    logger.info("Player '%s' reconnected to game %s", player.display_name, state.game_code)
+    logger.info(
+        "Player '%s' reconnected to game %s", player.display_name, state.game_code
+    )

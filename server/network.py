@@ -32,6 +32,7 @@ class ClientConnection:
     async def send_json(self, msg: dict) -> None:
         try:
             import json
+
             await self.ws.send(json.dumps(msg))
         except websockets.ConnectionClosed:
             logger.debug("Send failed: connection closed for player %s", self.player_id)
@@ -65,9 +66,7 @@ class GameServer:
         finally:
             await self._handle_disconnect(conn)
 
-    async def _route_message(
-        self, conn: ClientConnection, raw: str | bytes
-    ) -> None:
+    async def _route_message(self, conn: ClientConnection, raw: str | bytes) -> None:
         """Parse and route an incoming client message."""
         try:
             msg = parse_client_message(raw)
@@ -94,18 +93,22 @@ class GameServer:
 
     async def _handle_create_game(self, conn, msg) -> None:
         from server.lobby import create_game
+
         await create_game(self, conn, msg)
 
     async def _handle_join_game(self, conn, msg) -> None:
         from server.lobby import join_game
+
         await join_game(self, conn, msg)
 
     async def _handle_player_ready(self, conn, msg) -> None:
         from server.lobby import player_ready
+
         await player_ready(self, conn, msg)
 
     async def _handle_start_game(self, conn, msg) -> None:
         from server.lobby import start_game
+
         await start_game(self, conn, msg)
 
     # ------------------------------------------------------------------
@@ -114,62 +117,77 @@ class GameServer:
 
     async def _handle_place_worker(self, conn, msg) -> None:
         from server.game_engine import handle_place_worker
+
         await handle_place_worker(self, conn, msg)
 
     async def _handle_place_worker_backstage(self, conn, msg) -> None:
         from server.game_engine import handle_place_worker_backstage
+
         await handle_place_worker_backstage(self, conn, msg)
 
     async def _handle_select_quest_card(self, conn, msg) -> None:
         from server.game_engine import handle_select_quest_card
+
         await handle_select_quest_card(self, conn, msg)
 
     async def _handle_complete_quest(self, conn, msg) -> None:
         from server.game_engine import handle_complete_quest
+
         await handle_complete_quest(self, conn, msg)
 
     async def _handle_skip_quest_completion(self, conn, msg) -> None:
         from server.game_engine import handle_skip_quest_completion
+
         await handle_skip_quest_completion(self, conn, msg)
 
     async def _handle_acquire_contract(self, conn, msg) -> None:
         from server.game_engine import handle_acquire_contract
+
         await handle_acquire_contract(self, conn, msg)
 
     async def _handle_acquire_intrigue(self, conn, msg) -> None:
         from server.game_engine import handle_acquire_intrigue
+
         await handle_acquire_intrigue(self, conn, msg)
 
     async def _handle_purchase_building(self, conn, msg) -> None:
         from server.game_engine import handle_purchase_building
+
         await handle_purchase_building(self, conn, msg)
 
     async def _handle_cancel_purchase_building(self, conn, msg) -> None:
         from server.game_engine import handle_cancel_purchase_building
+
         await handle_cancel_purchase_building(self, conn, msg)
 
     async def _handle_cancel_quest_selection(self, conn, msg) -> None:
         from server.game_engine import handle_cancel_quest_selection
+
         await handle_cancel_quest_selection(self, conn, msg)
 
     async def _handle_reassign_worker(self, conn, msg) -> None:
         from server.game_engine import handle_reassign_worker
+
         await handle_reassign_worker(self, conn, msg)
 
     async def _handle_choose_intrigue_target(self, conn, msg) -> None:
         from server.game_engine import handle_choose_intrigue_target
+
         await handle_choose_intrigue_target(self, conn, msg)
 
     async def _handle_quest_reward_choice(self, conn, msg) -> None:
         from server.game_engine import handle_quest_reward_choice
+
         await handle_quest_reward_choice(self, conn, msg)
 
     async def _handle_cancel_intrigue_target(self, conn, msg) -> None:
         from server.game_engine import handle_cancel_intrigue_target
+
         await handle_cancel_intrigue_target(self, conn, msg)
 
     async def _handle_resource_choice(self, conn, msg) -> None:
         from server.game_engine import handle_resource_choice
+
         await handle_resource_choice(self, conn, msg)
 
     # ------------------------------------------------------------------
@@ -178,6 +196,7 @@ class GameServer:
 
     async def _handle_reconnect(self, conn, msg) -> None:
         from server.lobby import reconnect
+
         await reconnect(self, conn, msg)
 
     async def _handle_ping(self, conn, msg) -> None:
@@ -225,6 +244,7 @@ class GameServer:
                     if player:
                         player.is_connected = False
                         from shared.messages import PlayerDisconnectedResponse
+
                         await self.broadcast_to_game(
                             conn.game_code,
                             PlayerDisconnectedResponse(
