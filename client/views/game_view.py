@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import arcade
 import arcade.gui
 
@@ -41,6 +43,9 @@ class GameView(arcade.View):
         self._final_scores: list | None = None
         self._target_dialog: PlayerTargetDialog | None = None
         self._text_cache: dict[str, arcade.Text] = {}
+        self._sprite_cache: dict[str, arcade.Sprite] = {}
+        self._fs_card_sprites: arcade.SpriteList | None = None
+        self._fs_card_positions: list[tuple] | None = None
         self._highlight_mode: str | None = None
         self._highlighted_ids: list[str] = []
         self._cancel_sprite: arcade.Sprite | None = None
@@ -234,6 +239,7 @@ class GameView(arcade.View):
             self._final_scores = msg.get("final_scores", [])
             self._show_final_screen = True
             self._game_over_final = True
+            self._fs_card_sprites = None
         elif action == "state_sync":
             self.game_state = msg.get("game_state", {})
             self._sync_from_state()
@@ -613,11 +619,13 @@ class GameView(arcade.View):
             if p.get("player_id") == pid:
                 p["victory_points"] = p.get("victory_points", 0) + vp
                 hand = p.get("contract_hand", [])
+                completed_card = {"id": cid, "name": cname, "victory_points": vp}
+                for c in hand:
+                    if c.get("id") == cid:
+                        completed_card["genre"] = c.get("genre", "")
+                        break
                 p["contract_hand"] = [c for c in hand if c.get("id") != cid]
-                p.setdefault(
-                    "completed_contracts",
-                    [],
-                ).append({"id": cid, "name": cname})
+                p.setdefault("completed_contracts", []).append(completed_card)
                 res = p.get("resources", {})
                 for k in (
                     "guitarists",
@@ -1210,6 +1218,7 @@ class GameView(arcade.View):
             first_pid = turn_order[0]
             if first_pid == my_id:
                 self._status_text = f"Round {next_round} — YOUR TURN"
+                arcade.play_sound(self._turn_sound)
             else:
                 name = self._player_name(first_pid)
                 self._status_text = f"Round {next_round} — {name}'s turn"
@@ -1579,6 +1588,7 @@ class GameView(arcade.View):
         if self._game_over_final:
             return
         self._show_final_screen = not self._show_final_screen
+        self._fs_card_sprites = None
 
     def _calculate_scores_from_state(self) -> list[dict]:
         players = self.game_state.get("players", [])
@@ -1948,7 +1958,7 @@ class GameView(arcade.View):
 
         n = len(scores)
         panel_w = min(w - 40 * s, (280 * n + 60) * s)
-        panel_h = min(h - 60 * s, 500 * s)
+        panel_h = min(h - 60 * s, 520 * s)
         px = w / 2
         py = h / 2
 
@@ -1983,11 +1993,23 @@ class GameView(arcade.View):
 
         max_vp = max(sc.get("total_vp", 0) for sc in scores)
         col_w = panel_w / max(n, 1)
-        card_h = int(120 * s)
+        card_h = int(230 * s)
         top_y = py + panel_h / 2 - 55 * s
         val_font = max(8, int(14 * s))
         small_font = max(7, int(11 * s))
 
+        if self._fs_card_sprites is None:
+            self._fs_card_sprites = arcade.SpriteList()
+            for sc in scores:
+                pc = sc.get("producer_card") or {}
+                card_id = pc.get("id", "")
+                png = Path(f"client/assets/card_images/producers/{card_id}.png")
+                if pc.get("name") and png.exists():
+                    sp = arcade.Sprite(str(png))
+                    sp.visible = True
+                    self._fs_card_sprites.append(sp)
+
+        sprite_idx = 0
         for i, sc in enumerate(scores):
             cx = px - panel_w / 2 + col_w * i + col_w / 2
             cur_y = top_y
@@ -2006,31 +2028,16 @@ class GameView(arcade.View):
                 ).draw()
             cur_y -= 20 * s
 
-            pc = sc.get("producer_card", {})
+            pc = sc.get("producer_card") or {}
             pc_name = pc.get("name", "")
-            if pc_name:
-                card_path = f"client/assets/card_images/producer_{pc.get('id', '')}.png"
-                cache_key = f"fs_card_{i}_{pc.get('id', '')}"
-                try:
-                    if cache_key not in self._text_cache:
-                        sp = arcade.Sprite(card_path)
-                        self._text_cache[cache_key] = sp
-                    sp = self._text_cache[cache_key]
-                    sp.scale = card_h / max(sp.texture.height, 1)
-                    sp.position = (cx, cur_y - card_h / 2)
-                    sp.draw()
-                except Exception:
-                    self._text(
-                        f"fs_nocard_{i}",
-                        pc_name,
-                        cx,
-                        cur_y - card_h / 2,
-                        arcade.color.LIGHT_GRAY,
-                        small_font,
-                        anchor_x="center",
-                        anchor_y="center",
-                    ).draw()
-            else:
+            card_id = pc.get("id", "")
+            png = Path(f"client/assets/card_images/producers/{card_id}.png")
+            if pc_name and png.exists() and sprite_idx < len(self._fs_card_sprites):
+                sp = self._fs_card_sprites[sprite_idx]
+                sp.scale = card_h / max(sp.texture.height, 1)
+                sp.position = (cx, cur_y - card_h / 2)
+                sprite_idx += 1
+            elif pc_name:
                 self._text(
                     f"fs_nocard_{i}",
                     "No Producer",
@@ -2111,6 +2118,9 @@ class GameView(arcade.View):
                 anchor_y="center",
                 bold=True,
             ).draw()
+
+        if self._fs_card_sprites:
+            self._fs_card_sprites.draw()
 
         btn_w = int(100 * s)
         btn_h = int(32 * s)
