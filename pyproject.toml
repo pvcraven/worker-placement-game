@@ -16,6 +16,9 @@ dev = [
     "pytest-asyncio>=0.23",
 ]
 
+[tool.setuptools.packages.find]
+include = ["client*", "server*", "shared*"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
