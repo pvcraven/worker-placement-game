@@ -816,6 +816,7 @@ class GameView(arcade.View):
                             {},
                         ),
                         "occupied_by": None,
+                        "building_tile": {"id": choice.get("building_id", "")},
                     }
                 bid = choice.get("building_id")
                 if bid:
@@ -2197,11 +2198,12 @@ class GameView(arcade.View):
         current_pid = turn_order[idx] if idx < len(turn_order) else None
 
         font_sz = max(10, int(14 * s))
+        vp_font_sz = max(8, int(11 * s))
         circle_r = max(4, int(7 * s))
         gap = int(8 * s)
-        bar_top = ch
         bar_bot = ch - status_h
-        center_y = (bar_top + bar_bot) / 2
+        row_top = bar_bot + status_h * 0.65
+        row_bot = bar_bot + status_h * 0.28
         list_x = int(10 * s)
 
         for i, pid in enumerate(turn_order):
@@ -2211,12 +2213,7 @@ class GameView(arcade.View):
             color = self.board_renderer._player_color(pid)
             is_current = pid == current_pid
             cx = list_x + circle_r
-            arcade.draw_circle_filled(
-                cx,
-                center_y,
-                circle_r,
-                color,
-            )
+            arcade.draw_circle_filled(cx, row_top, circle_r, color)
             name = p.get("display_name", "???")
             if is_current:
                 name = f"> {name}"
@@ -2224,7 +2221,7 @@ class GameView(arcade.View):
                 f"plist_{i}",
                 name,
                 cx + circle_r + gap,
-                center_y,
+                row_top,
                 arcade.color.WHITE,
                 font_sz,
                 bold=is_current,
@@ -2233,6 +2230,18 @@ class GameView(arcade.View):
             )
             txt.bold = is_current
             txt.draw()
+            vp = p.get("victory_points", 0)
+            vp_txt = self._text(
+                f"plist_vp_{i}",
+                f"{vp} VP",
+                cx + circle_r + gap,
+                row_bot,
+                arcade.color.LIGHT_GRAY,
+                vp_font_sz,
+                anchor_x="left",
+                anchor_y="center",
+            )
+            vp_txt.draw()
             list_x = int(cx + circle_r + gap + txt.content_width + int(30 * s))
 
     # ------------------------------------------------------------------

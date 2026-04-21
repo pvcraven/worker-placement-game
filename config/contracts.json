@@ -706,7 +706,7 @@
     {
       "id": "contract_rock_013",
       "name": "Venue Acquisition Deal",
-      "description": "Complete this deal to acquire a venue — choose from available real estate.",
+      "description": "Complete this deal to acquire a venue - choose from available real estate.",
       "genre": "rock",
       "cost": {"guitarists": 2, "bass_players": 1, "drummers": 1, "singers": 1, "coins": 2},
       "victory_points": 8,

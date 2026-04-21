@@ -730,6 +730,32 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
         await conn.send_error("INVALID_ACTION", "No workers available.")
         return
 
+    # Pre-validate resource choice affordability before committing placement
+    if space.building_tile and space.building_tile.visitor_reward_choice:
+        choice = space.building_tile.visitor_reward_choice
+        future_resources = player.resources.model_copy()
+        future_resources.add(space.reward)
+        if choice.cost.total() > 0 and not future_resources.can_afford(choice.cost):
+            await conn.send_error(
+                "INSUFFICIENT_RESOURCES",
+                "Cannot afford this building's cost.",
+            )
+            return
+        if choice.choice_type == "exchange":
+            future_resources.deduct(choice.cost)
+            non_coin = (
+                future_resources.guitarists
+                + future_resources.bass_players
+                + future_resources.drummers
+                + future_resources.singers
+            )
+            if non_coin < choice.pick_count:
+                await conn.send_error(
+                    "INSUFFICIENT_RESOURCES",
+                    "Not enough non-coin resources.",
+                )
+                return
+
     # Place worker
     space.occupied_by = player.player_id
     player.available_workers -= 1
@@ -2016,6 +2042,33 @@ async def handle_reassign_worker(
         return
 
     player = state.get_player(conn.player_id)
+
+    # Pre-validate resource choice affordability before committing reassignment
+    if target.building_tile and target.building_tile.visitor_reward_choice:
+        choice = target.building_tile.visitor_reward_choice
+        future_resources = player.resources.model_copy()
+        future_resources.add(target.reward)
+        if choice.cost.total() > 0 and not future_resources.can_afford(choice.cost):
+            await conn.send_error(
+                "INSUFFICIENT_RESOURCES",
+                "Cannot afford this building's cost.",
+            )
+            return
+        if choice.choice_type == "exchange":
+            future_resources.deduct(choice.cost)
+            non_coin = (
+                future_resources.guitarists
+                + future_resources.bass_players
+                + future_resources.drummers
+                + future_resources.singers
+            )
+            if non_coin < choice.pick_count:
+                await conn.send_error(
+                    "INSUFFICIENT_RESOURCES",
+                    "Not enough non-coin resources.",
+                )
+                return
+
     state.reassignment_active_player_id = player.player_id
 
     # Perform reassignment
