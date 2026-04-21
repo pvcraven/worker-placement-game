@@ -21,6 +21,8 @@ During gameplay, the player wants to quickly switch between different informatio
 2. **Given** the game is in progress, **When** the player clicks the "My Quests" tab, **Then** the panel title reads "My Quests" and the player's current quest cards are displayed.
 3. **Given** the game is in progress, **When** the player clicks any tab, **Then** the previously active tab is deselected and the newly clicked tab becomes visually active (highlighted or differentiated).
 4. **Given** the panel is showing "My Intrigue", **When** the player clicks "Game Log", **Then** the panel switches back to the game log without any dialog pop-up appearing.
+5. **Given** a dialog box is displayed (e.g., "Select an intrigue card to play"), **When** the player clicks a different tab such as "My Quests", **Then** the panel content switches to the quests view while the dialog remains open and functional.
+6. **Given** a dialog box is displayed and the player has switched tabs to review information, **When** the player returns to the original tab or interacts with the dialog, **Then** the dialog is still active and the player can complete the prompted action.
 
 ---
 
@@ -61,6 +63,7 @@ When the player clicks the "Producer" tab, their producer card is displayed with
 - What happens when the window is resized? The tab bar and panel content scale proportionally with the window, maintaining the two-column card layout.
 - What happens if a card is gained or lost while viewing that tab? The panel content refreshes to reflect the current card state.
 - What happens during phases where the player cannot interact (e.g., opponent's turn)? Tabs remain fully functional — they are read-only informational views, not actions.
+- What happens when a dialog is displayed and the player clicks a tab? The tab switches normally; the dialog remains open and interactive. Tab switching never dismisses or interferes with active dialogs.
 
 ## Requirements *(mandatory)*
 
@@ -77,6 +80,7 @@ When the player clicks the "Producer" tab, their producer card is displayed with
 - **FR-009**: The existing dialog-based buttons for "My Quests", "My Intrigue", "Completed Quests", and "Producer" MUST be removed, as their functionality is replaced by the tabs.
 - **FR-010**: The default active tab when the game starts MUST be "Game Log".
 - **FR-011**: Card views MUST update their content when the underlying data changes (e.g., a quest is completed, an intrigue card is played).
+- **FR-012**: Tab switching MUST remain functional even when a dialog box is displayed (e.g., card selection prompts, quest completion prompts). Switching tabs MUST NOT dismiss or interfere with active dialogs.
 
 ### Key Entities
 
@@ -92,6 +96,7 @@ When the player clicks the "Producer" tab, their producer card is displayed with
 - **SC-003**: 100% of previously dialog-based views (quests, intrigue, completed quests, producer) are accessible via the tabbed panel.
 - **SC-004**: The active tab is visually identifiable at a glance — a new user can determine which tab is selected without clicking.
 - **SC-005**: The game log retains full functionality (scrolling, entry display) when viewed via its tab.
+- **SC-006**: Players can switch tabs while a dialog is open, review information in another tab, and return to complete the dialog action without losing dialog state.
 
 ## Assumptions
 
