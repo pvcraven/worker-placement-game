@@ -267,8 +267,6 @@ def _initialize_game(state, config) -> None:
     all_buildings = list(config.buildings)
     random.shuffle(all_buildings)
     face_up = all_buildings[:FACE_UP_BUILDING_COUNT]
-    for b in face_up:
-        b.accumulated_vp = 1
     board.face_up_buildings = face_up
     board.building_deck = all_buildings[FACE_UP_BUILDING_COUNT:]
 

@@ -116,7 +116,6 @@ def _assign_building_to_player(
         state.board.face_up_buildings.remove(tile)
         if state.board.building_deck:
             new_b = state.board.building_deck.pop(0)
-            new_b.accumulated_vp = 1
             state.board.face_up_buildings.append(new_b)
     player.victory_points += tile.accumulated_vp
     return {
@@ -1435,6 +1434,10 @@ async def handle_complete_quest(
         )
         return
 
+    if state.phase == GamePhase.REASSIGNMENT:
+        await _finish_reassignment(server, state)
+        return
+
     await _advance_turn(server, state)
     next_player = state.current_player()
     if next_player:
@@ -1534,6 +1537,10 @@ async def handle_quest_reward_choice(
         ),
     )
 
+    if state.phase == GamePhase.REASSIGNMENT:
+        await _finish_reassignment(server, state)
+        return
+
     await _advance_turn(server, state)
     await _notify_turn_if_needed(
         server, state, player,
@@ -1566,11 +1573,13 @@ async def handle_skip_quest_completion(
         )
         return
 
+    is_reassignment = state.phase == GamePhase.REASSIGNMENT
     current = state.current_player()
-    if (
-        current is None
-        or current.player_id != conn.player_id
-    ):
+    is_own_turn = (
+        current is not None
+        and current.player_id == conn.player_id
+    )
+    if not is_own_turn and not is_reassignment:
         await conn.send_error(
             "NOT_YOUR_TURN",
             "It is not your turn.",
@@ -1591,6 +1600,10 @@ async def handle_skip_quest_completion(
             timestamp=time.time(),
         )
     )
+
+    if is_reassignment:
+        await _finish_reassignment(server, state)
+        return
 
     await _advance_turn(server, state)
     next_player = state.current_player()
@@ -1772,7 +1785,6 @@ async def handle_purchase_building(
     # Draw replacement from deck
     if state.board.building_deck:
         replacement = state.board.building_deck.pop(0)
-        replacement.accumulated_vp = 1
         state.board.face_up_buildings.append(replacement)
 
     # Create new action space
@@ -2027,6 +2039,7 @@ async def handle_reassign_worker(
         return
 
     player = state.get_player(conn.player_id)
+    state.reassignment_active_player_id = player.player_id
 
     # Perform reassignment
     slot.occupied_by = None
@@ -2165,6 +2178,29 @@ async def _finish_reassignment(
     server: GameServer, state,
 ) -> None:
     """Continue reassignment queue or end the round."""
+    if state.reassignment_active_player_id:
+        player = state.get_player(
+            state.reassignment_active_player_id,
+        )
+        state.reassignment_active_player_id = None
+        if player and not player.completed_quest_this_turn:
+            completable = [
+                c for c in player.contract_hand
+                if player.resources.can_afford(c.cost)
+            ]
+            if completable:
+                state.waiting_for_quest_completion = True
+                await server.send_to_player(
+                    player.player_id,
+                    QuestCompletionPromptResponse(
+                        completable_quests=[
+                            c.model_dump()
+                            for c in completable
+                        ],
+                    ),
+                )
+                return
+
     if not state.reassignment_queue:
         await _end_round(server, state)
 
