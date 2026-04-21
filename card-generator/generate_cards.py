@@ -134,10 +134,20 @@ def draw_text_wrapped(
     return y
 
 
-def truncate_name(name: str, max_len: int = 20) -> str:
-    if len(name) > max_len:
-        return name[: max_len - 2] + ".."
-    return name
+def _title_start_y(
+    draw: ImageDraw.ImageDraw,
+    text: str,
+    font: ImageFont.FreeTypeFont,
+    single_line_y: int,
+    max_width: int = CARD_WIDTH - 16,
+) -> int:
+    """Return y shifted up when title text will wrap to a second line."""
+    bbox = draw.textbbox((0, 0), text, font=font)
+    tw = bbox[2] - bbox[0]
+    if tw <= max_width:
+        return single_line_y
+    line_h = bbox[3] - bbox[1] + 2
+    return max(2, single_line_y - line_h // 2)
 
 
 def generate_quest_cards() -> int:
@@ -301,11 +311,10 @@ def generate_building_cards() -> int:
             [0, band_h - CORNER_RADIUS, CARD_WIDTH - 1, band_h],
             fill=band_color,
         )
-        y = 8
-        name = truncate_name(card.name)
+        y = _title_start_y(draw, card.name, FONT_TITLE, 8)
         y = draw_text_wrapped(
             draw,
-            name,
+            card.name,
             y,
             FONT_TITLE,
             (255, 255, 255),
@@ -425,16 +434,16 @@ def generate_intrigue_cards() -> int:
     count = 0
     for card in config.intrigue_cards:
         img, draw = create_card_base()
-        y = 12
-        name = truncate_name(card.name)
-        draw_text_centered(
+        y = _title_start_y(draw, card.name, FONT_TITLE, 12)
+        y = draw_text_wrapped(
             draw,
-            name,
+            card.name,
             y,
             FONT_TITLE,
             (30, 80, 30),
+            max_lines=2,
         )
-        y += 22
+        y += 4
         draw_text_centered(
             draw,
             "INTRIGUE",
@@ -512,16 +521,16 @@ def generate_producer_cards() -> int:
     count = 0
     for card in config.producers:
         img, draw = create_card_base()
-        y = 12
-        name = truncate_name(card.name)
-        draw_text_centered(
+        y = _title_start_y(draw, card.name, FONT_TITLE, 12)
+        y = draw_text_wrapped(
             draw,
-            name,
+            card.name,
             y,
             FONT_TITLE,
             (100, 50, 100),
+            max_lines=2,
         )
-        y += 22
+        y += 4
         draw_text_centered(
             draw,
             "PRODUCER",
@@ -602,7 +611,7 @@ def generate_space_cards() -> int:
             fill=band_color,
         )
 
-        y = 8
+        y = _title_start_y(draw, name, FONT_TITLE, 8)
         y = draw_text_wrapped(
             draw,
             name,
