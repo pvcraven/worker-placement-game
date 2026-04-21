@@ -58,8 +58,8 @@
     },
     {
       "id": "producer_009",
-      "name": "Phil Spector",
-      "description": "Wall of Sound creator, bridging Rock and Soul. Bonus VP for Rock and Soul contracts.",
+      "name": "Linda Perry",
+      "description": "Powerhouse songwriter and producer blending Rock grit with Soul. Bonus VP for Rock and Soul contracts.",
       "bonus_genres": ["rock", "soul"],
       "bonus_vp_per_contract": 4
     },
@@ -76,6 +76,13 @@
       "description": "Pioneer of Soul and Funk recordings. Bonus VP for Soul and Funk contracts.",
       "bonus_genres": ["soul", "funk"],
       "bonus_vp_per_contract": 4
+    },
+    {
+      "id": "producer_012",
+      "name": "Brian Eno",
+      "description": "Visionary ambient pioneer and eclectic producer. Bonus VP for all genre contracts.",
+      "bonus_genres": ["jazz", "pop", "soul", "funk", "rock"],
+      "bonus_vp_per_contract": 3
     }
   ]
 }

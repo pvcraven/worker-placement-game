@@ -43,7 +43,15 @@ def main() -> None:
     data = json.loads(CONFIG.read_text())
     buildings = data["buildings"]
 
-    headers = ["#", "Name", "Cost", "Visitor Reward", "Special", "Owner Bonus", "Owner Special"]
+    headers = [
+        "#",
+        "Name",
+        "Cost",
+        "Visitor Reward",
+        "Special",
+        "Owner Bonus",
+        "Owner Special",
+    ]
     rows = []
     for i, b in enumerate(buildings, 1):
         visitor = _res_str(b["visitor_reward"])
@@ -57,15 +65,17 @@ def main() -> None:
         owner_special = b.get("owner_bonus_special") or ""
         if owner_special:
             owner_special = owner_special.replace("_", " ")
-        rows.append([
-            str(i),
-            b["name"],
-            str(b["cost_coins"]),
-            visitor,
-            special,
-            owner,
-            owner_special,
-        ])
+        rows.append(
+            [
+                str(i),
+                b["name"],
+                str(b["cost_coins"]),
+                visitor,
+                special,
+                owner,
+                owner_special,
+            ]
+        )
 
     col_widths = [len(h) for h in headers]
     for row in rows:

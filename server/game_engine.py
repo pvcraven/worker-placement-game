@@ -358,19 +358,24 @@ async def _end_game(server: GameServer, state) -> None:
 
     scores: list[FinalPlayerScore] = []
     for player in state.players:
-        base_vp = player.victory_points
-        producer_bonus = 0
+        game_vp = player.victory_points
+        genre_bonus_vp = 0
         if player.producer_card:
             for contract in player.completed_contracts:
                 if contract.genre in player.producer_card.bonus_genres:
-                    producer_bonus += player.producer_card.bonus_vp_per_contract
-        total = base_vp + producer_bonus
+                    genre_bonus_vp += player.producer_card.bonus_vp_per_contract
+        r = player.resources
+        resource_vp = (
+            r.guitarists + r.bass_players + r.drummers + r.singers + r.coins // 2
+        )
+        total = game_vp + genre_bonus_vp + resource_vp
         scores.append(
             FinalPlayerScore(
                 player_id=player.player_id,
                 player_name=player.display_name,
-                base_vp=base_vp,
-                producer_bonus=producer_bonus,
+                game_vp=game_vp,
+                genre_bonus_vp=genre_bonus_vp,
+                resource_vp=resource_vp,
                 producer_card=(
                     player.producer_card.model_dump() if player.producer_card else {}
                 ),

@@ -329,8 +329,9 @@ class BonusWorkersGrantedResponse(BaseModel):
 class FinalPlayerScore(BaseModel):
     player_id: str
     player_name: str
-    base_vp: int
-    producer_bonus: int
+    game_vp: int
+    genre_bonus_vp: int
+    resource_vp: int
     producer_card: dict
     total_vp: int
     rank: int

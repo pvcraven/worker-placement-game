@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import arcade
 import arcade.gui
 
@@ -36,8 +38,14 @@ class GameView(arcade.View):
         self._building_deck_remaining: int = 0
         self._reward_choice_dialog = None
         self._show_player_overview = False
+        self._show_final_screen = False
+        self._game_over_final = False
+        self._final_scores: list | None = None
         self._target_dialog: PlayerTargetDialog | None = None
         self._text_cache: dict[str, arcade.Text] = {}
+        self._sprite_cache: dict[str, arcade.Sprite] = {}
+        self._fs_card_sprites: arcade.SpriteList | None = None
+        self._fs_card_positions: list[tuple] | None = None
         self._highlight_mode: str | None = None
         self._highlighted_ids: list[str] = []
         self._cancel_sprite: arcade.Sprite | None = None
@@ -113,6 +121,7 @@ class GameView(arcade.View):
         }
         btns = [
             ("Player Overview", int(140 * s), self._toggle_player_overview),
+            ("Final Screen", int(120 * s), self._toggle_final_screen),
         ]
 
         btn_row = arcade.gui.UIBoxLayout(
@@ -227,9 +236,10 @@ class GameView(arcade.View):
         elif action == "bonus_workers_granted":
             self._on_bonus_workers(msg)
         elif action == "game_over":
-            self.window.final_scores = msg.get("final_scores", [])
-            self.window.tiebreaker = msg.get("tiebreaker_applied", False)
-            self.window.show_results()
+            self._final_scores = msg.get("final_scores", [])
+            self._show_final_screen = True
+            self._game_over_final = True
+            self._fs_card_sprites = None
         elif action == "state_sync":
             self.game_state = msg.get("game_state", {})
             self._sync_from_state()
@@ -609,11 +619,13 @@ class GameView(arcade.View):
             if p.get("player_id") == pid:
                 p["victory_points"] = p.get("victory_points", 0) + vp
                 hand = p.get("contract_hand", [])
+                completed_card = {"id": cid, "name": cname, "victory_points": vp}
+                for c in hand:
+                    if c.get("id") == cid:
+                        completed_card["genre"] = c.get("genre", "")
+                        break
                 p["contract_hand"] = [c for c in hand if c.get("id") != cid]
-                p.setdefault(
-                    "completed_contracts",
-                    [],
-                ).append({"id": cid, "name": cname})
+                p.setdefault("completed_contracts", []).append(completed_card)
                 res = p.get("resources", {})
                 for k in (
                     "guitarists",
@@ -1206,6 +1218,7 @@ class GameView(arcade.View):
             first_pid = turn_order[0]
             if first_pid == my_id:
                 self._status_text = f"Round {next_round} — YOUR TURN"
+                arcade.play_sound(self._turn_sound)
             else:
                 name = self._player_name(first_pid)
                 self._status_text = f"Round {next_round} — {name}'s turn"
@@ -1258,6 +1271,18 @@ class GameView(arcade.View):
         modifiers: int,
     ) -> None:
         """Handle clicks on the board to place or reassign workers."""
+        if self._show_final_screen:
+            rect = getattr(self, "_fs_close_rect", None)
+            if rect:
+                rx, ry, rw, rh = rect
+                if rx <= x <= rx + rw and ry <= y <= ry + rh:
+                    if self._game_over_final:
+                        self.window.network.disconnect()
+                        self.window.show_lobby()
+                    else:
+                        self._show_final_screen = False
+            return
+
         if self.tabbed_panel and self.tabbed_panel.on_click(x, y):
             return
 
@@ -1559,6 +1584,51 @@ class GameView(arcade.View):
     def _toggle_player_overview(self) -> None:
         self._show_player_overview = not self._show_player_overview
 
+    def _toggle_final_screen(self) -> None:
+        if self._game_over_final:
+            return
+        self._show_final_screen = not self._show_final_screen
+        self._fs_card_sprites = None
+
+    def _calculate_scores_from_state(self) -> list[dict]:
+        players = self.game_state.get("players", [])
+        my_id = getattr(self.window, "player_id", None)
+        scores = []
+        for p in players:
+            game_vp = p.get("victory_points", 0)
+            res = p.get("resources", {})
+            resource_vp = (
+                res.get("guitarists", 0)
+                + res.get("bass_players", 0)
+                + res.get("drummers", 0)
+                + res.get("singers", 0)
+                + res.get("coins", 0) // 2
+            )
+            genre_bonus_vp = 0
+            is_me = p.get("player_id") == my_id
+            pc = p.get("producer_card")
+            if pc and is_me:
+                bonus_genres = pc.get("bonus_genres", [])
+                bvp = pc.get("bonus_vp_per_contract", 4)
+                for c in p.get("completed_contracts", []):
+                    if c.get("genre") in bonus_genres:
+                        genre_bonus_vp += bvp
+            genre_known = is_me or False
+            scores.append(
+                {
+                    "player_id": p.get("player_id", ""),
+                    "player_name": p.get("display_name", "???"),
+                    "game_vp": game_vp,
+                    "genre_bonus_vp": genre_bonus_vp,
+                    "genre_known": genre_known,
+                    "resource_vp": resource_vp,
+                    "total_vp": game_vp + genre_bonus_vp + resource_vp,
+                    "producer_card": pc or {},
+                }
+            )
+        scores.sort(key=lambda x: x["total_vp"], reverse=True)
+        return scores
+
     # ------------------------------------------------------------------
     # Drawing
     # ------------------------------------------------------------------
@@ -1631,6 +1701,9 @@ class GameView(arcade.View):
 
         if self._show_player_overview:
             self._draw_player_overview_panel(cw, ch, s)
+
+        if self._show_final_screen:
+            self._draw_final_screen(cw, ch, s)
 
         # Cancel button for highlight mode
         if (
@@ -1861,6 +1934,223 @@ class GameView(arcade.View):
                     anchor_y="center",
                 ).draw()
                 cx += col_widths[i]
+
+    def _draw_final_screen(
+        self,
+        w: float,
+        h: float,
+        s: float = 1.0,
+    ) -> None:
+        if self._final_scores is not None:
+            scores = [
+                {
+                    **fs,
+                    "genre_known": True,
+                }
+                for fs in self._final_scores
+            ]
+            scores.sort(key=lambda x: x.get("total_vp", 0), reverse=True)
+        else:
+            scores = self._calculate_scores_from_state()
+
+        if not scores:
+            return
+
+        n = len(scores)
+        panel_w = min(w - 40 * s, (280 * n + 60) * s)
+        panel_h = min(h - 60 * s, 520 * s)
+        px = w / 2
+        py = h / 2
+
+        arcade.draw_rect_filled(
+            arcade.rect.XYWH(w / 2, h / 2, w, h),
+            (0, 0, 0, 160),
+        )
+        arcade.draw_rect_filled(
+            arcade.rect.XYWH(px, py, panel_w, panel_h),
+            (20, 20, 30),
+        )
+        arcade.draw_rect_outline(
+            arcade.rect.XYWH(px, py, panel_w, panel_h),
+            arcade.color.WHITE,
+            border_width=2,
+        )
+
+        title = (
+            "Final Scores" if not self._game_over_final else "Game Over - Final Scores"
+        )
+        self._text(
+            "fs_title",
+            title,
+            px,
+            py + panel_h / 2 - 25 * s,
+            arcade.color.GOLD,
+            max(10, int(22 * s)),
+            anchor_x="center",
+            anchor_y="center",
+            bold=True,
+        ).draw()
+
+        max_vp = max(sc.get("total_vp", 0) for sc in scores)
+        col_w = panel_w / max(n, 1)
+        card_h = int(230 * s)
+        top_y = py + panel_h / 2 - 55 * s
+        val_font = max(8, int(14 * s))
+        small_font = max(7, int(11 * s))
+
+        if self._fs_card_sprites is None:
+            self._fs_card_sprites = arcade.SpriteList()
+            for sc in scores:
+                pc = sc.get("producer_card") or {}
+                card_id = pc.get("id", "")
+                png = Path(f"client/assets/card_images/producers/{card_id}.png")
+                if pc.get("name") and png.exists():
+                    sp = arcade.Sprite(str(png))
+                    sp.visible = True
+                    self._fs_card_sprites.append(sp)
+
+        sprite_idx = 0
+        for i, sc in enumerate(scores):
+            cx = px - panel_w / 2 + col_w * i + col_w / 2
+            cur_y = top_y
+
+            if sc.get("total_vp", 0) == max_vp:
+                self._text(
+                    f"fs_win_{i}",
+                    "WINNER",
+                    cx,
+                    cur_y,
+                    arcade.color.GOLD,
+                    max(9, int(16 * s)),
+                    anchor_x="center",
+                    anchor_y="center",
+                    bold=True,
+                ).draw()
+            cur_y -= 20 * s
+
+            pc = sc.get("producer_card") or {}
+            pc_name = pc.get("name", "")
+            card_id = pc.get("id", "")
+            png = Path(f"client/assets/card_images/producers/{card_id}.png")
+            if pc_name and png.exists() and sprite_idx < len(self._fs_card_sprites):
+                sp = self._fs_card_sprites[sprite_idx]
+                sp.scale = card_h / max(sp.texture.height, 1)
+                sp.position = (cx, cur_y - card_h / 2)
+                sprite_idx += 1
+            elif pc_name:
+                self._text(
+                    f"fs_nocard_{i}",
+                    "No Producer",
+                    cx,
+                    cur_y - card_h / 2,
+                    arcade.color.DARK_GRAY,
+                    small_font,
+                    anchor_x="center",
+                    anchor_y="center",
+                ).draw()
+            cur_y -= card_h + 10 * s
+
+            self._text(
+                f"fs_name_{i}",
+                sc.get("player_name", "???"),
+                cx,
+                cur_y,
+                arcade.color.WHITE,
+                val_font,
+                anchor_x="center",
+                anchor_y="center",
+                bold=True,
+            ).draw()
+            cur_y -= 22 * s
+
+            rows = [
+                ("Game VP", str(sc.get("game_vp", 0))),
+            ]
+            if sc.get("genre_known", False):
+                rows.append(("Genre Bonus", str(sc.get("genre_bonus_vp", 0))))
+            else:
+                rows.append(("Genre Bonus", "?"))
+            rows.append(("Resource VP", str(sc.get("resource_vp", 0))))
+
+            for label, val in rows:
+                self._text(
+                    f"fs_l_{i}_{label}",
+                    label + ":",
+                    cx - 5 * s,
+                    cur_y,
+                    arcade.color.LIGHT_GRAY,
+                    small_font,
+                    anchor_x="right",
+                    anchor_y="center",
+                ).draw()
+                self._text(
+                    f"fs_v_{i}_{label}",
+                    val,
+                    cx + 5 * s,
+                    cur_y,
+                    arcade.color.WHITE,
+                    small_font,
+                    anchor_x="left",
+                    anchor_y="center",
+                ).draw()
+                cur_y -= 18 * s
+
+            cur_y -= 4 * s
+            self._text(
+                f"fs_tl_{i}",
+                "Total:",
+                cx - 5 * s,
+                cur_y,
+                arcade.color.GOLD,
+                val_font,
+                anchor_x="right",
+                anchor_y="center",
+                bold=True,
+            ).draw()
+            self._text(
+                f"fs_tv_{i}",
+                str(sc.get("total_vp", 0)),
+                cx + 5 * s,
+                cur_y,
+                arcade.color.GOLD,
+                val_font,
+                anchor_x="left",
+                anchor_y="center",
+                bold=True,
+            ).draw()
+
+        if self._fs_card_sprites:
+            self._fs_card_sprites.draw()
+
+        btn_w = int(100 * s)
+        btn_h = int(32 * s)
+        btn_x = px
+        btn_y = py - panel_h / 2 + 30 * s
+        arcade.draw_rect_filled(
+            arcade.rect.XYWH(btn_x, btn_y, btn_w, btn_h),
+            (80, 80, 100),
+        )
+        arcade.draw_rect_outline(
+            arcade.rect.XYWH(btn_x, btn_y, btn_w, btn_h),
+            arcade.color.WHITE,
+            border_width=1,
+        )
+        self._text(
+            "fs_close_btn",
+            "Close",
+            btn_x,
+            btn_y,
+            arcade.color.WHITE,
+            max(8, int(14 * s)),
+            anchor_x="center",
+            anchor_y="center",
+        ).draw()
+        self._fs_close_rect = (
+            btn_x - btn_w / 2,
+            btn_y - btn_h / 2,
+            btn_w,
+            btn_h,
+        )
 
     @staticmethod
     def _resource_str(res: dict) -> str:
