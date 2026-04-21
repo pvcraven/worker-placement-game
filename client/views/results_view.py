@@ -54,7 +54,10 @@ class ResultsView(arcade.View):
 
         # Score table
         header = arcade.gui.UILabel(
-            text=f"{'Rank':<6}{'Player':<20}{'Base VP':<10}{'Producer':<10}{'Total':<8}",
+            text=(
+                f"{'Rank':<6}{'Player':<20}{'Game VP':<10}"
+                f"{'Genre':<10}{'Resources':<10}{'Total':<8}"
+            ),
             font_size=13,
             text_color=arcade.color.LIGHT_GRAY,
         )
@@ -63,10 +66,14 @@ class ResultsView(arcade.View):
         for s in scores:
             rank = s.get("rank", "?")
             name = s.get("player_name", "???")[:18]
-            base = s.get("base_vp", 0)
-            bonus = s.get("producer_bonus", 0)
+            game = s.get("game_vp", 0)
+            genre = s.get("genre_bonus_vp", 0)
+            res = s.get("resource_vp", 0)
             total = s.get("total_vp", 0)
-            line = f"#{rank:<5}{name:<20}{base:<10}{'+' + str(bonus):<10}{total:<8}"
+            line = (
+                f"#{rank:<5}{name:<20}{game:<10}"
+                f"{'+' + str(genre):<10}{'+' + str(res):<10}{total:<8}"
+            )
             color = arcade.color.GOLD if rank == 1 else arcade.color.WHITE
             row = arcade.gui.UILabel(text=line, font_size=13, text_color=color)
             v_box.add(row)
