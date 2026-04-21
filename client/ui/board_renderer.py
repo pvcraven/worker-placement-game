@@ -23,9 +23,9 @@ _SPACE_LAYOUT: dict[str, tuple[float, float]] = {
     "talent_show": (0.08, 0.52),
     "rhythm_pit": (0.08, 0.39),
     "castle_waterdeep": (0.08, 0.26),
-    "the_garage_1": (0.50, 0.92),
-    "the_garage_2": (0.64, 0.92),
-    "the_garage_3": (0.78, 0.92),
+    "the_garage_1": (0.57, 0.92),
+    "the_garage_2": (0.71, 0.92),
+    "the_garage_3": (0.85, 0.92),
 }
 
 _BACKSTAGE_Y = [0.46, 0.33, 0.20]
@@ -87,12 +87,20 @@ class BoardRenderer:
         self._building_vp_dirty = True
         self._building_owner_texts: list[arcade.Text] = []
         self._building_owner_dirty = True
+        self._turn_order: list[str] = []
+        self._current_player_id: str | None = None
 
     def update_board(
-        self, board: dict, players: list[dict]
+        self, board: dict, players: list[dict],
+        turn_order: list[str] | None = None,
+        current_player_id: str | None = None,
     ) -> None:
         self.board_data = board
         self.players = players
+        if turn_order is not None:
+            self._turn_order = turn_order
+        if current_player_id is not None:
+            self._current_player_id = current_player_id
         self._shapes_dirty = True
         self._building_owner_dirty = True
 
@@ -155,7 +163,7 @@ class BoardRenderer:
         if self._backstage_sprite_list:
             self._backstage_sprite_list.draw()
 
-        garage_center_x = x + 0.64 * w
+        garage_center_x = x + 0.71 * w
         n_q = max(
             len(self.board_data.get("face_up_quests", [])),
             4,
@@ -318,7 +326,7 @@ class BoardRenderer:
             )
             bld_row_step = (bld_h + 10 * s) / h
             building_start_x = 0.22
-            building_col_step = 0.12
+            building_col_step = 0.14
             if self._building_owner_dirty:
                 self._building_owner_texts = []
             for i, space_id in enumerate(
@@ -400,7 +408,7 @@ class BoardRenderer:
         )
 
         # Backstage slots — build sprite list
-        garage_cx = x + 0.64 * w
+        garage_cx = x + 0.71 * w
         n_q = max(
             len(self.board_data.get("face_up_quests", [])),
             4,
@@ -454,7 +462,7 @@ class BoardRenderer:
         )
         first_building_cy = merch_top_y - bld_h / 2
         building_start_x = 0.22
-        building_col_step = 0.12
+        building_col_step = 0.14
         building_row_step = (bld_h + 10 * s) / h
         constructed_cards = []
         constructed_positions = []

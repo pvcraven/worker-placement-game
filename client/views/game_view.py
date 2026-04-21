@@ -84,6 +84,24 @@ class GameView(arcade.View):
 
         self._rebuild_buttons()
 
+    def _refresh_board(self, board=None, players=None) -> None:
+        if not self.board_renderer:
+            return
+        if board is None:
+            board = self.game_state.get("board", {})
+        if players is None:
+            players = self.game_state.get("players", [])
+        turn_order = self.game_state.get("turn_order", [])
+        idx = self.game_state.get("current_player_index", 0)
+        current_pid = None
+        if turn_order and idx < len(turn_order):
+            current_pid = turn_order[idx]
+        self.board_renderer.update_board(
+            board, players,
+            turn_order=turn_order,
+            current_player_id=current_pid,
+        )
+
     def _rebuild_buttons(self) -> None:
         s = self.window.ui_scale
         self._btn_scale = s
@@ -143,8 +161,7 @@ class GameView(arcade.View):
         if my_player and self.resource_bar:
             self.resource_bar.update_resources(my_player.get("resources", {}))
 
-        if self.board_renderer:
-            self.board_renderer.update_board(board, players)
+        self._refresh_board(board, players)
 
         # Extract building market from initial game state
         face_up = board.get("face_up_buildings", [])
@@ -263,10 +280,7 @@ class GameView(arcade.View):
         if space_id in spaces:
             spaces[space_id]["occupied_by"] = pid
 
-        if self.board_renderer:
-            self.board_renderer.update_board(
-                board, self.game_state.get("players", []),
-            )
+        self._refresh_board(board)
 
         # Update player resources and worker count
         self._apply_reward_to_player(pid, reward)
@@ -411,10 +425,7 @@ class GameView(arcade.View):
                                 )
                         break
 
-        if self.board_renderer:
-            self.board_renderer.update_board(
-                board, self.game_state.get("players", [])
-            )
+        self._refresh_board(board)
 
         if self.game_log_panel:
             name = self._player_name(pid)
@@ -606,10 +617,7 @@ class GameView(arcade.View):
         quests = msg.get("face_up_quests", [])
         board = self.game_state.get("board", {})
         board["face_up_quests"] = quests
-        if self.board_renderer:
-            self.board_renderer.update_board(
-                board, self.game_state.get("players", [])
-            )
+        self._refresh_board(board)
 
     def _on_quest_completed(self, msg: dict) -> None:
         pid = msg.get("player_id", "")
@@ -695,11 +703,7 @@ class GameView(arcade.View):
                         ),
                         "occupied_by": None,
                     }
-            if self.board_renderer:
-                self.board_renderer.update_board(
-                    board,
-                    self.game_state.get("players", []),
-                )
+            self._refresh_board(board)
 
         if self.game_log_panel:
             name = self._player_name(pid)
@@ -837,13 +841,7 @@ class GameView(arcade.View):
                         b for b in fub
                         if b.get("id") != bid
                     ]
-                if self.board_renderer:
-                    self.board_renderer.update_board(
-                        board,
-                        self.game_state.get(
-                            "players", [],
-                        ),
-                    )
+                self._refresh_board(board)
 
         if self.game_log_panel:
             name = self._player_name(pid)
@@ -1019,10 +1017,7 @@ class GameView(arcade.View):
                     )
                 break
 
-        if self.board_renderer:
-            self.board_renderer.update_board(
-                board, self.game_state.get("players", []),
-            )
+        self._refresh_board(board)
 
         next_pid = msg.get("next_player_id")
         self._update_current_player(next_pid)
@@ -1083,10 +1078,7 @@ class GameView(arcade.View):
                 "building_tile": {"id": building_id},
             }
 
-        if self.board_renderer:
-            self.board_renderer.update_board(
-                board, self.game_state.get("players", []),
-            )
+        self._refresh_board(board)
 
         next_pid = msg.get("next_player_id")
         self._update_current_player(next_pid)
@@ -1137,10 +1129,7 @@ class GameView(arcade.View):
         if queue and queue[0] == from_slot:
             queue.pop(0)
 
-        if self.board_renderer:
-            self.board_renderer.update_board(
-                board, self.game_state.get("players", [])
-            )
+        self._refresh_board(board)
 
         if self.game_log_panel:
             name = self._player_name(pid)
@@ -1238,10 +1227,7 @@ class GameView(arcade.View):
             slot["occupied_by"] = None
             slot["intrigue_card_played"] = None
 
-        if self.board_renderer:
-            self.board_renderer.update_board(
-                board, self.game_state.get("players", [])
-            )
+        self._refresh_board(board)
 
         my_id = getattr(self.window, "player_id", None)
         if self.resource_bar:
@@ -1724,6 +1710,8 @@ class GameView(arcade.View):
             anchor_x="center", anchor_y="center",
         ).draw()
 
+        self._draw_player_list(ch, status_h, s)
+
         self.ui.draw()
 
     def _draw_hand_panel(
@@ -2112,6 +2100,62 @@ class GameView(arcade.View):
         return " ".join(parts)
 
     # ------------------------------------------------------------------
+    # Player turn-order list (drawn on the status bar)
+    # ------------------------------------------------------------------
+
+    def _draw_player_list(
+        self, ch: float, status_h: float, s: float,
+    ) -> None:
+        if not self.board_renderer:
+            return
+        turn_order = self.game_state.get("turn_order", [])
+        players = self.game_state.get("players", [])
+        if not turn_order or not players:
+            return
+
+        player_map = {
+            p["player_id"]: p for p in players
+        }
+        idx = self.game_state.get("current_player_index", 0)
+        current_pid = (
+            turn_order[idx] if idx < len(turn_order) else None
+        )
+
+        font_sz = max(10, int(14 * s))
+        circle_r = max(4, int(7 * s))
+        gap = int(8 * s)
+        bar_top = ch
+        bar_bot = ch - status_h
+        center_y = (bar_top + bar_bot) / 2
+        list_x = int(10 * s)
+
+        for i, pid in enumerate(turn_order):
+            p = player_map.get(pid)
+            if not p:
+                continue
+            color = self.board_renderer._player_color(pid)
+            is_current = pid == current_pid
+            cx = list_x + circle_r
+            arcade.draw_circle_filled(
+                cx, center_y, circle_r, color,
+            )
+            name = p.get("display_name", "???")
+            if is_current:
+                name = f"> {name}"
+            txt = self._text(
+                f"plist_{i}", name,
+                cx + circle_r + gap, center_y,
+                arcade.color.WHITE, font_sz,
+                bold=is_current,
+                anchor_x="left", anchor_y="center",
+            )
+            txt.bold = is_current
+            txt.draw()
+            list_x = int(
+                cx + circle_r + gap + txt.content_width + int(30 * s)
+            )
+
+    # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
 
@@ -2210,6 +2254,8 @@ class GameView(arcade.View):
         if next_pid in turn_order:
             idx = turn_order.index(next_pid)
             self.game_state["current_player_index"] = idx
+        if self.board_renderer:
+            self.board_renderer._current_player_id = next_pid
         my_id = getattr(self.window, "player_id", None)
         rnd = self.game_state.get("current_round", "?")
         if next_pid == my_id:
