@@ -421,9 +421,7 @@ class BoardRenderer:
         building_row_step = (bld_h + 10 * s) / h
         constructed_cards = []
         constructed_positions = []
-        for i, space_id in enumerate(
-            self.board_data.get("constructed_buildings", [])
-        ):
+        for i, space_id in enumerate(self.board_data.get("constructed_buildings", [])):
             data = spaces.get(space_id, {})
             col = i % 2
             row = i // 2
@@ -526,9 +524,7 @@ class BoardRenderer:
 
     def _get_worker_texture(self, color_name: str) -> arcade.Texture:
         if color_name not in self._worker_textures:
-            png = Path(
-                f"client/assets/card_images/markers/worker_{color_name}.png"
-            )
+            png = Path(f"client/assets/card_images/markers/worker_{color_name}.png")
             self._worker_textures[color_name] = arcade.load_texture(str(png))
         return self._worker_textures[color_name]
 
@@ -595,9 +591,7 @@ class BoardRenderer:
         bld_row_step = (bld_h + 10 * s) / h
         building_start_x = 0.22
         building_col_step = 0.14
-        for i, space_id in enumerate(
-            self.board_data.get("constructed_buildings", [])
-        ):
+        for i, space_id in enumerate(self.board_data.get("constructed_buildings", [])):
             occupied = spaces.get(space_id, {}).get("occupied_by")
             if occupied:
                 col = i % 2

@@ -838,8 +838,7 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
     if space.building_tile and space.building_tile.visitor_reward_vp > 0:
         player.victory_points += space.building_tile.visitor_reward_vp
         reward_dict["victory_points"] = (
-            reward_dict.get("victory_points", 0)
-            + space.building_tile.visitor_reward_vp
+            reward_dict.get("victory_points", 0) + space.building_tile.visitor_reward_vp
         )
 
     # Handle Garage spots (quest selection)
@@ -1012,9 +1011,7 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
             space.name,
         )
         if pending_owner_choice:
-            state.pending_resource_choice["pending_owner_choice"] = (
-                pending_owner_choice
-            )
+            state.pending_resource_choice["pending_owner_choice"] = pending_owner_choice
         return
 
     # Owner bonus choice (no visitor choice to resolve first)
@@ -1194,7 +1191,9 @@ async def handle_select_quest_card(
     if replacement:
         state.board.face_up_quests.append(replacement)
 
-    spot_num = 0 if is_building_draw else (1 if spot_special == "quest_and_coins" else 2)
+    spot_num = (
+        0 if is_building_draw else (1 if spot_special == "quest_and_coins" else 2)
+    )
     source = "a building" if is_building_draw else "The Garage"
 
     state.game_log.append(
@@ -1202,9 +1201,7 @@ async def handle_select_quest_card(
             round_number=state.current_round,
             player_id=player.player_id,
             action="select_quest_card",
-            details=(
-                f"{player.display_name} selected '{card.name}' from {source}"
-            ),
+            details=(f"{player.display_name} selected '{card.name}' from {source}"),
             timestamp=time.time(),
         )
     )
@@ -2429,9 +2426,7 @@ async def handle_reassign_worker(
             target.name,
         )
         if pending_owner_choice:
-            state.pending_resource_choice["pending_owner_choice"] = (
-                pending_owner_choice
-            )
+            state.pending_resource_choice["pending_owner_choice"] = pending_owner_choice
         return
 
     # Owner bonus choice (no visitor choice to resolve first)

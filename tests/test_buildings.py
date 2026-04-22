@@ -18,7 +18,9 @@ def buildings():
 
 def test_all_buildings_have_unique_ids(buildings):
     ids = [b.id for b in buildings]
-    assert len(ids) == len(set(ids)), f"Duplicate IDs: {[i for i in ids if ids.count(i) > 1]}"
+    assert len(ids) == len(
+        set(ids)
+    ), f"Duplicate IDs: {[i for i in ids if ids.count(i) > 1]}"
 
 
 def test_building_count(buildings):
@@ -163,5 +165,12 @@ def test_six_accumulating_buildings(buildings):
 
 def test_accumulating_building_types(buildings):
     accum = {b.accumulation_type for b in buildings if b.accumulation_type}
-    expected = {"guitarists", "bass_players", "singers", "drummers", "coins", "victory_points"}
+    expected = {
+        "guitarists",
+        "bass_players",
+        "singers",
+        "drummers",
+        "coins",
+        "victory_points",
+    }
     assert accum == expected

@@ -1081,7 +1081,9 @@ class GameView(arcade.View):
                 "reward": msg.get("visitor_reward", {}),
                 "owner_bonus": msg.get("owner_bonus", {}),
                 "occupied_by": None,
-                "building_tile": msg.get("building_tile", {"id": msg.get("building_id", "")}),
+                "building_tile": msg.get(
+                    "building_tile", {"id": msg.get("building_id", "")}
+                ),
             }
 
         self._refresh_board(board)

@@ -25,6 +25,7 @@ from shared.constants import (  # noqa: E402
     RESOURCE_SYMBOLS,
     SPACE_CARD_HEIGHT,
 )
+
 PARCHMENT_COLOR = (235, 220, 185)
 TEXT_COLOR = (60, 40, 20)
 CORNER_RADIUS = 12
