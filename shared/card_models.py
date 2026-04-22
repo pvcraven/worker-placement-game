@@ -94,7 +94,14 @@ class BuildingTile(BaseModel):
         default_factory=ResourceCost,
     )
     owner_bonus_special: str | None = None
+    owner_bonus_vp: int = 0
+    owner_bonus_choice: ResourceChoiceReward | None = None
     accumulated_vp: int = 0
+    accumulation_type: str | None = None
+    accumulation_per_round: int = 0
+    accumulation_initial: int = 0
+    accumulated_stock: int = 0
+    visitor_reward_vp: int = 0
 
 
 class ProducerCard(BaseModel):

@@ -284,10 +284,7 @@ class TabbedPanel:
         card_id = producer.get("id", "")
         png = Path(f"client/assets/card_images/producers/{card_id}.png")
         if png.exists():
-            if (
-                self._producer_sprite_list is None
-                or self._producer_card_id != card_id
-            ):
+            if self._producer_sprite_list is None or self._producer_card_id != card_id:
                 self._producer_card_id = card_id
                 sprite = arcade.Sprite(str(png))
                 max_w = w - 20 * scale

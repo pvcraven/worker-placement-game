@@ -98,14 +98,38 @@ def _warn_suspicious_buildings(buildings: list[BuildingTile]) -> None:
             + b.owner_bonus.singers
             + b.owner_bonus.coins
         )
-        if (
-            reward_total == 0
-            and not b.visitor_reward_special
-            and bonus_total == 0
-            and not b.owner_bonus_special
-        ):
+        has_reward = (
+            reward_total > 0
+            or b.visitor_reward_special
+            or b.visitor_reward_choice
+            or b.accumulation_type
+            or b.visitor_reward_vp > 0
+        )
+        has_bonus = (
+            bonus_total > 0
+            or b.owner_bonus_special
+            or b.owner_bonus_choice
+            or b.owner_bonus_vp > 0
+        )
+        if not has_reward and not has_bonus:
             logger.warning(
                 "Building '%s' (%s) has no visitor reward and no owner bonus",
+                b.name,
+                b.id,
+            )
+        if b.accumulation_type and b.accumulation_per_round <= 0:
+            logger.warning(
+                "Building '%s' (%s) has accumulation_type but "
+                "accumulation_per_round <= 0",
+                b.name,
+                b.id,
+            )
+        if not b.accumulation_type and (
+            b.accumulation_per_round > 0 or b.accumulation_initial > 0
+        ):
+            logger.warning(
+                "Building '%s' (%s) has accumulation values but no "
+                "accumulation_type",
                 b.name,
                 b.id,
             )
@@ -120,8 +144,8 @@ def _warn_card_counts(
         logger.warning("Expected ~60 contracts, found %d", len(contracts))
     if len(intrigue_cards) < 50:
         logger.warning("Expected ~50 intrigue cards, found %d", len(intrigue_cards))
-    if len(buildings) < 24:
-        logger.warning("Expected ~24 buildings, found %d", len(buildings))
+    if len(buildings) < 18:
+        logger.warning("Expected ~20 buildings, found %d", len(buildings))
 
 
 def load_config(config_dir: str | Path) -> GameConfig:

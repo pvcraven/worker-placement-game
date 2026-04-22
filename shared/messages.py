@@ -288,6 +288,7 @@ class BuildingConstructedResponse(BaseModel):
     owner_id: str = ""
     cost_coins: int = 0
     accumulated_vp: int = 0
+    building_tile: dict = Field(default_factory=dict)
     next_player_id: str | None = None
 
 
@@ -318,6 +319,7 @@ class RoundEndResponse(BaseModel):
     first_player_id: str | None
     turn_order: list[str] = Field(default_factory=list)
     bonus_worker_granted: bool = False
+    accumulated_stocks: dict[str, int] = Field(default_factory=dict)
 
 
 class BonusWorkersGrantedResponse(BaseModel):

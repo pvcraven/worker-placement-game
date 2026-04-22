@@ -2,7 +2,13 @@
   "permissions": {
     "allow": [
       "Bash(python -m ruff check client/ui/board_renderer.py)",
-      "Bash(python -m pytest tests/ -v)"
+      "Bash(python -m pytest tests/ -v)",
+      "Bash(bash .specify/extensions/git/scripts/bash/create-new-feature.sh \"building-revamp\")",
+      "Bash(bash .specify/scripts/bash/check-prerequisites.sh --json --paths-only)",
+      "Bash(bash .specify/scripts/bash/setup-plan.sh --json)",
+      "Bash(bash .specify/scripts/bash/update-agent-context.sh claude)",
+      "Bash(python card-generator/generate_cards.py)",
+      "Bash(ruff check *)"
     ]
   }
 }
