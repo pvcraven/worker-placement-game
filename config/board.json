@@ -64,7 +64,7 @@
       "slots": 1
     },
     {
-      "space_id": "castle_waterdeep",
+      "space_id": "fastpass",
       "name": "Fastpass",
       "space_type": "castle",
       "reward_special": "first_player_marker_and_intrigue",

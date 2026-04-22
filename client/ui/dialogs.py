@@ -182,7 +182,8 @@ class CardSpriteSelectionDialog:
                         _log.warning("Card image not found: %s", png_path)
                         continue
                     sprite = arcade.Sprite(str(png_path))
-                    sprite.scale = s
+                    png_scale = 0.5 if self.card_type == "quests" else 1.0
+                    sprite.scale = s * png_scale
                     sprite.position = (cx, cy)
                     self._sprite_list.append(sprite)
             self._sprite_list.draw()
