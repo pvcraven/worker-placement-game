@@ -261,7 +261,7 @@ def generate_quest_cards() -> int:
     return count
 
 
-BUILDING_CARD_HEIGHT = 150
+BUILDING_CARD_HEIGHT = 170
 
 
 _TYPE_ABBREV = {
@@ -325,57 +325,51 @@ def generate_building_cards() -> int:
         cost_str = f"Cost: {card.cost_coins} coins"
         draw_text_centered(draw, cost_str, y, FONT_BODY)
         y += 22
-        if card.visitor_reward_choice:
+        if card.accumulation_type:
+            atype = _TYPE_ABBREV.get(card.accumulation_type, card.accumulation_type)
+            if card.accumulation_type == "victory_points":
+                atype = "VP"
+            accum_line = f"Stocks {card.accumulation_per_round}{atype}/round"
+            draw_text_centered(draw, accum_line, y, FONT_LABEL, (20, 60, 20))
+            y += 18
+        elif card.visitor_reward_choice:
             vis_line = _format_choice_reward(
                 card.visitor_reward_choice,
                 card.visitor_reward,
             )
+            draw_text_centered(draw, vis_line, y, FONT_LABEL, (20, 60, 20))
+            y += 18
         else:
             vis_str = format_resources(card.visitor_reward)
-            vis_line = f"Visitor: {vis_str}"
-        draw_text_centered(
-            draw,
-            vis_line,
-            y,
-            FONT_LABEL,
-            (20, 60, 20),
-        )
-        y += 18
-        if card.visitor_reward_special:
-            special = card.visitor_reward_special.replace(
-                "_",
-                " ",
-            ).title()
-            draw_text_centered(
-                draw,
-                special,
-                y,
-                FONT_BODY_SMALL,
-                (20, 60, 20),
-            )
+            vis_parts = []
+            if vis_str != "None":
+                vis_parts.append(vis_str)
+            if card.visitor_reward_vp > 0:
+                vis_parts.append(f"+{card.visitor_reward_vp}VP")
+            vis_line = f"Visitor: {' '.join(vis_parts) if vis_parts else 'None'}"
+            draw_text_centered(draw, vis_line, y, FONT_LABEL, (20, 60, 20))
             y += 18
+        if card.visitor_reward_special:
+            special = card.visitor_reward_special.replace("_", " ").title()
+            draw_text_centered(draw, special, y, FONT_BODY_SMALL, (20, 60, 20))
+            y += 16
+        own_parts = []
         own_str = format_resources(card.owner_bonus)
-        own_line = f"Owner: {own_str}"
-        draw_text_centered(
-            draw,
-            own_line,
-            y,
-            FONT_LABEL,
-            (80, 50, 0),
-        )
+        if own_str != "None":
+            own_parts.append(own_str)
+        if card.owner_bonus_vp > 0:
+            own_parts.append(f"+{card.owner_bonus_vp}VP")
+        if card.owner_bonus_choice:
+            types_str = "/".join(
+                _TYPE_ABBREV.get(t, t) for t in card.owner_bonus_choice.allowed_types
+            )
+            own_parts.append(f"Pick 1 {types_str}")
+        own_line = f"Owner: {' '.join(own_parts) if own_parts else 'None'}"
+        draw_text_centered(draw, own_line, y, FONT_LABEL, (80, 50, 0))
         y += 18
         if card.owner_bonus_special:
-            special = card.owner_bonus_special.replace(
-                "_",
-                " ",
-            ).title()
-            draw_text_centered(
-                draw,
-                special,
-                y,
-                FONT_BODY_SMALL,
-                (80, 50, 0),
-            )
+            special = card.owner_bonus_special.replace("_", " ").title()
+            draw_text_centered(draw, special, y, FONT_BODY_SMALL, (80, 50, 0))
         img.save(OUTPUT_BUILDINGS / f"{card.id}.png")
         count += 1
     return count

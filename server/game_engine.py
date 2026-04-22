@@ -328,6 +328,14 @@ async def _end_round(server: GameServer, state) -> None:
     for building in state.board.face_up_buildings:
         building.accumulated_vp += 1
 
+    # Increment accumulated stock on constructed accumulating buildings
+    for space_id in state.board.constructed_buildings:
+        space = state.board.action_spaces.get(space_id)
+        if space and space.building_tile and space.building_tile.accumulation_type:
+            space.building_tile.accumulated_stock += (
+                space.building_tile.accumulation_per_round
+            )
+
     # Set turn order based on first-player marker
     first_pid = state.board.first_player_id
     if first_pid:
@@ -713,6 +721,25 @@ async def handle_resource_choice(
             ]
             return
 
+    # Check for pending owner bonus choice after visitor choice resolves
+    pending_owner = pending.get("pending_owner_choice")
+    if pending_owner:
+        state.pending_resource_choice = None
+        owner = state.get_player(pending_owner["owner_id"])
+        if owner:
+            from shared.card_models import ResourceChoiceReward
+
+            rcr = ResourceChoiceReward(**pending_owner["choice_dump"])
+            await _send_resource_choice_prompt(
+                server,
+                state,
+                owner,
+                rcr,
+                "owner_bonus",
+                pending_owner["space_name"],
+            )
+            return
+
     state.pending_resource_choice = None
     await _check_quest_completion(server, state)
 
@@ -782,6 +809,32 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
     reward_dict = space.reward.model_dump()
     player.resources.add(space.reward)
 
+    # Grant accumulated stock on accumulating buildings
+    if space.building_tile and space.building_tile.accumulation_type:
+        tile = space.building_tile
+        stock = tile.accumulated_stock
+        if stock > 0:
+            atype = tile.accumulation_type
+            if atype == "victory_points":
+                player.victory_points += stock
+                reward_dict["victory_points"] = stock
+            elif hasattr(player.resources, atype):
+                setattr(
+                    player.resources,
+                    atype,
+                    getattr(player.resources, atype) + stock,
+                )
+                reward_dict[atype] = reward_dict.get(atype, 0) + stock
+            tile.accumulated_stock = 0
+
+    # Grant visitor VP reward from building
+    if space.building_tile and space.building_tile.visitor_reward_vp > 0:
+        player.victory_points += space.building_tile.visitor_reward_vp
+        reward_dict["victory_points"] = (
+            reward_dict.get("victory_points", 0)
+            + space.building_tile.visitor_reward_vp
+        )
+
     # Handle Garage spots (quest selection)
     if space.space_type == "garage":
         await _handle_garage_placement(server, state, player, space, msg.space_id)
@@ -825,16 +878,37 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
             card = state.board.intrigue_deck.pop(0)
             player.intrigue_hand.append(card)
 
+    # Building visitor_reward_special: draw_contract or draw_intrigue
+    if (
+        space.space_type == "building"
+        and space.building_tile
+        and space.building_tile.visitor_reward_special
+    ):
+        special = space.building_tile.visitor_reward_special
+        if special == "draw_intrigue" and state.board.intrigue_deck:
+            card = state.board.intrigue_deck.pop(0)
+            player.intrigue_hand.append(card)
+
     # Owner bonus for buildings
     owner_bonus_info = {}
     if space.space_type == "building" and space.owner_id:
         owner = state.get_player(space.owner_id)
         if owner and owner.player_id != player.player_id and space.building_tile:
-            owner.resources.add(space.building_tile.owner_bonus)
+            tile = space.building_tile
+            owner.resources.add(tile.owner_bonus)
+            bonus_dict = tile.owner_bonus.model_dump()
+            if tile.owner_bonus_vp > 0:
+                owner.victory_points += tile.owner_bonus_vp
+                bonus_dict["victory_points"] = tile.owner_bonus_vp
+            if tile.owner_bonus_special == "draw_intrigue":
+                if state.board.intrigue_deck:
+                    card = state.board.intrigue_deck.pop(0)
+                    owner.intrigue_hand.append(card)
+                    bonus_dict["intrigue_card"] = True
             owner_bonus_info = {
                 "owner_id": owner.player_id,
                 "owner_name": owner.display_name,
-                "bonus": space.building_tile.owner_bonus.model_dump(),
+                "bonus": bonus_dict,
             }
             state.game_log.append(
                 GameLog(
@@ -848,6 +922,22 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
                     timestamp=time.time(),
                 )
             )
+
+    # Detect pending owner bonus choice
+    pending_owner_choice = None
+    if (
+        space.space_type == "building"
+        and space.owner_id
+        and space.building_tile
+        and space.building_tile.owner_bonus_choice
+    ):
+        bonus_owner = state.get_player(space.owner_id)
+        if bonus_owner and bonus_owner.player_id != player.player_id:
+            pending_owner_choice = {
+                "owner_id": bonus_owner.player_id,
+                "choice_dump": space.building_tile.owner_bonus_choice.model_dump(),
+                "space_name": space.name,
+            }
 
     state.game_log.append(
         GameLog(
@@ -900,6 +990,10 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
                 is_spend=True,
                 phase="spend",
             )
+            if pending_owner_choice:
+                state.pending_resource_choice["pending_owner_choice"] = (
+                    pending_owner_choice
+                )
             return
 
         await _send_resource_choice_prompt(
@@ -910,7 +1004,28 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
             "building",
             space.name,
         )
+        if pending_owner_choice:
+            state.pending_resource_choice["pending_owner_choice"] = (
+                pending_owner_choice
+            )
         return
+
+    # Owner bonus choice (no visitor choice to resolve first)
+    if pending_owner_choice:
+        from shared.card_models import ResourceChoiceReward
+
+        bonus_owner = state.get_player(pending_owner_choice["owner_id"])
+        if bonus_owner:
+            rcr = ResourceChoiceReward(**pending_owner_choice["choice_dump"])
+            await _send_resource_choice_prompt(
+                server,
+                state,
+                bonus_owner,
+                rcr,
+                "owner_bonus",
+                pending_owner_choice["space_name"],
+            )
+            return
 
     await _check_quest_completion(server, state)
 
@@ -1828,6 +1943,10 @@ async def handle_purchase_building(
         replacement = state.board.building_deck.pop(0)
         state.board.face_up_buildings.append(replacement)
 
+    # Set initial accumulated stock for accumulating buildings
+    if building.accumulation_type:
+        building.accumulated_stock = building.accumulation_initial
+
     # Create new action space
     space_id = f"building_{building.id}"
     state.board.action_spaces[space_id] = ActionSpace(
@@ -2095,16 +2214,63 @@ async def handle_reassign_worker(
     player.resources.add(target.reward)
     player.completed_quest_this_turn = False  # Reset for reassignment action
 
+    # Accumulating building: grant stock and reset
+    if target.building_tile and target.building_tile.accumulation_type:
+        tile = target.building_tile
+        stock = tile.accumulated_stock
+        if stock > 0:
+            atype = tile.accumulation_type
+            if atype == "victory_points":
+                player.victory_points += stock
+                reward_dict["victory_points"] = stock
+            elif hasattr(player.resources, atype):
+                setattr(
+                    player.resources,
+                    atype,
+                    getattr(player.resources, atype) + stock,
+                )
+                reward_dict[atype] = reward_dict.get(atype, 0) + stock
+            tile.accumulated_stock = 0
+
+    # Visitor VP reward
+    if target.building_tile and target.building_tile.visitor_reward_vp > 0:
+        player.victory_points += target.building_tile.visitor_reward_vp
+        reward_dict["victory_points"] = (
+            reward_dict.get("victory_points", 0)
+            + target.building_tile.visitor_reward_vp
+        )
+
+    # Building visitor_reward_special
+    if (
+        target.space_type == "building"
+        and target.building_tile
+        and target.building_tile.visitor_reward_special
+    ):
+        special = target.building_tile.visitor_reward_special
+        if special == "draw_intrigue" and state.board.intrigue_deck:
+            card = state.board.intrigue_deck.pop(0)
+            player.intrigue_hand.append(card)
+
     # Owner bonus for buildings
     owner_bonus_info = {}
     if target.space_type == "building" and target.owner_id:
         owner = state.get_player(target.owner_id)
         if owner and owner.player_id != player.player_id and target.building_tile:
-            owner.resources.add(target.building_tile.owner_bonus)
+            tile = target.building_tile
+            owner.resources.add(tile.owner_bonus)
+            bonus_dict = tile.owner_bonus.model_dump()
+            if tile.owner_bonus_vp > 0:
+                owner.victory_points += tile.owner_bonus_vp
+                bonus_dict["victory_points"] = tile.owner_bonus_vp
+            if tile.owner_bonus_special == "draw_intrigue":
+                if state.board.intrigue_deck:
+                    card = state.board.intrigue_deck.pop(0)
+                    owner.intrigue_hand.append(card)
+                    bonus_dict["intrigue_card"] = True
             owner_bonus_info = {
                 "owner_id": owner.player_id,
                 "owner_name": owner.display_name,
-                "bonus": target.building_tile.owner_bonus.model_dump(),
+                "bonus": bonus_dict,
             }
             state.game_log.append(
                 GameLog(
@@ -2118,6 +2284,22 @@ async def handle_reassign_worker(
                     timestamp=time.time(),
                 )
             )
+
+    # Detect pending owner bonus choice
+    pending_owner_choice = None
+    if (
+        target.space_type == "building"
+        and target.owner_id
+        and target.building_tile
+        and target.building_tile.owner_bonus_choice
+    ):
+        bonus_owner = state.get_player(target.owner_id)
+        if bonus_owner and bonus_owner.player_id != player.player_id:
+            pending_owner_choice = {
+                "owner_id": bonus_owner.player_id,
+                "choice_dump": target.building_tile.owner_bonus_choice.model_dump(),
+                "space_name": target.name,
+            }
 
     # Handle Castle Waterdeep special
     if target.space_type == "castle":
@@ -2205,6 +2387,10 @@ async def handle_reassign_worker(
                 is_spend=True,
                 phase="spend",
             )
+            if pending_owner_choice:
+                state.pending_resource_choice["pending_owner_choice"] = (
+                    pending_owner_choice
+                )
             return
         await _send_resource_choice_prompt(
             server,
@@ -2214,7 +2400,28 @@ async def handle_reassign_worker(
             "building",
             target.name,
         )
+        if pending_owner_choice:
+            state.pending_resource_choice["pending_owner_choice"] = (
+                pending_owner_choice
+            )
         return
+
+    # Owner bonus choice (no visitor choice to resolve first)
+    if pending_owner_choice:
+        from shared.card_models import ResourceChoiceReward
+
+        bonus_owner = state.get_player(pending_owner_choice["owner_id"])
+        if bonus_owner:
+            rcr = ResourceChoiceReward(**pending_owner_choice["choice_dump"])
+            await _send_resource_choice_prompt(
+                server,
+                state,
+                bonus_owner,
+                rcr,
+                "owner_bonus",
+                pending_owner_choice["space_name"],
+            )
+            return
 
     await _finish_reassignment(server, state)
 

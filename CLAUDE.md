@@ -1,6 +1,6 @@
 # Worker Placement Game Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-04-21
+Auto-generated from all feature plans. Last updated: 2026-04-22
 
 ## Active Technologies
 - Python 3.12+ + Arcade (client UI), websockets (networking), Pydantic (validation) (002-garage-quest-display)
@@ -17,6 +17,8 @@ Auto-generated from all feature plans. Last updated: 2026-04-21
 - N/A (client-side rendering only) (013-board-layout-scaling)
 - Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), Pydantic v2 (014-tabbed-side-panel)
 - Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), Pydantic v2 (015-final-score-screen)
+- Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), websockets, Pydantic v2 (016-building-revamp)
+- In-memory game state (server); JSON configuration files in `config/` (016-building-revamp)
 
 - Python 3.12+ + Arcade (graphics/client UI), websockets (async networking), Pydantic (data validation/serialization) (001-worker-placement-game)
 
@@ -36,9 +38,9 @@ cd src && pytest && ruff check .
 Python 3.12+: Follow standard conventions
 
 ## Recent Changes
+- 016-building-revamp: Added Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), websockets, Pydantic v2
 - 015-final-score-screen: Added Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), Pydantic v2
 - 014-tabbed-side-panel: Added Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), Pydantic v2
-- 013-board-layout-scaling: Added Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), Pydantic v2
 
 
 <!-- MANUAL ADDITIONS START -->

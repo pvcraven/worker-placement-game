@@ -89,6 +89,7 @@ class BoardRenderer:
         self._building_vp_dirty = True
         self._building_owner_texts: list[arcade.Text] = []
         self._building_owner_dirty = True
+        self._building_accum_texts: list[arcade.Text] = []
         self._turn_order: list[str] = []
         self._current_player_id: str | None = None
         self._worker_sprite_list = arcade.SpriteList()
@@ -261,9 +262,44 @@ class BoardRenderer:
                             ),
                         )
             if self._building_owner_dirty:
+                self._building_accum_texts = []
+                for i, space_id in enumerate(
+                    self.board_data.get("constructed_buildings", [])
+                ):
+                    space_data = spaces.get(space_id, {})
+                    bt = space_data.get("building_tile", {})
+                    stock = 0
+                    if bt:
+                        stock = bt.get("accumulated_stock", 0)
+                    if stock > 0:
+                        col = i % 2
+                        row = i // 2
+                        cx = x + (building_start_x + col * building_col_step) * w
+                        cy = first_bld_cy - row * bld_row_step * h
+                        tx = cx + card_w / 2 - 8 * s
+                        ty = cy + bld_h / 2 - 6 * s
+                        atype = bt.get("accumulation_type", "")
+                        label = str(stock)
+                        if atype == "victory_points":
+                            label = f"{stock} VP"
+                        self._building_accum_texts.append(
+                            arcade.Text(
+                                label,
+                                tx,
+                                ty,
+                                color=(50, 200, 50),
+                                font_size=font_sm,
+                                font_name="Tahoma",
+                                anchor_x="right",
+                                anchor_y="top",
+                                bold=True,
+                            ),
+                        )
                 self._building_owner_dirty = False
             for ot in self._building_owner_texts:
                 ot.draw()
+            for at in self._building_accum_texts:
+                at.draw()
 
         if self._workers_dirty:
             self._update_workers(x, y, w, h, s)

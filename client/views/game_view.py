@@ -310,6 +310,24 @@ class GameView(arcade.View):
                 self.tabbed_panel.add_entry("Click a quest card to select it")
             return
 
+        # Building with draw_contract: player picks a face-up quest
+        bt = space_data.get("building_tile", {})
+        if (
+            space_data.get("space_type") == "building"
+            and bt.get("visitor_reward_special") == "draw_contract"
+            and pid == my_id
+        ):
+            board = self.game_state.get("board", {})
+            quests = board.get("face_up_quests", [])
+            quest_ids = [q.get("id") for q in quests if q.get("id")]
+            self._enter_highlight_mode(
+                "quest_selection",
+                quest_ids,
+            )
+            if self.tabbed_panel:
+                self.tabbed_panel.add_entry("Click a quest card to select it")
+            return
+
         if (
             space_data.get("reward_special") == "purchase_building"
             and pid == my_id
@@ -1168,6 +1186,24 @@ class GameView(arcade.View):
                 "face_up_quests",
                 [],
             )
+            quest_ids = [q.get("id") for q in quests if q.get("id")]
+            self._enter_highlight_mode(
+                "quest_selection",
+                quest_ids,
+            )
+            if self.tabbed_panel:
+                self.tabbed_panel.add_entry("Click a quest card to select it")
+            return
+
+        # Building with draw_contract during reassignment
+        bt = space_data.get("building_tile", {})
+        if (
+            space_data.get("space_type") == "building"
+            and bt.get("visitor_reward_special") == "draw_contract"
+            and pid == my_id
+        ):
+            board_data = self.game_state.get("board", {})
+            quests = board_data.get("face_up_quests", [])
             quest_ids = [q.get("id") for q in quests if q.get("id")]
             self._enter_highlight_mode(
                 "quest_selection",

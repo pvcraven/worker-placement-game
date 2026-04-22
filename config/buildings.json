@@ -2,665 +2,315 @@
   "buildings": [
     {
       "id": "building_001",
-      "name": "Abbey Road Studios",
-      "description": "The iconic London studio where The Beatles recorded most of their albums, cementing it as the most famous recording studio in the world.",
-      "cost_coins": 6,
-      "visitor_reward": {
-        "guitarists": 1,
-        "bass_players": 1,
-        "drummers": 1,
-        "singers": 0,
-        "coins": 0
-      },
+      "name": "The Troubadour",
+      "description": "Guitarists gather at this legendary West Hollywood club, growing in number until a label scout arrives to recruit them all.",
+      "cost_coins": 4,
+      "visitor_reward": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
       "visitor_reward_special": null,
-      "owner_bonus": {
-        "guitarists": 1,
-        "bass_players": 0,
-        "drummers": 0,
-        "singers": 0,
-        "coins": 0
-      },
-      "owner_bonus_special": null
+      "visitor_reward_choice": null,
+      "owner_bonus": {"guitarists": 1, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
+      "owner_bonus_vp": 0,
+      "owner_bonus_choice": null,
+      "accumulation_type": "guitarists",
+      "accumulation_per_round": 2,
+      "accumulation_initial": 2
     },
     {
       "id": "building_002",
-      "name": "The Troubadour",
-      "description": "The legendary West Hollywood club that launched the careers of Elton John, James Taylor, and Joni Mitchell during the 1960s and 70s.",
+      "name": "The Cavern Club",
+      "description": "Bass players congregate in this underground Liverpool venue, their ranks swelling until someone books them for a session.",
       "cost_coins": 4,
-      "visitor_reward": {
-        "guitarists": 1,
-        "bass_players": 0,
-        "drummers": 0,
-        "singers": 0,
-        "coins": 1
-      },
+      "visitor_reward": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
       "visitor_reward_special": null,
-      "owner_bonus": {
-        "guitarists": 1,
-        "bass_players": 0,
-        "drummers": 0,
-        "singers": 0,
-        "coins": 0
-      },
-      "owner_bonus_special": null
+      "visitor_reward_choice": null,
+      "owner_bonus": {"guitarists": 0, "bass_players": 1, "drummers": 0, "singers": 0, "coins": 0},
+      "owner_bonus_vp": 0,
+      "owner_bonus_choice": null,
+      "accumulation_type": "bass_players",
+      "accumulation_per_round": 2,
+      "accumulation_initial": 2
     },
     {
       "id": "building_003",
-      "name": "Electric Lady Studios",
-      "description": "Jimi Hendrix's custom-built Greenwich Village studio, designed to feel like an underwater paradise and still producing hits today.",
-      "cost_coins": 7,
-      "visitor_reward": {
-        "guitarists": 2,
-        "bass_players": 0,
-        "drummers": 1,
-        "singers": 0,
-        "coins": 0
-      },
+      "name": "Hansa Studios",
+      "description": "Singers drift into this Berlin studio by the Wall, waiting for their moment in the spotlight while the owner pulls strings.",
+      "cost_coins": 4,
+      "visitor_reward": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
       "visitor_reward_special": null,
-      "owner_bonus": {
-        "guitarists": 0,
-        "bass_players": 0,
-        "drummers": 1,
-        "singers": 0,
-        "coins": 0
-      },
-      "owner_bonus_special": null
+      "visitor_reward_choice": null,
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
+      "owner_bonus_special": "draw_intrigue",
+      "owner_bonus_vp": 0,
+      "owner_bonus_choice": null,
+      "accumulation_type": "singers",
+      "accumulation_per_round": 1,
+      "accumulation_initial": 1
     },
     {
       "id": "building_004",
-      "name": "FAME Studios",
-      "description": "The Muscle Shoals, Alabama studio where Aretha Franklin, Etta James, and Wilson Pickett recorded some of the greatest soul music ever made.",
-      "cost_coins": 5,
-      "visitor_reward": {
-        "guitarists": 0,
-        "bass_players": 1,
-        "drummers": 0,
-        "singers": 1,
-        "coins": 0
-      },
-      "visitor_reward_special": "draw_contract",
-      "owner_bonus": {
-        "guitarists": 0,
-        "bass_players": 0,
-        "drummers": 0,
-        "singers": 1,
-        "coins": 0
-      },
-      "owner_bonus_special": null
+      "name": "J&M Recording Studio",
+      "description": "Drummers keep the beat alive at Cosimo Matassa's tiny New Orleans studio, building momentum round after round.",
+      "cost_coins": 4,
+      "visitor_reward": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
+      "visitor_reward_special": null,
+      "visitor_reward_choice": null,
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
+      "owner_bonus_vp": 2,
+      "owner_bonus_choice": null,
+      "accumulation_type": "drummers",
+      "accumulation_per_round": 1,
+      "accumulation_initial": 1
     },
     {
       "id": "building_005",
-      "name": "Sun Studio",
-      "description": "The Memphis birthplace of rock and roll where Elvis Presley, Johnny Cash, and Jerry Lee Lewis made their first recordings.",
-      "cost_coins": 5,
-      "visitor_reward": {
-        "guitarists": 1,
-        "bass_players": 0,
-        "drummers": 0,
-        "singers": 1,
-        "coins": 1
-      },
+      "name": "The Apollo Theater",
+      "description": "Harlem's famous stage draws ticket revenue that accumulates until a savvy promoter collects the take.",
+      "cost_coins": 4,
+      "visitor_reward": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
       "visitor_reward_special": null,
-      "owner_bonus": {
-        "guitarists": 1,
-        "bass_players": 0,
-        "drummers": 0,
-        "singers": 0,
-        "coins": 0
-      },
-      "owner_bonus_special": null
+      "visitor_reward_choice": null,
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 2},
+      "owner_bonus_vp": 0,
+      "owner_bonus_choice": null,
+      "accumulation_type": "coins",
+      "accumulation_per_round": 4,
+      "accumulation_initial": 4
     },
     {
       "id": "building_006",
-      "name": "CBGB",
-      "description": "The grimy Bowery club that gave birth to American punk rock, hosting early performances by The Ramones, Blondie, and Talking Heads.",
-      "cost_coins": 3,
-      "visitor_reward": {
-        "guitarists": 1,
-        "bass_players": 0,
-        "drummers": 0,
-        "singers": 0,
-        "coins": 2
-      },
-      "visitor_reward_special": null,
-      "owner_bonus": {
-        "guitarists": 1,
-        "bass_players": 0,
-        "drummers": 0,
-        "singers": 0,
-        "coins": 0
-      },
-      "owner_bonus_special": null
+      "name": "Red Rocks Amphitheatre",
+      "description": "The dramatic natural amphitheatre builds prestige over time, rewarding patient visitors with fame and new opportunities.",
+      "cost_coins": 4,
+      "visitor_reward": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
+      "visitor_reward_special": "draw_contract",
+      "visitor_reward_choice": null,
+      "visitor_reward_vp": 0,
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
+      "owner_bonus_vp": 2,
+      "owner_bonus_choice": null,
+      "accumulation_type": "victory_points",
+      "accumulation_per_round": 3,
+      "accumulation_initial": 3
     },
     {
       "id": "building_007",
-      "name": "The Cavern Club",
-      "description": "The underground Liverpool venue where The Beatles played nearly 300 shows before achieving worldwide fame.",
-      "cost_coins": 4,
-      "visitor_reward": {
-        "guitarists": 1,
-        "bass_players": 1,
-        "drummers": 0,
-        "singers": 0,
-        "coins": 0
-      },
-      "visitor_reward_special": null,
-      "owner_bonus": {
-        "guitarists": 0,
-        "bass_players": 1,
-        "drummers": 0,
-        "singers": 0,
-        "coins": 0
-      },
-      "owner_bonus_special": null
+      "name": "FAME Studios",
+      "description": "The Muscle Shoals studio where a singer and a promising new contract are always waiting to be discovered.",
+      "cost_coins": 3,
+      "visitor_reward": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 1, "coins": 0},
+      "visitor_reward_special": "draw_contract",
+      "visitor_reward_choice": null,
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 2},
+      "owner_bonus_vp": 0,
+      "owner_bonus_choice": null
     },
     {
       "id": "building_008",
-      "name": "Motown Hitsville U.S.A.",
-      "description": "Berry Gordy's converted Detroit house where The Supremes, Stevie Wonder, and Marvin Gaye defined the sound of a generation.",
-      "cost_coins": 6,
-      "visitor_reward": {
-        "guitarists": 0,
-        "bass_players": 3,
-        "drummers": 0,
-        "singers": 0,
-        "coins": 0
-      },
-      "visitor_reward_special": null,
-      "owner_bonus": {
-        "guitarists": 0,
-        "bass_players": 1,
-        "drummers": 0,
-        "singers": 0,
-        "coins": 0
-      },
-      "owner_bonus_special": null
+      "name": "Chess Records Studio",
+      "description": "The Chicago studio where a drummer and secret industry intel are always available to those who visit.",
+      "cost_coins": 3,
+      "visitor_reward": {"guitarists": 0, "bass_players": 0, "drummers": 1, "singers": 0, "coins": 0},
+      "visitor_reward_special": "draw_intrigue",
+      "visitor_reward_choice": null,
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
+      "owner_bonus_special": "draw_intrigue",
+      "owner_bonus_vp": 0,
+      "owner_bonus_choice": null
     },
     {
       "id": "building_009",
-      "name": "Chess Records Studio",
-      "description": "The Chicago studio that shaped the sound of electric blues and early rock through artists like Muddy Waters, Chuck Berry, and Howlin' Wolf.",
-      "cost_coins": 4,
-      "visitor_reward": {
-        "guitarists": 1,
-        "bass_players": 0,
-        "drummers": 0,
-        "singers": 0,
-        "coins": 1
-      },
-      "visitor_reward_special": "draw_intrigue",
-      "owner_bonus": {
-        "guitarists": 1,
-        "bass_players": 0,
-        "drummers": 0,
-        "singers": 0,
-        "coins": 0
-      },
-      "owner_bonus_special": null
+      "name": "Motown Hitsville U.S.A.",
+      "description": "Berry Gordy's Detroit house delivers a reliable pair of bass players and some cash to anyone who walks through the door.",
+      "cost_coins": 3,
+      "visitor_reward": {"guitarists": 0, "bass_players": 2, "drummers": 0, "singers": 0, "coins": 2},
+      "visitor_reward_special": null,
+      "visitor_reward_choice": null,
+      "owner_bonus": {"guitarists": 0, "bass_players": 1, "drummers": 0, "singers": 0, "coins": 0},
+      "owner_bonus_vp": 0,
+      "owner_bonus_choice": null
     },
     {
       "id": "building_010",
-      "name": "The Fillmore",
-      "description": "Bill Graham's San Francisco concert hall that became the epicenter of the psychedelic rock movement in the 1960s.",
-      "cost_coins": 5,
-      "visitor_reward": {
-        "guitarists": 1,
-        "bass_players": 0,
-        "drummers": 1,
-        "singers": 0,
-        "coins": 0
-      },
+      "name": "Criteria Studios",
+      "description": "The Miami studio offers a guitarist, a bassist, and some cash, while the owner picks their preferred string player.",
+      "cost_coins": 4,
+      "visitor_reward": {"guitarists": 1, "bass_players": 1, "drummers": 0, "singers": 0, "coins": 2},
       "visitor_reward_special": null,
-      "owner_bonus": {
-        "guitarists": 0,
-        "bass_players": 0,
-        "drummers": 1,
-        "singers": 0,
-        "coins": 0
-      },
-      "owner_bonus_special": null
+      "visitor_reward_choice": null,
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
+      "owner_bonus_vp": 0,
+      "owner_bonus_choice": {
+        "choice_type": "pick",
+        "allowed_types": ["guitarists", "bass_players"],
+        "pick_count": 1
+      }
     },
     {
       "id": "building_011",
-      "name": "Hansa Studios",
-      "description": "The Berlin studio by the Wall where David Bowie recorded his iconic Berlin trilogy and U2 crafted Achtung Baby.",
-      "cost_coins": 6,
-      "visitor_reward": {
-        "guitarists": 1,
-        "bass_players": 0,
-        "drummers": 0,
-        "singers": 1,
-        "coins": 2
-      },
+      "name": "The Bluebird Cafe",
+      "description": "Nashville's intimate listening room where you pick your specialty and earn some cash, building the owner's reputation.",
+      "cost_coins": 3,
+      "visitor_reward": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 2},
       "visitor_reward_special": null,
-      "owner_bonus": {
-        "guitarists": 0,
-        "bass_players": 0,
-        "drummers": 0,
-        "singers": 1,
-        "coins": 0
+      "visitor_reward_choice": {
+        "choice_type": "pick",
+        "allowed_types": ["guitarists", "bass_players", "drummers", "singers"],
+        "pick_count": 1
       },
-      "owner_bonus_special": null
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
+      "owner_bonus_vp": 2,
+      "owner_bonus_choice": null
     },
     {
       "id": "building_012",
-      "name": "The Apollo Theater",
-      "description": "Harlem's world-famous stage whose Amateur Night launched James Brown, Ella Fitzgerald, and countless other Black artists to stardom.",
-      "cost_coins": 7,
-      "visitor_reward": {
-        "guitarists": 0,
-        "bass_players": 0,
-        "drummers": 0,
-        "singers": 0,
-        "coins": 3
-      },
+      "name": "Sun Studio",
+      "description": "The Memphis birthplace of rock where a guitarist arrives with a flexible friend, and the owner always gets a guitarist.",
+      "cost_coins": 3,
+      "visitor_reward": {"guitarists": 1, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
       "visitor_reward_special": null,
-      "owner_bonus": {
-        "guitarists": 0,
-        "bass_players": 0,
-        "drummers": 0,
-        "singers": 0,
-        "coins": 2
+      "visitor_reward_choice": {
+        "choice_type": "pick",
+        "allowed_types": ["guitarists", "bass_players", "drummers", "singers"],
+        "pick_count": 1
       },
-      "owner_bonus_special": null
+      "owner_bonus": {"guitarists": 1, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
+      "owner_bonus_vp": 0,
+      "owner_bonus_choice": null
     },
     {
       "id": "building_013",
-      "name": "Sunset Sound",
-      "description": "The Hollywood studio where The Doors, Led Zeppelin, and Van Halen each recorded career-defining albums.",
-      "cost_coins": 5,
-      "visitor_reward": {
-        "guitarists": 0,
-        "bass_players": 1,
-        "drummers": 1,
-        "singers": 0,
-        "coins": 0
-      },
+      "name": "The Fillmore",
+      "description": "Bill Graham's San Francisco hall runs vocal workshops — spend a little to train singers or drummers.",
+      "cost_coins": 4,
+      "visitor_reward": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
       "visitor_reward_special": null,
-      "owner_bonus": {
-        "guitarists": 0,
-        "bass_players": 0,
-        "drummers": 1,
-        "singers": 0,
-        "coins": 0
+      "visitor_reward_choice": {
+        "choice_type": "combo",
+        "allowed_types": ["singers", "drummers"],
+        "total": 2,
+        "cost": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 2}
       },
-      "owner_bonus_special": null
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 2},
+      "owner_bonus_vp": 0,
+      "owner_bonus_choice": null
     },
     {
       "id": "building_014",
       "name": "The Ryman Auditorium",
-      "description": "Nashville's Mother Church of Country Music and original home of the Grand Ole Opry, revered for its perfect acoustics.",
-      "cost_coins": 6,
-      "visitor_reward": {
-        "guitarists": 0,
-        "bass_players": 1,
-        "drummers": 0,
-        "singers": 1,
-        "coins": 1
-      },
-      "visitor_reward_special": null,
-      "owner_bonus": {
-        "guitarists": 0,
-        "bass_players": 1,
-        "drummers": 0,
-        "singers": 0,
-        "coins": 0
-      },
-      "owner_bonus_special": null
-    },
-    {
-      "id": "building_015",
-      "name": "Compass Point Studios",
-      "description": "The legendary Nassau, Bahamas studio founded by Chris Blackwell where AC/DC, Iron Maiden, and Grace Jones recorded landmark albums.",
-      "cost_coins": 8,
-      "visitor_reward": {
-        "guitarists": 1,
-        "bass_players": 1,
-        "drummers": 1,
-        "singers": 1,
-        "coins": 0
-      },
-      "visitor_reward_special": null,
-      "owner_bonus": {
-        "guitarists": 1,
-        "bass_players": 0,
-        "drummers": 0,
-        "singers": 0,
-        "coins": 0
-      },
-      "owner_bonus_special": null
-    },
-    {
-      "id": "building_016",
-      "name": "The 100 Club",
-      "description": "The Oxford Street venue that hosted the first international punk festival in 1976, featuring the Sex Pistols and The Clash.",
-      "cost_coins": 3,
-      "visitor_reward": {
-        "guitarists": 0,
-        "bass_players": 1,
-        "drummers": 0,
-        "singers": 0,
-        "coins": 2
-      },
-      "visitor_reward_special": null,
-      "owner_bonus": {
-        "guitarists": 0,
-        "bass_players": 1,
-        "drummers": 0,
-        "singers": 0,
-        "coins": 0
-      },
-      "owner_bonus_special": null
-    },
-    {
-      "id": "building_017",
-      "name": "RCA Studio B",
-      "description": "Nashville's oldest surviving recording studio where Elvis Presley recorded over 200 songs and the Nashville Sound was born.",
+      "description": "Nashville's Mother Church invests heavily in vocal talent — pay more, get more singers or drummers.",
       "cost_coins": 4,
-      "visitor_reward": {
-        "guitarists": 0,
-        "bass_players": 0,
-        "drummers": 0,
-        "singers": 1,
-        "coins": 1
-      },
-      "visitor_reward_special": "draw_contract",
-      "owner_bonus": {
-        "guitarists": 0,
-        "bass_players": 0,
-        "drummers": 0,
-        "singers": 1,
-        "coins": 0
-      },
-      "owner_bonus_special": null
-    },
-    {
-      "id": "building_018",
-      "name": "The Whisky a Go Go",
-      "description": "The Sunset Strip club that launched The Doors as its house band and became a proving ground for hard rock and metal acts.",
-      "cost_coins": 3,
-      "visitor_reward": {
-        "guitarists": 0,
-        "bass_players": 1,
-        "drummers": 0,
-        "singers": 0,
-        "coins": 1
-      },
-      "visitor_reward_special": null,
-      "owner_bonus": {
-        "guitarists": 0,
-        "bass_players": 1,
-        "drummers": 0,
-        "singers": 0,
-        "coins": 0
-      },
-      "owner_bonus_special": null
-    },
-    {
-      "id": "building_019",
-      "name": "Trident Studios",
-      "description": "The Soho studio where Bowie recorded Ziggy Stardust, Queen laid down Bohemian Rhapsody, and the first Bechstein piano tracks were cut.",
-      "cost_coins": 7,
-      "visitor_reward": {
-        "guitarists": 0,
-        "bass_players": 1,
-        "drummers": 1,
-        "singers": 1,
-        "coins": 0
-      },
-      "visitor_reward_special": "draw_intrigue",
-      "owner_bonus": {
-        "guitarists": 0,
-        "bass_players": 1,
-        "drummers": 0,
-        "singers": 0,
-        "coins": 0
-      },
-      "owner_bonus_special": null
-    },
-    {
-      "id": "building_020",
-      "name": "Red Rocks Amphitheatre",
-      "description": "The natural sandstone amphitheatre near Denver whose unmatched acoustics and dramatic setting have hosted legendary live recordings.",
-      "cost_coins": 8,
-      "visitor_reward": {
-        "guitarists": 1,
-        "bass_players": 1,
-        "drummers": 1,
-        "singers": 0,
-        "coins": 1
-      },
-      "visitor_reward_special": null,
-      "owner_bonus": {
-        "guitarists": 1,
-        "bass_players": 0,
-        "drummers": 0,
-        "singers": 0,
-        "coins": 0
-      },
-      "owner_bonus_special": null
-    },
-    {
-      "id": "building_021",
-      "name": "J&M Recording Studio",
-      "description": "Cosimo Matassa's tiny New Orleans studio where Little Richard, Fats Domino, and Ray Charles forged the blueprint for rock and R&B.",
-      "cost_coins": 3,
-      "visitor_reward": {
-        "guitarists": 0,
-        "bass_players": 0,
-        "drummers": 1,
-        "singers": 0,
-        "coins": 2
-      },
-      "visitor_reward_special": null,
-      "owner_bonus": {
-        "guitarists": 0,
-        "bass_players": 0,
-        "drummers": 1,
-        "singers": 0,
-        "coins": 0
-      },
-      "owner_bonus_special": null
-    },
-    {
-      "id": "building_022",
-      "name": "The Bluebird Cafe",
-      "description": "The intimate Nashville listening room where Garth Brooks was discovered and songwriters share works-in-progress with rapt audiences.",
-      "cost_coins": 3,
-      "visitor_reward": {
-        "guitarists": 0,
-        "bass_players": 0,
-        "drummers": 0,
-        "singers": 1,
-        "coins": 2
-      },
-      "visitor_reward_special": "draw_contract",
-      "owner_bonus": {
-        "guitarists": 0,
-        "bass_players": 0,
-        "drummers": 0,
-        "singers": 1,
-        "coins": 0
-      },
-      "owner_bonus_special": null
-    },
-    {
-      "id": "building_023",
-      "name": "Criteria Studios",
-      "description": "The Miami studio where Eric Clapton recorded Layla, the Bee Gees cut Saturday Night Fever, and Fleetwood Mac tracked Rumours sessions.",
-      "cost_coins": 6,
-      "visitor_reward": {
-        "guitarists": 1,
-        "bass_players": 1,
-        "drummers": 0,
-        "singers": 0,
-        "coins": 2
-      },
-      "visitor_reward_special": null,
-      "owner_bonus": {
-        "guitarists": 0,
-        "bass_players": 1,
-        "drummers": 0,
-        "singers": 0,
-        "coins": 0
-      },
-      "owner_bonus_special": null
-    },
-    {
-      "id": "building_024",
-      "name": "First Avenue",
-      "description": "The legendary Minneapolis nightclub where Prince filmed Purple Rain and which remains a vital launching pad for indie artists.",
-      "cost_coins": 3,
-      "visitor_reward": {
-        "guitarists": 0,
-        "bass_players": 0,
-        "drummers": 0,
-        "singers": 0,
-        "coins": 4
-      },
-      "visitor_reward_special": "draw_intrigue",
-      "owner_bonus": {
-        "guitarists": 0,
-        "bass_players": 0,
-        "drummers": 0,
-        "singers": 0,
-        "coins": 2
-      },
-      "owner_bonus_special": null
-    },
-    {
-      "id": "building_025",
-      "name": "Musician's Union Hall",
-      "description": "A hub where session musicians gather, ready to join any project that needs them.",
-      "cost_coins": 4,
-      "visitor_reward": {
-        "guitarists": 0,
-        "bass_players": 0,
-        "drummers": 0,
-        "singers": 0,
-        "coins": 2
-      },
-      "visitor_reward_special": null,
-      "visitor_reward_choice": {
-        "choice_type": "pick",
-        "allowed_types": [
-          "guitarists",
-          "bass_players",
-          "drummers",
-          "singers"
-        ],
-        "pick_count": 1
-      },
-      "owner_bonus": {
-        "guitarists": 0,
-        "bass_players": 0,
-        "drummers": 0,
-        "singers": 0,
-        "coins": 2
-      },
-      "owner_bonus_special": null
-    },
-    {
-      "id": "building_026",
-      "name": "Open Audition Stage",
-      "description": "An open call stage where any talented musician can walk in and audition on the spot.",
-      "cost_coins": 5,
-      "visitor_reward": {
-        "guitarists": 0,
-        "bass_players": 0,
-        "drummers": 0,
-        "singers": 0,
-        "coins": 0
-      },
-      "visitor_reward_special": null,
-      "visitor_reward_choice": {
-        "choice_type": "pick",
-        "allowed_types": [
-          "guitarists",
-          "bass_players",
-          "drummers",
-          "singers"
-        ],
-        "pick_count": 2
-      },
-      "owner_bonus": {
-        "guitarists": 0,
-        "bass_players": 0,
-        "drummers": 0,
-        "singers": 0,
-        "coins": 2
-      },
-      "owner_bonus_special": null
-    },
-    {
-      "id": "building_027",
-      "name": "Guitar & Bass Workshop",
-      "description": "An intensive workshop that trains string players for your label's roster.",
-      "cost_coins": 6,
-      "visitor_reward": {
-        "guitarists": 0,
-        "bass_players": 0,
-        "drummers": 0,
-        "singers": 0,
-        "coins": 0
-      },
+      "visitor_reward": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
       "visitor_reward_special": null,
       "visitor_reward_choice": {
         "choice_type": "combo",
-        "allowed_types": [
-          "guitarists",
-          "bass_players"
-        ],
+        "allowed_types": ["singers", "drummers"],
         "total": 4,
-        "cost": {
-          "guitarists": 0,
-          "bass_players": 0,
-          "drummers": 0,
-          "singers": 0,
-          "coins": 2
-        }
+        "cost": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 4}
       },
-      "owner_bonus": {
-        "guitarists": 0,
-        "bass_players": 0,
-        "drummers": 0,
-        "singers": 0,
-        "coins": 2
-      },
-      "owner_bonus_special": null
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 2},
+      "owner_bonus_vp": 0,
+      "owner_bonus_choice": null
     },
     {
-      "id": "building_028",
+      "id": "building_015",
+      "name": "Abbey Road Studios",
+      "description": "The iconic London studio delivers guitarists and a singer, while the owner picks their favorite talent.",
+      "cost_coins": 8,
+      "visitor_reward": {"guitarists": 2, "bass_players": 0, "drummers": 0, "singers": 1, "coins": 0},
+      "visitor_reward_special": null,
+      "visitor_reward_choice": null,
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
+      "owner_bonus_vp": 0,
+      "owner_bonus_choice": {
+        "choice_type": "pick",
+        "allowed_types": ["guitarists", "singers"],
+        "pick_count": 1
+      }
+    },
+    {
+      "id": "building_016",
+      "name": "Trident Studios",
+      "description": "The Soho studio delivers bass players and a drummer, and the owner picks their preferred rhythm section member.",
+      "cost_coins": 8,
+      "visitor_reward": {"guitarists": 0, "bass_players": 2, "drummers": 1, "singers": 0, "coins": 0},
+      "visitor_reward_special": null,
+      "visitor_reward_choice": null,
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
+      "owner_bonus_vp": 0,
+      "owner_bonus_choice": {
+        "choice_type": "pick",
+        "allowed_types": ["bass_players", "drummers"],
+        "pick_count": 1
+      }
+    },
+    {
+      "id": "building_017",
+      "name": "Compass Point Studios",
+      "description": "The Nassau studio delivers bass players and a singer, with the owner choosing their preferred artist.",
+      "cost_coins": 8,
+      "visitor_reward": {"guitarists": 0, "bass_players": 2, "drummers": 0, "singers": 1, "coins": 0},
+      "visitor_reward_special": null,
+      "visitor_reward_choice": null,
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
+      "owner_bonus_vp": 0,
+      "owner_bonus_choice": {
+        "choice_type": "pick",
+        "allowed_types": ["bass_players", "singers"],
+        "pick_count": 1
+      }
+    },
+    {
+      "id": "building_018",
+      "name": "Electric Lady Studios",
+      "description": "Hendrix's Greenwich Village studio delivers guitarists and a drummer, with the owner picking their favorite.",
+      "cost_coins": 8,
+      "visitor_reward": {"guitarists": 2, "bass_players": 0, "drummers": 1, "singers": 0, "coins": 0},
+      "visitor_reward_special": null,
+      "visitor_reward_choice": null,
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
+      "owner_bonus_vp": 0,
+      "owner_bonus_choice": {
+        "choice_type": "pick",
+        "allowed_types": ["guitarists", "drummers"],
+        "pick_count": 1
+      }
+    },
+    {
+      "id": "building_019",
       "name": "Talent Agency",
-      "description": "A well-connected talent agency that can swap musicians on your roster for better fits.",
-      "cost_coins": 7,
-      "visitor_reward": {
-        "guitarists": 0,
-        "bass_players": 0,
-        "drummers": 0,
-        "singers": 0,
-        "coins": 0
-      },
+      "description": "A well-connected agency that can swap musicians on your roster for better fits.",
+      "cost_coins": 4,
+      "visitor_reward": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
       "visitor_reward_special": null,
       "visitor_reward_choice": {
         "choice_type": "exchange",
-        "allowed_types": [
-          "guitarists",
-          "bass_players",
-          "drummers",
-          "singers"
-        ],
+        "allowed_types": ["guitarists", "bass_players", "drummers", "singers"],
         "pick_count": 2,
         "gain_count": 3
       },
-      "owner_bonus": {
-        "guitarists": 0,
-        "bass_players": 0,
-        "drummers": 0,
-        "singers": 0,
-        "coins": 2
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 2},
+      "owner_bonus_vp": 0,
+      "owner_bonus_choice": null
+    },
+    {
+      "id": "building_020",
+      "name": "Musician's Union Hall",
+      "description": "A hub where session musicians gather — pick any two for your project while the owner takes their pick.",
+      "cost_coins": 4,
+      "visitor_reward": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
+      "visitor_reward_special": null,
+      "visitor_reward_choice": {
+        "choice_type": "pick",
+        "allowed_types": ["guitarists", "bass_players", "drummers", "singers"],
+        "pick_count": 2
       },
-      "owner_bonus_special": null
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
+      "owner_bonus_vp": 0,
+      "owner_bonus_choice": {
+        "choice_type": "pick",
+        "allowed_types": ["guitarists", "bass_players", "drummers", "singers"],
+        "pick_count": 1
+      }
     }
   ]
 }
