@@ -27,7 +27,7 @@ _SPACE_LAYOUT: dict[str, tuple[float, float]] = {
     "guitar_center": (0.08, 0.65),
     "talent_show": (0.08, 0.52),
     "rhythm_pit": (0.08, 0.39),
-    "castle_waterdeep": (0.08, 0.26),
+    "fastpass": (0.08, 0.26),
     "the_garage_1": (0.57, 0.92),
     "the_garage_2": (0.71, 0.92),
     "the_garage_3": (0.85, 0.92),
@@ -360,7 +360,7 @@ class BoardRenderer:
             space_cards,
             "spaces",
             space_positions,
-            scale=s,
+            scale=s * 0.5,
         )
 
         # Backstage slots — build sprite list
@@ -389,7 +389,7 @@ class BoardRenderer:
             backstage_cards,
             "spaces",
             backstage_positions,
-            scale=s,
+            scale=s * 0.5,
         )
 
         # Realtor — centered above face-up building cards
@@ -410,7 +410,7 @@ class BoardRenderer:
             [{"id": "realtor"}],
             "spaces",
             [(realtor_cx, realtor_cy)],
-            scale=s,
+            scale=s * 0.5,
         )
 
         # Constructed buildings — two-column grid
@@ -459,7 +459,7 @@ class BoardRenderer:
                 face_up_quests,
                 "quests",
                 self._quest_positions,
-                scale=s,
+                scale=s * 0.5,
             )
             for i, quest in enumerate(face_up_quests):
                 qid = quest.get("id", f"quest_{i}")

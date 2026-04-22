@@ -8,7 +8,10 @@
       "Bash(bash .specify/scripts/bash/setup-plan.sh --json)",
       "Bash(bash .specify/scripts/bash/update-agent-context.sh claude)",
       "Bash(python card-generator/generate_cards.py)",
-      "Bash(ruff check *)"
+      "Bash(ruff check *)",
+      "Bash(python card-generator/generate_cards.py --quests-only)",
+      "Bash(python -m pytest tests/ -q)",
+      "Bash(python card-generator/generate_cards.py --spaces-only)"
     ]
   }
 }
