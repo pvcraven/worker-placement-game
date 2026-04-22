@@ -47,6 +47,11 @@ STARTING_INTRIGUE_CARDS = 2
 STARTING_COINS_BASE = 4
 STARTING_COINS_INCREMENT = 2
 
+CARD_WIDTH = 190
+CARD_HEIGHT = 230
+BUILDING_CARD_HEIGHT = 170
+SPACE_CARD_HEIGHT = 100
+
 # Short labels for resource types, used in card rendering and UI
 RESOURCE_SYMBOLS: list[tuple[str, str]] = [
     ("guitarists", "G"),

@@ -197,15 +197,15 @@
     {
       "id": "building_014",
       "name": "The Ryman Auditorium",
-      "description": "Nashville's Mother Church invests heavily in vocal talent — pay more, get more singers or drummers.",
+      "description": "Nashville's Mother Church lets you assemble a string section — spend a little to recruit bassists or guitarists.",
       "cost_coins": 4,
       "visitor_reward": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
       "visitor_reward_special": null,
       "visitor_reward_choice": {
         "choice_type": "combo",
-        "allowed_types": ["singers", "drummers"],
+        "allowed_types": ["bass_players", "guitarists"],
         "total": 4,
-        "cost": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 4}
+        "cost": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 2}
       },
       "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 2},
       "owner_bonus_vp": 0,

@@ -276,6 +276,9 @@ class GameView(arcade.View):
         spaces = board.get("action_spaces", {})
         if space_id in spaces:
             spaces[space_id]["occupied_by"] = pid
+            bt = spaces[space_id].get("building_tile")
+            if bt and bt.get("accumulation_type"):
+                bt["accumulated_stock"] = 0
 
         self._refresh_board(board)
 
@@ -874,7 +877,10 @@ class GameView(arcade.View):
         my_id = getattr(self.window, "player_id", None)
         if pid != my_id:
             name = self._player_name(pid)
-            self._status_text = f"{name} is choosing resources..."
+            title = msg.get("title", "choosing resources")
+            self._status_text = f"Waiting on {name}: {title}"
+            if self.tabbed_panel:
+                self.tabbed_panel.add_entry(f"Waiting on {name}: {title}")
             return
 
         prompt_id = msg.get("prompt_id", "")
@@ -1068,7 +1074,6 @@ class GameView(arcade.View):
         # Add building to local action_spaces so it renders
         spaces = board.get("action_spaces", {})
         if new_space_id and new_space_id not in spaces:
-            building_id = msg.get("building_id", "")
             spaces[new_space_id] = {
                 "name": bname,
                 "space_type": "building",
@@ -1076,7 +1081,7 @@ class GameView(arcade.View):
                 "reward": msg.get("visitor_reward", {}),
                 "owner_bonus": msg.get("owner_bonus", {}),
                 "occupied_by": None,
-                "building_tile": {"id": building_id},
+                "building_tile": msg.get("building_tile", {"id": msg.get("building_id", "")}),
             }
 
         self._refresh_board(board)
@@ -1239,6 +1244,13 @@ class GameView(arcade.View):
         for slot in board.get("backstage_slots", []):
             slot["occupied_by"] = None
             slot["intrigue_card_played"] = None
+
+        accum_stocks = msg.get("accumulated_stocks", {})
+        spaces = board.get("action_spaces", {})
+        for space_id, stock in accum_stocks.items():
+            bt = spaces.get(space_id, {}).get("building_tile")
+            if bt:
+                bt["accumulated_stock"] = stock
 
         self._refresh_board(board)
 
@@ -2359,6 +2371,9 @@ class GameView(arcade.View):
                 for key in keys:
                     amt = reward.get(key, 0)
                     res[key] = res.get(key, 0) + amt
+                vp = reward.get("victory_points", 0)
+                if vp:
+                    p["victory_points"] = p.get("victory_points", 0) + vp
                 my_id = getattr(self.window, "player_id", None)
                 if player_id == my_id and self.resource_bar:
                     self.resource_bar.update_resources(res)

@@ -18,10 +18,13 @@ from server.models.config import (  # noqa: E402
     ProducersConfig,
 )
 from shared.card_models import ResourceCost  # noqa: E402
-from shared.constants import RESOURCE_SYMBOLS  # noqa: E402
-
-CARD_WIDTH = 190
-CARD_HEIGHT = 230
+from shared.constants import (  # noqa: E402
+    BUILDING_CARD_HEIGHT,
+    CARD_HEIGHT,
+    CARD_WIDTH,
+    RESOURCE_SYMBOLS,
+    SPACE_CARD_HEIGHT,
+)
 PARCHMENT_COLOR = (235, 220, 185)
 TEXT_COLOR = (60, 40, 20)
 CORNER_RADIUS = 12
@@ -261,9 +264,6 @@ def generate_quest_cards() -> int:
     return count
 
 
-BUILDING_CARD_HEIGHT = 170
-
-
 _TYPE_ABBREV = {
     "guitarists": "G",
     "bass_players": "B",
@@ -359,6 +359,9 @@ def generate_building_cards() -> int:
             own_parts.append(own_str)
         if card.owner_bonus_vp > 0:
             own_parts.append(f"+{card.owner_bonus_vp}VP")
+        if card.owner_bonus_special:
+            special = card.owner_bonus_special.replace("_", " ").title()
+            own_parts.append(special)
         if card.owner_bonus_choice:
             types_str = "/".join(
                 _TYPE_ABBREV.get(t, t) for t in card.owner_bonus_choice.allowed_types
@@ -367,9 +370,6 @@ def generate_building_cards() -> int:
         own_line = f"Owner: {' '.join(own_parts) if own_parts else 'None'}"
         draw_text_centered(draw, own_line, y, FONT_LABEL, (80, 50, 0))
         y += 18
-        if card.owner_bonus_special:
-            special = card.owner_bonus_special.replace("_", " ").title()
-            draw_text_centered(draw, special, y, FONT_BODY_SMALL, (80, 50, 0))
         img.save(OUTPUT_BUILDINGS / f"{card.id}.png")
         count += 1
     return count
@@ -579,9 +579,6 @@ def _resource_reward_str(reward: dict) -> str:
         if val > 0:
             parts.append(f"{val}{sym}")
     return " ".join(parts) if parts else ""
-
-
-SPACE_CARD_HEIGHT = 100
 
 
 def generate_space_cards() -> int:

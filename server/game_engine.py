@@ -345,6 +345,12 @@ async def _end_round(server: GameServer, state) -> None:
             state.turn_order = pids[idx:] + pids[:idx]
     state.current_player_index = 0
 
+    accum_stocks = {}
+    for space_id in state.board.constructed_buildings:
+        space = state.board.action_spaces.get(space_id)
+        if space and space.building_tile and space.building_tile.accumulation_type:
+            accum_stocks[space_id] = space.building_tile.accumulated_stock
+
     await server.broadcast_to_game(
         state.game_code,
         RoundEndResponse(
@@ -353,6 +359,7 @@ async def _end_round(server: GameServer, state) -> None:
             first_player_id=state.board.first_player_id,
             turn_order=state.turn_order,
             bonus_worker_granted=bonus_granted,
+            accumulated_stocks=accum_stocks,
         ),
     )
 
@@ -570,8 +577,8 @@ async def _send_resource_choice_prompt(
         "choice_reward_dump": choice_reward.model_dump(),
     }
 
-    await server.send_to_player(
-        player.player_id,
+    await server.broadcast_to_game(
+        state.game_code,
         ResourceChoicePromptResponse(
             prompt_id=prompt_id,
             player_id=player.player_id,
@@ -1027,6 +1034,14 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
             )
             return
 
+    # Building draw_contract: pause for quest selection
+    if (
+        space.space_type == "building"
+        and space.building_tile
+        and space.building_tile.visitor_reward_special == "draw_contract"
+    ):
+        return
+
     await _check_quest_completion(server, state)
 
 
@@ -1132,17 +1147,28 @@ async def handle_select_quest_card(
         await conn.send_error("INVALID_ACTION", "Card not in face-up display.")
         return
 
-    # Determine which garage spot the player is on
+    # Determine which spot the player is on (garage or building with draw_contract)
     spot_special = None
+    is_building_draw = False
     for sid, sp in state.board.action_spaces.items():
-        if sp.space_type == "garage" and sp.occupied_by == player.player_id:
+        if sp.occupied_by != player.player_id:
+            continue
+        if sp.space_type == "garage":
             spot_special = sp.reward_special
+            break
+        if (
+            sp.space_type == "building"
+            and sp.building_tile
+            and sp.building_tile.visitor_reward_special == "draw_contract"
+        ):
+            spot_special = "draw_contract"
+            is_building_draw = True
             break
 
     if spot_special is None:
         await conn.send_error(
             "INVALID_ACTION",
-            "You don't have a worker on a Garage spot.",
+            "No worker on a quest selection spot.",
         )
         return
 
@@ -1168,7 +1194,8 @@ async def handle_select_quest_card(
     if replacement:
         state.board.face_up_quests.append(replacement)
 
-    spot_num = 1 if spot_special == "quest_and_coins" else 2
+    spot_num = 0 if is_building_draw else (1 if spot_special == "quest_and_coins" else 2)
+    source = "a building" if is_building_draw else "The Garage"
 
     state.game_log.append(
         GameLog(
@@ -1176,7 +1203,7 @@ async def handle_select_quest_card(
             player_id=player.player_id,
             action="select_quest_card",
             details=(
-                f"{player.display_name} selected " f"'{card.name}' from The Garage"
+                f"{player.display_name} selected '{card.name}' from {source}"
             ),
             timestamp=time.time(),
         )
@@ -1993,6 +2020,7 @@ async def handle_purchase_building(
             owner_id=player.player_id,
             cost_coins=building.cost_coins,
             accumulated_vp=building.accumulated_vp,
+            building_tile=building.model_dump(),
             next_player_id=(next_player.player_id if next_player else None),
         ),
     )
@@ -2422,6 +2450,14 @@ async def handle_reassign_worker(
                 pending_owner_choice["space_name"],
             )
             return
+
+    # Building draw_contract: pause for quest selection
+    if (
+        target.space_type == "building"
+        and target.building_tile
+        and target.building_tile.visitor_reward_special == "draw_contract"
+    ):
+        return
 
     await _finish_reassignment(server, state)
 

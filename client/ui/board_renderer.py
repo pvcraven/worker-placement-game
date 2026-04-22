@@ -8,12 +8,17 @@ from pathlib import Path
 import arcade
 import arcade.shape_list
 
-_log = logging.getLogger(__name__)
+from shared.constants import (
+    BUILDING_CARD_HEIGHT,
+    CARD_HEIGHT,
+    CARD_WIDTH,
+    RESOURCE_SYMBOLS,
+    SPACE_CARD_HEIGHT,
+)
 
-_CARD_WIDTH = 190
-_CARD_HEIGHT = 230
-_BUILDING_CARD_HEIGHT = 150
-_SPACE_CARD_HEIGHT = 100
+_RESOURCE_ABBREV = dict(RESOURCE_SYMBOLS)
+
+_log = logging.getLogger(__name__)
 
 
 _SPACE_LAYOUT: dict[str, tuple[float, float]] = {
@@ -149,10 +154,10 @@ class BoardRenderer:
             self._building_owner_dirty = True
             self._workers_dirty = True
 
-        card_w = _CARD_WIDTH * s
-        card_h = _CARD_HEIGHT * s
-        bld_h = _BUILDING_CARD_HEIGHT * s
-        space_h = _SPACE_CARD_HEIGHT * s
+        card_w = CARD_WIDTH * s
+        card_h = CARD_HEIGHT * s
+        bld_h = BUILDING_CARD_HEIGHT * s
+        space_h = SPACE_CARD_HEIGHT * s
         font_sm = max(8, int(12 * s))
 
         self._shape_list.draw()
@@ -276,22 +281,23 @@ class BoardRenderer:
                         row = i // 2
                         cx = x + (building_start_x + col * building_col_step) * w
                         cy = first_bld_cy - row * bld_row_step * h
-                        tx = cx + card_w / 2 - 8 * s
-                        ty = cy + bld_h / 2 - 6 * s
+                        tx = cx - card_w / 2 + 8 * s
+                        ty = cy - bld_h / 2 + 20 * s
                         atype = bt.get("accumulation_type", "")
-                        label = str(stock)
+                        sym = _RESOURCE_ABBREV.get(atype, "")
                         if atype == "victory_points":
-                            label = f"{stock} VP"
+                            label = f"Stock: {stock} VP"
+                        elif sym:
+                            label = f"Stock: {stock}{sym}"
+                        else:
+                            label = f"Stock: {stock}"
                         self._building_accum_texts.append(
                             arcade.Text(
                                 label,
                                 tx,
                                 ty,
-                                color=(50, 200, 50),
+                                color=(20, 60, 20),
                                 font_size=font_sm,
-                                font_name="Tahoma",
-                                anchor_x="right",
-                                anchor_y="top",
                                 bold=True,
                             ),
                         )
@@ -318,10 +324,10 @@ class BoardRenderer:
         self._shape_list.clear()
         self._space_rects.clear()
 
-        card_w = _CARD_WIDTH * s
-        card_h = _CARD_HEIGHT * s
-        bld_h = _BUILDING_CARD_HEIGHT * s
-        space_h = _SPACE_CARD_HEIGHT * s
+        card_w = CARD_WIDTH * s
+        card_h = CARD_HEIGHT * s
+        bld_h = BUILDING_CARD_HEIGHT * s
+        space_h = SPACE_CARD_HEIGHT * s
 
         spaces = self.board_data.get("action_spaces", {})
 
@@ -363,7 +369,7 @@ class BoardRenderer:
             len(self.board_data.get("face_up_quests", [])),
             4,
         )
-        q_spacing = (_CARD_WIDTH + 15) * s
+        q_spacing = (CARD_WIDTH + 15) * s
         bs_cx = garage_cx - n_q * q_spacing / 2 + card_w / 2
         backstage_cards = []
         backstage_positions = []
@@ -389,7 +395,7 @@ class BoardRenderer:
         # Realtor — centered above face-up building cards
         quest_right = garage_cx + n_q * q_spacing / 2
         n_bld = max(len(self._face_up_buildings), 3)
-        bld_spacing = (_CARD_WIDTH + 15) * s
+        bld_spacing = (CARD_WIDTH + 15) * s
         rightmost_bld_cx = quest_right - card_w / 2
         bld_start_cx = rightmost_bld_cx - (n_bld - 1) * bld_spacing
         realtor_cx = (bld_start_cx + rightmost_bld_cx) / 2
@@ -472,7 +478,7 @@ class BoardRenderer:
 
         # Face-up building market
         if self._face_up_buildings:
-            bld_spacing_v = (_CARD_WIDTH + 15) * s
+            bld_spacing_v = (CARD_WIDTH + 15) * s
             n_bld = len(self._face_up_buildings)
             rightmost_cx = quest_right - card_w / 2
             bld_start_cx = rightmost_cx - (n_bld - 1) * bld_spacing_v
@@ -536,9 +542,9 @@ class BoardRenderer:
     ) -> None:
         spaces = self.board_data.get("action_spaces", {})
         backstage_slots = self.board_data.get("backstage_slots", [])
-        card_w = _CARD_WIDTH * s
-        bld_h = _BUILDING_CARD_HEIGHT * s
-        space_h = _SPACE_CARD_HEIGHT * s
+        card_w = CARD_WIDTH * s
+        bld_h = BUILDING_CARD_HEIGHT * s
+        space_h = SPACE_CARD_HEIGHT * s
         token_offset = card_w / 2 - 10 * s
         token_size = max(10, int(18 * s))
 
@@ -554,7 +560,7 @@ class BoardRenderer:
 
         garage_cx = x + 0.71 * w
         n_q = max(len(self.board_data.get("face_up_quests", [])), 4)
-        q_spacing = (_CARD_WIDTH + 15) * s
+        q_spacing = (CARD_WIDTH + 15) * s
         bs_cx = garage_cx - n_q * q_spacing / 2 + card_w / 2
         for i, py_val in enumerate(_BACKSTAGE_Y):
             cy = y + py_val * h
