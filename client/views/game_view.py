@@ -184,11 +184,15 @@ class GameView(arcade.View):
             for p in players:
                 if p.get("player_id") == current_pid:
                     current_name = p.get("display_name", "Unknown")
+            phase = self.game_state.get("phase", "placement")
+            phase_label = (
+                "Reassignment" if phase == "reassignment" else f"Round {current_round}"
+            )
             is_my_turn = current_pid == my_id
             if is_my_turn:
-                self._status_text = f"Round {current_round} — YOUR TURN"
+                self._status_text = f"{phase_label} — YOUR TURN"
             else:
-                self._status_text = f"Round {current_round}" f" — {current_name}'s turn"
+                self._status_text = f"{phase_label} — {current_name}'s turn"
 
     def on_update(self, delta_time: float) -> None:
         """Poll network and process messages."""
@@ -1100,10 +1104,21 @@ class GameView(arcade.View):
             )
 
     def _on_reassignment_phase_start(self, msg: dict) -> None:
-        self._status_text = "Reassignment Phase"
         slots = msg.get("backstage_slots", [])
         self.game_state["phase"] = "reassignment"
         self.game_state["reassignment_queue"] = [s["slot_number"] for s in slots]
+
+        my_id = getattr(self.window, "player_id", None)
+        if slots:
+            first_owner = slots[0].get("occupied_by")
+            if first_owner == my_id:
+                self._status_text = "Reassignment — YOUR TURN"
+            else:
+                name = self._player_name(first_owner)
+                self._status_text = f"Reassignment — {name}'s turn"
+        else:
+            self._status_text = "Reassignment Phase"
+
         if self.tabbed_panel:
             self.tabbed_panel.add_entry("--- Reassignment Phase ---")
         self._play_reassignment_sound_if_my_turn()
@@ -2408,9 +2423,11 @@ class GameView(arcade.View):
             self.board_renderer._current_player_id = next_pid
         my_id = getattr(self.window, "player_id", None)
         rnd = self.game_state.get("current_round", "?")
+        phase = self.game_state.get("phase", "placement")
+        phase_label = "Reassignment" if phase == "reassignment" else f"Round {rnd}"
         if next_pid == my_id:
-            self._status_text = f"Round {rnd} — YOUR TURN"
+            self._status_text = f"{phase_label} — YOUR TURN"
             arcade.play_sound(self._turn_sound)
         else:
             name = self._player_name(next_pid)
-            self._status_text = f"Round {rnd} — {name}'s turn"
+            self._status_text = f"{phase_label} — {name}'s turn"
