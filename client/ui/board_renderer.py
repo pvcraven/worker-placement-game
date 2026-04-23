@@ -28,9 +28,9 @@ _SPACE_LAYOUT: dict[str, tuple[float, float]] = {
     "talent_show": (0.08, 0.52),
     "rhythm_pit": (0.08, 0.39),
     "fastpass": (0.08, 0.26),
-    "the_garage_1": (0.57, 0.92),
-    "the_garage_2": (0.71, 0.92),
-    "the_garage_3": (0.85, 0.92),
+    "sunset_records": (0.57, 0.92),
+    "the_back_room": (0.71, 0.92),
+    "the_garage": (0.85, 0.92),
 }
 
 _BACKSTAGE_Y = [0.46, 0.33, 0.20]

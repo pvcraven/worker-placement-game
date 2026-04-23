@@ -1718,6 +1718,7 @@ class GameView(arcade.View):
             intrigue_count = 0
             quests_open = 0
             quests_closed = 0
+            player_color = ""
             for p in self.game_state.get("players", []):
                 if p.get("player_id") == my_id:
                     workers_left = p.get("available_workers", 0)
@@ -1725,6 +1726,8 @@ class GameView(arcade.View):
                     intrigue_count = len(p.get("intrigue_hand", []))
                     quests_open = len(p.get("contract_hand", []))
                     quests_closed = len(p.get("completed_contracts", []))
+                    if self.board_renderer:
+                        player_color = self.board_renderer._player_color_name(my_id)
                     break
             self.resource_bar.draw(
                 0,
@@ -1737,6 +1740,7 @@ class GameView(arcade.View):
                 quests_open=quests_open,
                 quests_closed=quests_closed,
                 scale=s,
+                player_color=player_color,
             )
 
         if self.tabbed_panel:

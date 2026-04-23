@@ -45,6 +45,7 @@ OUTPUT_INTRIGUE = OUTPUT_BASE / "intrigue"
 OUTPUT_PRODUCERS = OUTPUT_BASE / "producers"
 OUTPUT_SPACES = OUTPUT_BASE / "spaces"
 OUTPUT_MARKERS = OUTPUT_BASE / "markers"
+OUTPUT_ICONS = OUTPUT_BASE / "icons"
 
 CONFIG_DIR = PROJECT_ROOT / "config"
 
@@ -978,6 +979,7 @@ OUTPUT_DIRS = [
     OUTPUT_PRODUCERS,
     OUTPUT_SPACES,
     OUTPUT_MARKERS,
+    OUTPUT_ICONS,
 ]
 
 
@@ -1030,6 +1032,82 @@ def generate_worker_markers() -> int:
     return count
 
 
+_ICON_SIZE = 72
+_ICON_OUTLINE_WIDTH = 4
+
+
+def generate_resource_icons() -> int:
+    OUTPUT_ICONS.mkdir(parents=True, exist_ok=True)
+    icon_map = {
+        "guitarist": "guitarists",
+        "bass_player": "bass_players",
+        "drummer": "drummers",
+        "singer": "singers",
+        "coin": "coins",
+    }
+    count = 0
+    sz = _ICON_SIZE
+    for filename, res_key in icon_map.items():
+        img = Image.new("RGBA", (sz, sz), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+        color = _SYMBOL_COLORS[res_key]
+        if res_key == "coins":
+            r = sz // 2 - 2
+            cx, cy = sz // 2, sz // 2
+            draw.ellipse(
+                [cx - r, cy - r, cx + r, cy + r],
+                fill=color,
+                outline=_SYMBOL_OUTLINE,
+                width=_ICON_OUTLINE_WIDTH,
+            )
+        else:
+            margin = 2
+            draw.rectangle(
+                [margin, margin, sz - 1 - margin, sz - 1 - margin],
+                fill=color,
+                outline=_SYMBOL_OUTLINE,
+                width=_ICON_OUTLINE_WIDTH,
+            )
+        img.save(OUTPUT_ICONS / f"{filename}.png")
+        count += 1
+    return count
+
+
+_CARD_ICON_PNG_W = _CARD_ICON_W * 2
+_CARD_ICON_PNG_H = _CARD_ICON_H * 2
+_CARD_ICON_PNG_BORDER = _CARD_ICON_BORDER * 2
+_CARD_ICON_PNG_INNER = _CARD_ICON_INNER * 2
+_CARD_ICON_PNG_FONT = _load_font_serif(56, bold=True)
+
+
+def generate_card_icon_pngs() -> int:
+    OUTPUT_ICONS.mkdir(parents=True, exist_ok=True)
+    icons = [
+        ("quest_icon", "Q", _QUEST_BACK_COLOR),
+        ("intrigue_icon", "I", _INTRIGUE_BACK_COLOR),
+    ]
+    count = 0
+    w, h = _CARD_ICON_PNG_W, _CARD_ICON_PNG_H
+    b = _CARD_ICON_PNG_BORDER
+    inn = _CARD_ICON_PNG_INNER
+    cx, cy = w // 2, h // 2
+    for filename, letter, back_color in icons:
+        img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+        draw.rectangle([0, 0, w - 1, h - 1], fill=(20, 20, 20))
+        draw.rectangle([b, b, w - 1 - b, h - 1 - b], fill=(240, 240, 240))
+        draw.rectangle(
+            [b + inn, b + inn, w - 1 - b - inn, h - 1 - b - inn], fill=back_color
+        )
+        bbox = draw.textbbox((0, 0), letter, font=_CARD_ICON_PNG_FONT)
+        tx = cx - (bbox[0] + bbox[2]) // 2
+        ty = cy - (bbox[1] + bbox[3]) // 2
+        draw.text((tx, ty), letter, fill=PARCHMENT_COLOR, font=_CARD_ICON_PNG_FONT)
+        img.save(OUTPUT_ICONS / f"{filename}.png")
+        count += 1
+    return count
+
+
 def generate_all() -> int:
     q = generate_quest_cards()
     b = generate_building_cards()
@@ -1037,7 +1115,9 @@ def generate_all() -> int:
     p = generate_producer_cards()
     s = generate_space_cards()
     m = generate_worker_markers()
-    return q + b + i + p + s + m
+    ri = generate_resource_icons()
+    ci = generate_card_icon_pngs()
+    return q + b + i + p + s + m + ri + ci
 
 
 def ensure_card_images() -> None:
@@ -1051,8 +1131,17 @@ def main() -> None:
     print("Card Image Generator")
     print(f"Output: {OUTPUT_BASE}")
     print()
-    total = generate_all()
-    print(f"Done. {total} card images generated.")
+    if "--icons-only" in sys.argv:
+        ri = generate_resource_icons()
+        ci = generate_card_icon_pngs()
+        total = ri + ci
+        print(f"Done. {total} icon images generated.")
+    elif "--spaces-only" in sys.argv:
+        total = generate_space_cards()
+        print(f"Done. {total} space cards generated.")
+    else:
+        total = generate_all()
+        print(f"Done. {total} card images generated.")
 
 
 if __name__ == "__main__":
