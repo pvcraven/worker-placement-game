@@ -385,7 +385,9 @@ def _draw_special_icon(
         _draw_quest_card_icon(draw, card_width // 2, cy)
     else:
         label = special.replace("_", " ").title()
-        draw_text_centered(draw, label, y, B_FONT_BODY_SMALL, (20, 60, 20), width=card_width)
+        draw_text_centered(
+            draw, label, y, B_FONT_BODY_SMALL, (20, 60, 20), width=card_width
+        )
         return y + 28
     return y + icon_h + _SYMBOL_GAP
 
@@ -803,10 +805,13 @@ def generate_building_cards() -> int:
                     draw, own_line, y, B_FONT_LABEL, (80, 50, 0), width=cw
                 )
 
-        if not has_own_resources and not card.owner_bonus_choice and card.owner_bonus_vp == 0 and not card.owner_bonus_special:
-            draw_text_centered(
-                draw, "None", y, B_FONT_LABEL, (80, 50, 0), width=cw
-            )
+        if (
+            not has_own_resources
+            and not card.owner_bonus_choice
+            and card.owner_bonus_vp == 0
+            and not card.owner_bonus_special
+        ):
+            draw_text_centered(draw, "None", y, B_FONT_LABEL, (80, 50, 0), width=cw)
 
         img.save(OUTPUT_BUILDINGS / f"{card.id}.png")
         count += 1
