@@ -19,6 +19,8 @@ Auto-generated from all feature plans. Last updated: 2026-04-22
 - Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), Pydantic v2 (015-final-score-screen)
 - Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), websockets, Pydantic v2 (016-building-revamp)
 - In-memory game state (server); JSON configuration files in `config/` (016-building-revamp)
+- Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), Pillow (PIL) for card/icon generation, Pydantic v2 (017-resource-bar-revamp)
+- File system — reads/writes PNGs in `client/assets/card_images/` (017-resource-bar-revamp)
 
 - Python 3.12+ + Arcade (graphics/client UI), websockets (async networking), Pydantic (data validation/serialization) (001-worker-placement-game)
 
@@ -38,9 +40,9 @@ cd src && pytest && ruff check .
 Python 3.12+: Follow standard conventions
 
 ## Recent Changes
+- 017-resource-bar-revamp: Added Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), Pillow (PIL) for card/icon generation, Pydantic v2
 - 016-building-revamp: Added Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), websockets, Pydantic v2
 - 015-final-score-screen: Added Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), Pydantic v2
-- 014-tabbed-side-panel: Added Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), Pydantic v2
 
 
 <!-- MANUAL ADDITIONS START -->
