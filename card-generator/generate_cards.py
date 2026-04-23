@@ -1166,7 +1166,12 @@ def _draw_intrigue_effect_icons(
     sz = _SYMBOL_SIZE
     gap = _SYMBOL_GAP
 
-    if effect_type in ("gain_resources", "all_players_gain", "steal_resources", "opponent_loses"):
+    if effect_type in (
+        "gain_resources",
+        "all_players_gain",
+        "steal_resources",
+        "opponent_loses",
+    ):
         prefix = ""
         if effect_type == "steal_resources":
             prefix = "Steal"
@@ -1215,7 +1220,12 @@ def _draw_intrigue_effect_icons(
 
         if effect_type == "all_players_gain":
             draw_text_centered(
-                draw, "(all players)", y, I_FONT_BODY_SMALL, (150, 50, 50), width=card_width
+                draw,
+                "(all players)",
+                y,
+                I_FONT_BODY_SMALL,
+                (150, 50, 50),
+                width=card_width,
             )
             y += 32
 
