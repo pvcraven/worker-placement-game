@@ -22,7 +22,7 @@
       "description": "Host a battle of the bands and recruit the winners to your label.",
       "effect_type": "gain_resources",
       "effect_target": "self",
-      "effect_value": {"guitarists": 1, "bass_players": 1, "drummers": 1, "singers": 0, "coins": 0}
+      "effect_value": {"guitarists": 1, "bass_players": 1, "drummers": 0, "singers": 0, "coins": 0}
     },
     {
       "id": "intrigue_004",
@@ -62,7 +62,7 @@
       "description": "A supergroup's reunion tour collapses. Scoop up the disillusioned musicians.",
       "effect_type": "gain_resources",
       "effect_target": "self",
-      "effect_value": {"guitarists": 1, "bass_players": 0, "drummers": 1, "singers": 1, "coins": 0}
+      "effect_value": {"guitarists": 1, "bass_players": 0, "drummers": 1, "singers": 0, "coins": 0}
     },
     {
       "id": "intrigue_009",
@@ -70,7 +70,7 @@
       "description": "A fresh class of conservatory graduates is eager to prove themselves.",
       "effect_type": "gain_resources",
       "effect_target": "self",
-      "effect_value": {"guitarists": 1, "bass_players": 1, "drummers": 1, "singers": 1, "coins": 0}
+      "effect_value": {"guitarists": 1, "bass_players": 0, "drummers": 0, "singers": 1, "coins": 0}
     },
     {
       "id": "intrigue_010",
@@ -94,7 +94,7 @@
       "description": "Tap into the underground music scene and sign raw, hungry talent.",
       "effect_type": "gain_resources",
       "effect_target": "self",
-      "effect_value": {"guitarists": 2, "bass_players": 0, "drummers": 0, "singers": 1, "coins": 0}
+      "effect_value": {"guitarists": 2, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0}
     },
     {
       "id": "intrigue_013",
@@ -102,7 +102,7 @@
       "description": "A touring band implodes mid-tour. Pick up the pieces for your roster.",
       "effect_type": "gain_resources",
       "effect_target": "self",
-      "effect_value": {"guitarists": 0, "bass_players": 1, "drummers": 1, "singers": 1, "coins": 0}
+      "effect_value": {"guitarists": 0, "bass_players": 1, "drummers": 1, "singers": 0, "coins": 0}
     },
     {
       "id": "intrigue_014",
@@ -110,7 +110,7 @@
       "description": "A famous producer recommends your label, attracting top-tier musicians.",
       "effect_type": "gain_resources",
       "effect_target": "self",
-      "effect_value": {"guitarists": 1, "bass_players": 0, "drummers": 0, "singers": 1, "coins": 1}
+      "effect_value": {"guitarists": 1, "bass_players": 0, "drummers": 0, "singers": 1, "coins": 0}
     },
     {
       "id": "intrigue_015",
@@ -118,7 +118,7 @@
       "description": "Recruit gifted vocalists from a renowned gospel choir.",
       "effect_type": "gain_resources",
       "effect_target": "self",
-      "effect_value": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 2, "coins": 1}
+      "effect_value": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 2, "coins": 0}
     },
     {
       "id": "intrigue_016",
@@ -126,7 +126,7 @@
       "description": "Demo players at a trade show are looking for steady gigs. Sign them up.",
       "effect_type": "gain_resources",
       "effect_target": "self",
-      "effect_value": {"guitarists": 1, "bass_players": 1, "drummers": 0, "singers": 0, "coins": 1}
+      "effect_value": {"guitarists": 1, "bass_players": 1, "drummers": 0, "singers": 0, "coins": 0}
     },
     {
       "id": "intrigue_017",

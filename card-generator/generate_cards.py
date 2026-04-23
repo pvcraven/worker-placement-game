@@ -99,6 +99,16 @@ B_FONT_BODY = _load_font(26)
 B_FONT_BODY_SMALL = _load_font(22)
 B_FONT_LABEL = _load_font(24, bold=True)
 
+# Intrigue card dimensions (2x base) and fonts
+INT_CARD_WIDTH = CARD_WIDTH * 2
+INT_CARD_HEIGHT = CARD_HEIGHT * 2
+INT_CORNER_RADIUS = CORNER_RADIUS * 2
+
+I_FONT_TITLE = _load_font(34, bold=True)
+I_FONT_BODY = _load_font(30)
+I_FONT_BODY_SMALL = _load_font(26)
+I_FONT_LABEL = _load_font(28, bold=True)
+
 
 def create_card_base(
     height: int = CARD_HEIGHT,
@@ -1146,88 +1156,318 @@ TARGET_LABELS = {
 }
 
 
+def _draw_intrigue_effect_icons(
+    draw: ImageDraw.ImageDraw,
+    effect_type: str,
+    effect_value: dict,
+    y: int,
+    card_width: int,
+) -> int:
+    sz = _SYMBOL_SIZE
+    gap = _SYMBOL_GAP
+
+    if effect_type in (
+        "gain_resources",
+        "all_players_gain",
+        "steal_resources",
+        "opponent_loses",
+    ):
+        prefix = ""
+        if effect_type == "steal_resources":
+            prefix = "Steal"
+        elif effect_type == "opponent_loses":
+            prefix = "Opponent loses"
+        elif effect_type == "all_players_gain":
+            prefix = ""
+
+        icons: list[str] = []
+        for field in ("guitarists", "bass_players", "drummers", "singers", "coins"):
+            v = effect_value.get(field, 0)
+            icons.extend([field] * v)
+
+        if not icons:
+            return y
+
+        font = I_FONT_LABEL
+        label_w = 0
+        label_gap = 10
+        if prefix:
+            bbox = draw.textbbox((0, 0), prefix, font=font)
+            label_w = bbox[2] - bbox[0]
+
+        n = len(icons)
+        icons_w = n * sz + (n - 1) * gap
+        total_w = icons_w + (label_w + label_gap if prefix else 0)
+        start_x = (card_width - total_w) // 2
+        cy = y + sz // 2
+
+        if prefix:
+            bbox = draw.textbbox((0, 0), prefix, font=font)
+            label_h = bbox[3] - bbox[1]
+            draw.text(
+                (start_x, cy - label_h // 2),
+                prefix,
+                fill=(120, 80, 0),
+                font=font,
+            )
+            start_x += label_w + label_gap
+
+        for i, res_type in enumerate(icons):
+            cx = start_x + i * (sz + gap) + sz // 2
+            _draw_single_symbol(draw, res_type, cx, cy)
+
+        y += sz + gap
+
+        if effect_type == "all_players_gain":
+            draw_text_centered(
+                draw,
+                "(all players)",
+                y,
+                I_FONT_BODY_SMALL,
+                (150, 50, 50),
+                width=card_width,
+            )
+            y += 32
+
+        return y
+
+    if effect_type == "gain_coins":
+        c = effect_value.get("coins", 0)
+        if c > 0:
+            icons_w = c * sz + (c - 1) * gap
+            start_x = (card_width - icons_w) // 2
+            cy = y + sz // 2
+            for i in range(c):
+                cx = start_x + i * (sz + gap) + sz // 2
+                _draw_single_symbol(draw, "coins", cx, cy)
+            y += sz + gap
+        return y
+
+    if effect_type == "draw_contracts":
+        n = effect_value.get("count", 1)
+        icon_h = _CARD_ICON_H
+        icons_w = n * _CARD_ICON_W + (n - 1) * gap
+        start_x = (card_width - icons_w) // 2
+        cy = y + icon_h // 2
+        for i in range(n):
+            cx = start_x + i * (_CARD_ICON_W + gap) + _CARD_ICON_W // 2
+            _draw_quest_card_icon(draw, cx, cy)
+        return y + icon_h + gap
+
+    if effect_type == "draw_intrigue":
+        n = effect_value.get("count", 1)
+        icon_h = _CARD_ICON_H
+        icons_w = n * _CARD_ICON_W + (n - 1) * gap
+        start_x = (card_width - icons_w) // 2
+        cy = y + icon_h // 2
+        for i in range(n):
+            cx = start_x + i * (_CARD_ICON_W + gap) + _CARD_ICON_W // 2
+            _draw_intrigue_card_icon(draw, cx, cy)
+        return y + icon_h + gap
+
+    if effect_type == "vp_bonus":
+        vp = effect_value.get("victory_points", 0)
+        if vp:
+            draw_text_centered(
+                draw, f"+{vp} VP", y, I_FONT_LABEL, (120, 80, 0), width=card_width
+            )
+            y += 40
+        return y
+
+    effect = _intrigue_effect_summary(effect_type, effect_value)
+    if effect:
+        draw_text_centered(
+            draw, effect, y, I_FONT_LABEL, (120, 80, 0), width=card_width
+        )
+        y += 40
+    return y
+
+
+def _draw_intrigue_bundle(
+    draw: ImageDraw.ImageDraw,
+    choice,
+    y: int,
+    card_width: int,
+) -> int:
+    sz = _SYMBOL_SIZE
+    gap = _SYMBOL_GAP
+    font = I_FONT_LABEL
+    slash_bbox = draw.textbbox((0, 0), "/", font=font)
+    slash_w = slash_bbox[2] - slash_bbox[0]
+
+    draw_text_centered(draw, "Choose one:", y, font, TEXT_COLOR, width=card_width)
+    y += 34
+
+    bundle_icons: list[list[str]] = []
+    for bundle in choice.bundles:
+        icons: list[str] = []
+        res = bundle.resources
+        for field in ("guitarists", "bass_players", "drummers", "singers", "coins"):
+            v = getattr(res, field, 0)
+            icons.extend([field] * v)
+        bundle_icons.append(icons)
+
+    all_groups = bundle_icons
+
+    # Calculate width of each group
+    group_widths = []
+    for icons in all_groups:
+        gw = len(icons) * sz + (len(icons) - 1) * gap
+        group_widths.append(gw)
+
+    slash_space = gap + slash_w + gap
+    avail_w = card_width - 40
+    # Try to fit on one row; if not, split into rows
+    rows: list[list[int]] = []
+    current_row: list[int] = []
+    current_w = 0
+    for i, gw in enumerate(group_widths):
+        needed = gw + (slash_space if current_row else 0)
+        if current_row and current_w + needed > avail_w:
+            rows.append(current_row)
+            current_row = [i]
+            current_w = gw
+        else:
+            current_row.append(i)
+            current_w += needed
+    if current_row:
+        rows.append(current_row)
+
+    for row_indices in rows:
+        row_w = sum(group_widths[i] for i in row_indices)
+        row_w += (len(row_indices) - 1) * slash_space
+        start_x = (card_width - row_w) // 2
+        cy = y + sz // 2
+        cur_x = start_x
+
+        for j, gi in enumerate(row_indices):
+            icons = all_groups[gi]
+            for k, res_type in enumerate(icons):
+                cx = cur_x + sz // 2
+                _draw_single_symbol(draw, res_type, cx, cy)
+                cur_x += sz + gap
+            cur_x -= gap
+            if j < len(row_indices) - 1:
+                cur_x += gap
+                draw.text(
+                    (cur_x, cy - (slash_bbox[3] - slash_bbox[1]) // 2),
+                    "/",
+                    fill=TEXT_COLOR,
+                    font=font,
+                )
+                cur_x += slash_w + gap
+
+        y += sz + gap
+
+    return y
+
+
 def generate_intrigue_cards() -> int:
     data = json.loads((CONFIG_DIR / "intrigue.json").read_text(encoding="utf-8"))
     config = IntrigueConfig.model_validate(data)
     OUTPUT_INTRIGUE.mkdir(parents=True, exist_ok=True)
+    cw = INT_CARD_WIDTH
+    ch = INT_CARD_HEIGHT
+    cr = INT_CORNER_RADIUS
     count = 0
     for card in config.intrigue_cards:
-        img, draw = create_card_base()
-        y = _title_start_y(draw, card.name, FONT_TITLE, 12)
-        y = draw_text_wrapped(
+        img = Image.new("RGBA", (cw, ch), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+        draw.rounded_rectangle(
+            [0, 0, cw - 1, ch - 1],
+            radius=cr,
+            fill=PARCHMENT_COLOR,
+        )
+
+        band_h = 80
+        band_color = (60, 60, 60)
+        draw.rounded_rectangle(
+            [0, 0, cw - 1, band_h],
+            radius=cr,
+            fill=band_color,
+        )
+        draw.rectangle(
+            [0, band_h - cr, cw - 1, band_h],
+            fill=band_color,
+        )
+
+        title_y = _title_start_y(draw, card.name, I_FONT_TITLE, 16, max_width=cw - 32)
+        draw_text_wrapped(
             draw,
             card.name,
-            y,
-            FONT_TITLE,
-            (30, 80, 30),
+            title_y,
+            I_FONT_TITLE,
+            (255, 255, 255),
             max_lines=2,
+            max_width=cw - 32,
+            card_width=cw,
+            card_height=ch,
         )
-        y += 4
-        draw_text_centered(
-            draw,
-            "INTRIGUE",
-            y,
-            FONT_BODY,
-            (60, 120, 60),
-        )
-        y += 22
-        y = draw_text_wrapped(
-            draw,
-            card.description,
-            y,
-            FONT_BODY_SMALL,
-            max_lines=4,
-        )
-        y += 6
+
+        y = band_h + 14
+
+        # Effect icons / text
         if card.choice_reward:
-            choice_text = _format_choice_reward(
-                card.choice_reward,
-                ResourceCost(),
-            )
-            y = draw_text_wrapped(
-                draw,
-                choice_text,
-                y,
-                FONT_LABEL,
-                (120, 80, 0),
-                max_lines=2,
-            )
+            cr_obj = card.choice_reward
+            if cr_obj.choice_type == "pick":
+                y = _draw_pick_choice(draw, cr_obj, y, cw)
+            elif cr_obj.choice_type == "bundle":
+                y = _draw_intrigue_bundle(draw, cr_obj, y, cw)
+            else:
+                choice_text = _format_choice_reward(cr_obj, ResourceCost())
+                y = draw_text_wrapped(
+                    draw,
+                    choice_text,
+                    y,
+                    I_FONT_LABEL,
+                    (120, 80, 0),
+                    max_lines=2,
+                    max_width=cw - 32,
+                    card_width=cw,
+                    card_height=ch,
+                )
             if card.effect_type == "resource_choice_multi":
-                opc = card.choice_reward.others_pick_count
+                opc = cr_obj.others_pick_count
                 draw_text_centered(
                     draw,
                     f"Others: Pick {opc}",
                     y,
-                    FONT_BODY_SMALL,
+                    I_FONT_BODY_SMALL,
                     (150, 50, 50),
+                    width=cw,
                 )
-                y += 16
+                y += 32
         else:
-            effect = _intrigue_effect_summary(
-                card.effect_type,
-                card.effect_value,
+            y = _draw_intrigue_effect_icons(
+                draw, card.effect_type, card.effect_value, y, cw
             )
-            if effect:
-                draw_text_centered(
-                    draw,
-                    effect,
-                    y,
-                    FONT_LABEL,
-                    (120, 80, 0),
-                )
-                y += 20
-        target_label = TARGET_LABELS.get(
-            card.effect_target,
-            "",
-        )
+
+        target_label = TARGET_LABELS.get(card.effect_target, "")
         if target_label:
             draw_text_centered(
                 draw,
                 target_label,
                 y,
-                FONT_BODY_SMALL,
+                I_FONT_BODY_SMALL,
                 (150, 50, 50),
+                width=cw,
             )
+            y += 32
+
+        # Description at bottom
+        y += 8
+        _draw_section_divider(draw, y, cw)
+        y += 10
+        draw_text_wrapped(
+            draw,
+            card.description,
+            y,
+            I_FONT_BODY_SMALL,
+            max_lines=4,
+            max_width=cw - 32,
+            card_width=cw,
+            card_height=ch,
+        )
         img.save(OUTPUT_INTRIGUE / f"{card.id}.png")
         count += 1
     return count

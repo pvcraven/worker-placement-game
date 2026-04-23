@@ -239,7 +239,7 @@ class TabbedPanel:
             self._content_card_key = card_key
             margin = 8 * scale
             col_w = (w - margin * 3) / 2
-            png_scale = 2 if card_type == "quests" else 1
+            png_scale = 2 if card_type in ("quests", "intrigue") else 1
             card_scale = col_w / (_CARD_BASE_WIDTH * png_scale)
             card_h = _CARD_BASE_HEIGHT * card_scale * png_scale
             row_gap = 8 * scale
