@@ -453,6 +453,265 @@ def _draw_pick_choice(
     return y + sz + gap
 
 
+def _draw_labeled_any_icons(
+    draw: ImageDraw.ImageDraw,
+    label: str,
+    count: int,
+    y: int,
+    card_width: int,
+) -> int:
+    sz = _SYMBOL_SIZE
+    gap = _SYMBOL_GAP
+    font = B_FONT_LABEL
+    bbox = draw.textbbox((0, 0), label, font=font)
+    label_w = bbox[2] - bbox[0]
+    label_h = bbox[3] - bbox[1]
+    label_gap = 10
+    icons_w = count * sz + (count - 1) * gap
+    total_w = label_w + label_gap + icons_w
+    start_x = (card_width - total_w) // 2
+    cy = y + sz // 2
+    draw.text(
+        (start_x, cy - label_h // 2),
+        label,
+        fill=TEXT_COLOR,
+        font=font,
+    )
+    icon_x = start_x + label_w + label_gap
+    for i in range(count):
+        cx = icon_x + sz // 2
+        _draw_any_resource_icon(draw, cx, cy)
+        icon_x += sz + gap
+    return y + sz + gap
+
+
+def _draw_stocks_line(
+    draw: ImageDraw.ImageDraw,
+    res_type: str,
+    per_round: int,
+    y: int,
+    card_width: int,
+) -> int:
+    sz = _SYMBOL_SIZE
+    gap = _SYMBOL_GAP
+    font = B_FONT_LABEL
+    stocks_text = "Stocks"
+    round_text = "/round"
+    s_bbox = draw.textbbox((0, 0), stocks_text, font=font)
+    r_bbox = draw.textbbox((0, 0), round_text, font=font)
+    s_w = s_bbox[2] - s_bbox[0]
+    s_h = s_bbox[3] - s_bbox[1]
+    r_w = r_bbox[2] - r_bbox[0]
+    text_gap = 8
+    icons_w = per_round * sz + (per_round - 1) * gap
+    total_w = s_w + text_gap + icons_w + text_gap + r_w
+    start_x = (card_width - total_w) // 2
+    cy = y + sz // 2
+
+    draw.text(
+        (start_x, cy - s_h // 2),
+        stocks_text,
+        fill=(20, 60, 20),
+        font=font,
+    )
+    icon_x = start_x + s_w + text_gap
+    for i in range(per_round):
+        cx = icon_x + sz // 2
+        _draw_single_symbol(draw, res_type, cx, cy)
+        icon_x += sz + gap
+    icon_x -= gap
+    icon_x += text_gap
+    draw.text(
+        (icon_x, cy - s_h // 2),
+        round_text,
+        fill=(20, 60, 20),
+        font=font,
+    )
+    return y + sz + gap
+
+
+def _draw_labeled_resource_row(
+    draw: ImageDraw.ImageDraw,
+    label: str,
+    cost: ResourceCost,
+    y: int,
+    card_width: int,
+) -> int:
+    groups: list[tuple[str, int]] = []
+    for field in ("guitarists", "bass_players", "drummers", "singers", "coins"):
+        val = getattr(cost, field, 0)
+        if val > 0:
+            groups.append((field, val))
+    if not groups:
+        return y
+
+    sz = _SYMBOL_SIZE
+    gap = _SYMBOL_GAP
+    font = B_FONT_LABEL
+    bbox = draw.textbbox((0, 0), label, font=font)
+    label_w = bbox[2] - bbox[0]
+    label_h = bbox[3] - bbox[1]
+    label_gap = 10
+
+    icons = []
+    for res_type, count in groups:
+        icons.extend([res_type] * count)
+    n = len(icons)
+    icons_w = n * sz + (n - 1) * gap
+    total_w = label_w + label_gap + icons_w
+    start_x = (card_width - total_w) // 2
+    cy = y + sz // 2
+
+    draw.text(
+        (start_x, cy - label_h // 2),
+        label,
+        fill=TEXT_COLOR,
+        font=font,
+    )
+    icon_x = start_x + label_w + label_gap
+    for res_type in icons:
+        cx = icon_x + sz // 2
+        _draw_single_symbol(draw, res_type, cx, cy)
+        icon_x += sz + gap
+
+    return y + sz + gap
+
+
+def _draw_labeled_resource_icons(
+    draw: ImageDraw.ImageDraw,
+    label: str,
+    res_type: str,
+    count: int,
+    y: int,
+    card_width: int,
+) -> int:
+    sz = _SYMBOL_SIZE
+    gap = _SYMBOL_GAP
+    font = B_FONT_LABEL
+    bbox = draw.textbbox((0, 0), label, font=font)
+    label_w = bbox[2] - bbox[0]
+    label_h = bbox[3] - bbox[1]
+    label_gap = 10
+    icons_w = count * sz + (count - 1) * gap
+    total_w = label_w + label_gap + icons_w
+    start_x = (card_width - total_w) // 2
+    cy = y + sz // 2
+    draw.text(
+        (start_x, cy - label_h // 2),
+        label,
+        fill=TEXT_COLOR,
+        font=font,
+    )
+    icon_x = start_x + label_w + label_gap
+    for i in range(count):
+        cx = icon_x + sz // 2
+        _draw_single_symbol(draw, res_type, cx, cy)
+        icon_x += sz + gap
+    return y + sz + gap
+
+
+def _draw_labeled_type_icons_with_slashes(
+    draw: ImageDraw.ImageDraw,
+    label: str,
+    types: list[str],
+    total: int,
+    y: int,
+    card_width: int,
+) -> int:
+    sz = _SYMBOL_SIZE
+    gap = _SYMBOL_GAP
+    font = B_FONT_LABEL
+    row_h = sz + gap
+    margin = 20
+
+    slash_bbox = draw.textbbox((0, 0), "/", font=font)
+    slash_w = slash_bbox[2] - slash_bbox[0]
+
+    n_types = len(types)
+    slash_group_w = n_types * sz + (n_types - 1) * (gap + slash_w + gap)
+    group_gap = gap * 2
+    avail_w = card_width - margin * 2
+
+    # Label on its own line
+    draw_text_centered(draw, label, y, font, TEXT_COLOR, width=card_width)
+    y += 30
+
+    # Figure out how many groups fit per row
+    per_row = total
+    for candidate in range(total, 0, -1):
+        row_w = candidate * slash_group_w + (candidate - 1) * group_gap
+        if row_w <= avail_w:
+            per_row = candidate
+            break
+
+    remaining = total
+    while remaining > 0:
+        count = min(per_row, remaining)
+        row_w = count * slash_group_w + (count - 1) * group_gap
+        start_x = (card_width - row_w) // 2
+        cur_x = start_x
+        cy = y + sz // 2
+
+        for g in range(count):
+            for i, res_type in enumerate(types):
+                cx = cur_x + sz // 2
+                _draw_single_symbol(draw, res_type, cx, cy)
+                cur_x += sz
+                if i < n_types - 1:
+                    cur_x += gap
+                    draw.text(
+                        (cur_x, cy - (slash_bbox[3] - slash_bbox[1]) // 2),
+                        "/",
+                        fill=TEXT_COLOR,
+                        font=font,
+                    )
+                    cur_x += slash_w + gap
+            if g < count - 1:
+                cur_x += group_gap
+
+        y += row_h
+        remaining -= count
+
+    return y
+
+
+def _draw_combo_choice(
+    draw: ImageDraw.ImageDraw,
+    choice,
+    y: int,
+    card_width: int,
+) -> int:
+    cost = choice.cost
+    if cost and cost.coins > 0:
+        y = _draw_labeled_resource_icons(
+            draw, "Cost:", "coins", cost.coins, y, card_width
+        )
+    elif cost and cost.total() > 0:
+        cost_str = format_resources(cost)
+        draw_text_centered(draw, f"Cost: {cost_str}", y, B_FONT_LABEL, TEXT_COLOR, width=card_width)
+        y += _SYMBOL_SIZE + _SYMBOL_GAP
+
+    types = choice.allowed_types
+    total = choice.total
+    y = _draw_labeled_type_icons_with_slashes(
+        draw, "Reward:", types, total, y, card_width
+    )
+    return y
+
+
+def _draw_exchange_choice(
+    draw: ImageDraw.ImageDraw,
+    choice,
+    y: int,
+    card_width: int,
+) -> int:
+    cost_count = getattr(choice, "pick_count", 2) or 2
+    gain_count = getattr(choice, "gain_count", 3) or 3
+    y = _draw_labeled_any_icons(draw, "Cost:", cost_count, y, card_width)
+    y = _draw_labeled_any_icons(draw, "Reward:", gain_count, y, card_width)
+    return y
+
+
 def generate_quest_cards() -> int:
     data = json.loads((CONFIG_DIR / "contracts.json").read_text(encoding="utf-8"))
     config = ContractsConfig.model_validate(data)
@@ -729,14 +988,20 @@ def generate_building_cards() -> int:
 
         # Visitor reward value
         if card.accumulation_type:
-            atype = _TYPE_ABBREV.get(card.accumulation_type, card.accumulation_type)
             if card.accumulation_type == "victory_points":
-                atype = "VP"
-            accum_line = f"Stocks {card.accumulation_per_round}{atype}/round"
-            draw_text_centered(
-                draw, accum_line, y, B_FONT_LABEL, (20, 60, 20), width=cw
-            )
-            y += 32
+                accum_line = f"Stocks {card.accumulation_per_round}VP/round"
+                draw_text_centered(
+                    draw, accum_line, y, B_FONT_LABEL, (20, 60, 20), width=cw
+                )
+                y += 32
+            else:
+                y = _draw_stocks_line(
+                    draw,
+                    card.accumulation_type,
+                    card.accumulation_per_round,
+                    y,
+                    cw,
+                )
         else:
             # Draw base resource reward (if any)
             has_resources = card.visitor_reward.total() > 0
@@ -761,6 +1026,10 @@ def generate_building_cards() -> int:
                 vc = card.visitor_reward_choice
                 if vc.choice_type == "pick":
                     y = _draw_pick_choice(draw, vc, y, cw)
+                elif vc.choice_type == "exchange":
+                    y = _draw_exchange_choice(draw, vc, y, cw)
+                elif vc.choice_type == "combo":
+                    y = _draw_combo_choice(draw, vc, y, cw)
                 else:
                     vis_line = _format_choice_reward(vc, card.visitor_reward)
                     draw_text_centered(
@@ -770,48 +1039,60 @@ def generate_building_cards() -> int:
         if card.visitor_reward_special:
             y = _draw_special_icon(draw, card.visitor_reward_special, y, cw)
 
-        # "Owner:" label
-        draw_text_centered(draw, "Owner:", y, B_FONT_LABEL, TEXT_COLOR, width=cw)
-        y += 34
-
-        # Owner bonus value
+        # Owner bonus
         has_own_resources = card.owner_bonus.total() > 0
-        if has_own_resources and card.owner_bonus_vp == 0:
-            y = _draw_resource_symbols(draw, card.owner_bonus, y, cw)
-        elif has_own_resources or card.owner_bonus_vp > 0:
-            own_parts = []
-            own_str = format_resources(card.owner_bonus)
-            if own_str != "None":
-                own_parts.append(own_str)
-            if card.owner_bonus_vp > 0:
-                own_parts.append(f"+{card.owner_bonus_vp}VP")
-            own_line = " ".join(own_parts) if own_parts else ""
-            if own_line:
-                draw_text_centered(
-                    draw, own_line, y, B_FONT_LABEL, (80, 50, 0), width=cw
-                )
-                y += 32
-
-        if card.owner_bonus_special:
-            y = _draw_special_icon(draw, card.owner_bonus_special, y, cw)
-
-        if card.owner_bonus_choice:
-            oc = card.owner_bonus_choice
-            if oc.choice_type == "pick":
-                y = _draw_pick_choice(draw, oc, y, cw)
-            else:
-                own_line = _format_choice_reward(oc, card.owner_bonus)
-                draw_text_centered(
-                    draw, own_line, y, B_FONT_LABEL, (80, 50, 0), width=cw
-                )
-
-        if (
-            not has_own_resources
-            and not card.owner_bonus_choice
+        simple_owner = (
+            has_own_resources
             and card.owner_bonus_vp == 0
             and not card.owner_bonus_special
-        ):
-            draw_text_centered(draw, "None", y, B_FONT_LABEL, (80, 50, 0), width=cw)
+            and not card.owner_bonus_choice
+        )
+        if simple_owner:
+            y = _draw_labeled_resource_row(draw, "Owner:", card.owner_bonus, y, cw)
+        else:
+            draw_text_centered(draw, "Owner:", y, B_FONT_LABEL, TEXT_COLOR, width=cw)
+            y += 34
+
+            if has_own_resources or card.owner_bonus_vp > 0:
+                own_parts = []
+                own_str = format_resources(card.owner_bonus)
+                if own_str != "None":
+                    own_parts.append(own_str)
+                if card.owner_bonus_vp > 0:
+                    own_parts.append(f"+{card.owner_bonus_vp}VP")
+                own_line = " ".join(own_parts) if own_parts else ""
+                if own_line:
+                    draw_text_centered(
+                        draw, own_line, y, B_FONT_LABEL, (80, 50, 0), width=cw
+                    )
+                    y += 32
+
+            if card.owner_bonus_special:
+                y = _draw_special_icon(draw, card.owner_bonus_special, y, cw)
+
+            if card.owner_bonus_choice:
+                oc = card.owner_bonus_choice
+                if oc.choice_type == "pick":
+                    y = _draw_pick_choice(draw, oc, y, cw)
+                elif oc.choice_type == "exchange":
+                    y = _draw_exchange_choice(draw, oc, y, cw)
+                elif oc.choice_type == "combo":
+                    y = _draw_combo_choice(draw, oc, y, cw)
+                else:
+                    own_line = _format_choice_reward(oc, card.owner_bonus)
+                    draw_text_centered(
+                        draw, own_line, y, B_FONT_LABEL, (80, 50, 0), width=cw
+                    )
+
+            if (
+                not has_own_resources
+                and not card.owner_bonus_choice
+                and card.owner_bonus_vp == 0
+                and not card.owner_bonus_special
+            ):
+                draw_text_centered(
+                    draw, "None", y, B_FONT_LABEL, (80, 50, 0), width=cw
+                )
 
         img.save(OUTPUT_BUILDINGS / f"{card.id}.png")
         count += 1

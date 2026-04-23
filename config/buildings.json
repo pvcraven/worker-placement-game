@@ -203,7 +203,7 @@
       "visitor_reward_special": null,
       "visitor_reward_choice": {
         "choice_type": "combo",
-        "allowed_types": ["bass_players", "guitarists"],
+        "allowed_types": ["guitarists", "bass_players"],
         "total": 4,
         "cost": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 2}
       },
