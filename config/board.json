@@ -36,22 +36,22 @@
       "slots": 1
     },
     {
-      "space_id": "the_garage_1",
-      "name": "The Garage 1",
+      "space_id": "sunset_records",
+      "name": "Sunset Records",
       "space_type": "garage",
       "reward_special": "quest_and_coins",
       "slots": 1
     },
     {
-      "space_id": "the_garage_2",
-      "name": "The Garage 2",
+      "space_id": "the_back_room",
+      "name": "The Back Room",
       "space_type": "garage",
       "reward_special": "quest_and_intrigue",
       "slots": 1
     },
     {
-      "space_id": "the_garage_3",
-      "name": "The Garage 3",
+      "space_id": "the_garage",
+      "name": "The Garage",
       "space_type": "garage",
       "reward_special": "reset_quests",
       "slots": 1
