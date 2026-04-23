@@ -121,31 +121,31 @@ class ResourceBar:
                     sprite.position = (cx, row_y)
                     self._sprite_list.append(sprite)
 
-            # Card icons for top row
+            # Card icons for top row (indices: 0=workers, 1=vp, 2=intrigue, 3=open, 4=done)
             quest_icon_path = _ICONS_DIR / "quest_icon.png"
             intrigue_icon_path = _ICONS_DIR / "intrigue_icon.png"
-            card_icon_h = int(18 * s)
+            card_icon_h = int(28 * s)
+
+            if intrigue_icon_path.exists():
+                ic_cx = x + section_w * 2.5 - left_shift - 30 * s
+                sprite = arcade.Sprite(str(intrigue_icon_path))
+                sprite.scale = card_icon_h / sprite.texture.height
+                sprite.position = (ic_cx, top_y)
+                self._sprite_list.append(sprite)
 
             if quest_icon_path.exists():
                 # Quest open icon
-                qo_cx = x + section_w * 2.5 - left_shift - 30 * s
+                qo_cx = x + section_w * 3.5 - left_shift - 30 * s
                 sprite = arcade.Sprite(str(quest_icon_path))
                 sprite.scale = card_icon_h / sprite.texture.height
                 sprite.position = (qo_cx, top_y)
                 self._sprite_list.append(sprite)
 
                 # Quest done icon
-                qd_cx = x + section_w * 3.5 - left_shift - 30 * s
+                qd_cx = x + section_w * 4.5 - left_shift - 30 * s
                 sprite = arcade.Sprite(str(quest_icon_path))
                 sprite.scale = card_icon_h / sprite.texture.height
                 sprite.position = (qd_cx, top_y)
-                self._sprite_list.append(sprite)
-
-            if intrigue_icon_path.exists():
-                ic_cx = x + section_w * 1.5 - left_shift - 30 * s
-                sprite = arcade.Sprite(str(intrigue_icon_path))
-                sprite.scale = card_icon_h / sprite.texture.height
-                sprite.position = (ic_cx, top_y)
                 self._sprite_list.append(sprite)
 
             # Worker marker
@@ -191,7 +191,7 @@ class ResourceBar:
         top_items = [
             ("workers_left", f"Workers: {workers_left}"),
             ("vp", f"VP: {victory_points}"),
-            ("intrigue", f"{intrigue_count}"),
+            ("intrigue", f"Intrigue: {intrigue_count}"),
             ("quests_open", f"Open: {quests_open}"),
             ("quests_closed", f"Done: {quests_closed}"),
         ]
