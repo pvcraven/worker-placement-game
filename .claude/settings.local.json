@@ -14,7 +14,8 @@
       "Bash(python card-generator/generate_cards.py --spaces-only)",
       "Bash(bash .specify/extensions/git/scripts/bash/feature-branch.sh \"resource-bar-revamp\")",
       "Bash(bash .specify/extensions/git/scripts/bash/create-new-feature.sh \"resource-bar-revamp\")",
-      "Bash(bash .specify/extensions/git/scripts/bash/auto-commit.sh after_plan)"
+      "Bash(bash .specify/extensions/git/scripts/bash/auto-commit.sh after_plan)",
+      "Bash(bash .specify/scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks)"
     ]
   }
 }

@@ -13,7 +13,7 @@
 
 **Purpose**: Create the output directory for icon assets
 
-- [ ] T001 Create `client/assets/card_images/icons/` directory for resource and card icon PNGs
+- [X] T001 Create `client/assets/card_images/icons/` directory for resource and card icon PNGs
 
 ---
 
@@ -33,10 +33,10 @@
 
 ### Implementation for User Story 1
 
-- [ ] T002 [US1] Add `generate_resource_icons()` function to `card-generator/generate_cards.py` that creates 72x72 transparent PNGs for each resource type (guitarist=orange square, bass_player=black square, drummer=purple square, singer=white square, coin=gold circle) with black outlines, saving to `client/assets/card_images/icons/`
-- [ ] T003 [US1] Add `generate_card_icon_pngs()` function to `card-generator/generate_cards.py` that creates standalone quest_icon.png (84x114, dark red back, "Q") and intrigue_icon.png (84x114, dark gray back, "I") with transparent backgrounds, reusing the existing `_draw_card_icon()` helper, saving to `client/assets/card_images/icons/`
-- [ ] T004 [US1] Add `--icons-only` CLI flag to `card-generator/generate_cards.py` that runs only `generate_resource_icons()` and `generate_card_icon_pngs()`, and wire both functions into the default full generation flow
-- [ ] T005 [US1] Run the generator and verify all 7 PNGs are created with correct visuals in `client/assets/card_images/icons/`
+- [X] T002 [US1] Add `generate_resource_icons()` function to `card-generator/generate_cards.py` that creates 72x72 transparent PNGs for each resource type (guitarist=orange square, bass_player=black square, drummer=purple square, singer=white square, coin=gold circle) with black outlines, saving to `client/assets/card_images/icons/`
+- [X] T003 [US1] Add `generate_card_icon_pngs()` function to `card-generator/generate_cards.py` that creates standalone quest_icon.png (84x114, dark red back, "Q") and intrigue_icon.png (84x114, dark gray back, "I") with transparent backgrounds, reusing the existing `_draw_card_icon()` helper, saving to `client/assets/card_images/icons/`
+- [X] T004 [US1] Add `--icons-only` CLI flag to `card-generator/generate_cards.py` that runs only `generate_resource_icons()` and `generate_card_icon_pngs()`, and wire both functions into the default full generation flow
+- [X] T005 [US1] Run the generator and verify all 7 PNGs are created with correct visuals in `client/assets/card_images/icons/`
 
 **Checkpoint**: 7 icon PNGs exist and look correct. Resource bar changes can proceed.
 
@@ -50,8 +50,8 @@
 
 ### Implementation for User Story 2
 
-- [ ] T006 [US2] Update the background color in `client/ui/resource_bar.py` `draw()` method from `(25, 25, 35)` to `(235, 220, 185)` (parchment)
-- [ ] T007 [US2] Update all text color references in `client/ui/resource_bar.py` from `arcade.color.WHITE` to `(60, 40, 20)` (card text brown)
+- [X] T006 [US2] Update the background color in `client/ui/resource_bar.py` `draw()` method from `(25, 25, 35)` to `(235, 220, 185)` (parchment)
+- [X] T007 [US2] Update all text color references in `client/ui/resource_bar.py` from `arcade.color.WHITE` to `(60, 40, 20)` (card text brown)
 - [ ] T008 [US2] Visually verify the restyled panel in-game — parchment background, dark brown text, readable at various window sizes
 
 **Checkpoint**: Bottom panel has card-consistent visual style.
@@ -66,9 +66,9 @@
 
 ### Implementation for User Story 3
 
-- [ ] T009 [US3] Add a `_resource_sprite_list: arcade.SpriteList | None` field and dirty-flag tracking to `ResourceBar.__init__()` in `client/ui/resource_bar.py`
-- [ ] T010 [US3] Add a `_build_resource_sprites()` method to `ResourceBar` in `client/ui/resource_bar.py` that loads resource icon PNGs from `client/assets/card_images/icons/`, positions them where the colored swatches were, and scales them to fit the bar height. Include fallback to `arcade.draw_rect_filled` if a PNG is missing.
-- [ ] T011 [US3] Update `ResourceBar.draw()` in `client/ui/resource_bar.py` to call `_build_resource_sprites()` only when data or geometry changes (dirty flag), then draw the SpriteList instead of the per-resource `arcade.draw_rect_filled` calls
+- [X] T009 [US3] Add a `_resource_sprite_list: arcade.SpriteList | None` field and dirty-flag tracking to `ResourceBar.__init__()` in `client/ui/resource_bar.py`
+- [X] T010 [US3] Add a `_build_resource_sprites()` method to `ResourceBar` in `client/ui/resource_bar.py` that loads resource icon PNGs from `client/assets/card_images/icons/`, positions them where the colored swatches were, and scales them to fit the bar height. Include fallback to `arcade.draw_rect_filled` if a PNG is missing.
+- [X] T011 [US3] Update `ResourceBar.draw()` in `client/ui/resource_bar.py` to call `_build_resource_sprites()` only when data or geometry changes (dirty flag), then draw the SpriteList instead of the per-resource `arcade.draw_rect_filled` calls
 - [ ] T012 [US3] Visually verify resource sprites render correctly, scale with window resize, and don't flicker
 
 **Checkpoint**: Resource icons are sprites from PNGs with cached SpriteList.
@@ -83,8 +83,8 @@
 
 ### Implementation for User Story 4
 
-- [ ] T013 [US4] Extend `_build_resource_sprites()` (or add a separate sprite-building step) in `client/ui/resource_bar.py` to load `quest_icon.png` and `intrigue_icon.png` from `client/assets/card_images/icons/` and position them in the top row next to the quest and intrigue count text
-- [ ] T014 [US4] Update the top row rendering in `ResourceBar.draw()` in `client/ui/resource_bar.py` to replace the "Intrigue:", "Quests Open:", and "Quests Done:" text prefixes with the card icon sprites followed by count text
+- [X] T013 [US4] Extend `_build_resource_sprites()` (or add a separate sprite-building step) in `client/ui/resource_bar.py` to load `quest_icon.png` and `intrigue_icon.png` from `client/assets/card_images/icons/` and position them in the top row next to the quest and intrigue count text
+- [X] T014 [US4] Update the top row rendering in `ResourceBar.draw()` in `client/ui/resource_bar.py` to replace the "Intrigue:", "Quests Open:", and "Quests Done:" text prefixes with the card icon sprites followed by count text
 - [ ] T015 [US4] Visually verify card icons appear correctly sized and positioned next to their counts
 
 **Checkpoint**: Quest and intrigue counts show card icons.
@@ -99,9 +99,9 @@
 
 ### Implementation for User Story 5
 
-- [ ] T016 [US5] Add `player_color: str` parameter to `ResourceBar.draw()` in `client/ui/resource_bar.py` (or pass via `update_resources()`)
-- [ ] T017 [US5] Load the player's worker marker PNG from `client/assets/card_images/markers/worker_{color}.png` and add it to the SpriteList, positioned next to the workers-left count text in `client/ui/resource_bar.py`
-- [ ] T018 [US5] Update `client/views/game_view.py` to pass the player's color name to the resource bar's draw or update method
+- [X] T016 [US5] Add `player_color: str` parameter to `ResourceBar.draw()` in `client/ui/resource_bar.py` (or pass via `update_resources()`)
+- [X] T017 [US5] Load the player's worker marker PNG from `client/assets/card_images/markers/worker_{color}.png` and add it to the SpriteList, positioned next to the workers-left count text in `client/ui/resource_bar.py`
+- [X] T018 [US5] Update `client/views/game_view.py` to pass the player's color name to the resource bar's draw or update method
 - [ ] T019 [US5] Visually verify the worker marker appears correctly colored and positioned
 
 **Checkpoint**: Worker marker shows player identity in the resource bar.
@@ -112,8 +112,8 @@
 
 **Purpose**: Final validation and cleanup
 
-- [ ] T020 Run `black --target-version py312` on all modified files
-- [ ] T021 Run `cd src && ruff check .` and fix any issues
+- [X] T020 Run `black --target-version py312` on all modified files
+- [X] T021 Run `cd src && ruff check .` and fix any issues
 - [ ] T022 Full visual playtest: verify all 5 user stories work together — parchment background, resource sprites, card icons, worker marker, proper scaling across window sizes
 - [ ] T023 Run quickstart.md validation steps (fallback test with missing PNG)
 
