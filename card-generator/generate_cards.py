@@ -688,7 +688,9 @@ def _draw_combo_choice(
         )
     elif cost and cost.total() > 0:
         cost_str = format_resources(cost)
-        draw_text_centered(draw, f"Cost: {cost_str}", y, B_FONT_LABEL, TEXT_COLOR, width=card_width)
+        draw_text_centered(
+            draw, f"Cost: {cost_str}", y, B_FONT_LABEL, TEXT_COLOR, width=card_width
+        )
         y += _SYMBOL_SIZE + _SYMBOL_GAP
 
     types = choice.allowed_types
@@ -1090,9 +1092,7 @@ def generate_building_cards() -> int:
                 and card.owner_bonus_vp == 0
                 and not card.owner_bonus_special
             ):
-                draw_text_centered(
-                    draw, "None", y, B_FONT_LABEL, (80, 50, 0), width=cw
-                )
+                draw_text_centered(draw, "None", y, B_FONT_LABEL, (80, 50, 0), width=cw)
 
         img.save(OUTPUT_BUILDINGS / f"{card.id}.png")
         count += 1
