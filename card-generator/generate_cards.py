@@ -111,13 +111,15 @@ I_FONT_LABEL = _load_font(28, bold=True)
 
 
 def create_card_base(
+    width: int = CARD_WIDTH,
     height: int = CARD_HEIGHT,
+    corner_radius: int = CORNER_RADIUS,
 ) -> tuple[Image.Image, ImageDraw.ImageDraw]:
-    img = Image.new("RGBA", (CARD_WIDTH, height), (0, 0, 0, 0))
+    img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
     draw.rounded_rectangle(
-        [0, 0, CARD_WIDTH - 1, height - 1],
-        radius=CORNER_RADIUS,
+        [0, 0, width - 1, height - 1],
+        radius=corner_radius,
         fill=PARCHMENT_COLOR,
     )
     return img, draw
@@ -198,6 +200,24 @@ def _title_start_y(
         return single_line_y
     line_h = bbox[3] - bbox[1] + 2
     return max(2, single_line_y - line_h // 2)
+
+
+def _draw_color_band(
+    draw: ImageDraw.ImageDraw,
+    card_width: int,
+    band_h: int,
+    color: tuple,
+    corner_radius: int,
+) -> None:
+    draw.rounded_rectangle(
+        [0, 0, card_width - 1, band_h],
+        radius=corner_radius,
+        fill=color,
+    )
+    draw.rectangle(
+        [0, band_h - corner_radius, card_width - 1, band_h],
+        fill=color,
+    )
 
 
 def _draw_section_divider(draw: ImageDraw.ImageDraw, y: int, w: int) -> None:
@@ -281,6 +301,21 @@ _SYMBOL_OUTLINE = (40, 40, 40)
 _SYMBOL_SIZE = 36
 _SYMBOL_GAP = 10
 _SYMBOLS_PER_ROW = 8
+_RESOURCE_FIELDS = ("guitarists", "bass_players", "drummers", "singers", "coins")
+
+
+def _resource_groups(cost: ResourceCost) -> list[tuple[str, int]]:
+    return [
+        (f, getattr(cost, f, 0)) for f in _RESOURCE_FIELDS if getattr(cost, f, 0) > 0
+    ]
+
+
+def _resource_icon_list(cost: ResourceCost) -> list[str]:
+    icons: list[str] = []
+    for field in _RESOURCE_FIELDS:
+        v = getattr(cost, field, 0)
+        icons.extend([field] * v)
+    return icons
 
 
 def _draw_resource_symbols(
@@ -289,11 +324,7 @@ def _draw_resource_symbols(
     y: int,
     card_width: int,
 ) -> int:
-    groups: list[tuple[str, int]] = []
-    for field in ("guitarists", "bass_players", "drummers", "singers", "coins"):
-        val = getattr(cost, field, 0)
-        if val > 0:
-            groups.append((field, val))
+    groups = _resource_groups(cost)
     if not groups:
         return y
 
@@ -547,12 +578,8 @@ def _draw_labeled_resource_row(
     y: int,
     card_width: int,
 ) -> int:
-    groups: list[tuple[str, int]] = []
-    for field in ("guitarists", "bass_players", "drummers", "singers", "coins"):
-        val = getattr(cost, field, 0)
-        if val > 0:
-            groups.append((field, val))
-    if not groups:
+    icons = _resource_icon_list(cost)
+    if not icons:
         return y
 
     sz = _SYMBOL_SIZE
@@ -562,10 +589,6 @@ def _draw_labeled_resource_row(
     label_w = bbox[2] - bbox[0]
     label_h = bbox[3] - bbox[1]
     label_gap = 10
-
-    icons = []
-    for res_type, count in groups:
-        icons.extend([res_type] * count)
     n = len(icons)
     icons_w = n * sz + (n - 1) * gap
     total_w = label_w + label_gap + icons_w
@@ -733,28 +756,14 @@ def generate_quest_cards() -> int:
     cr = QUEST_CORNER_RADIUS
     count = 0
     for card in config.contracts:
-        img = Image.new("RGBA", (cw, ch), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(img)
-        draw.rounded_rectangle(
-            [0, 0, cw - 1, ch - 1],
-            radius=cr,
-            fill=PARCHMENT_COLOR,
-        )
+        img, draw = create_card_base(cw, ch, cr)
 
         genre = card.genre.value
         genre_color = GENRE_COLORS.get(genre, (80, 80, 80))
 
         # --- Section 1: Genre color bar ---
         band_h = 60
-        draw.rounded_rectangle(
-            [0, 0, cw - 1, band_h],
-            radius=cr,
-            fill=genre_color,
-        )
-        draw.rectangle(
-            [0, band_h - cr, cw - 1, band_h],
-            fill=genre_color,
-        )
+        _draw_color_band(draw, cw, band_h, genre_color, cr)
         draw_text_centered(
             draw, genre.upper(), 10, Q_FONT_GENRE, (255, 255, 255), width=cw
         )
@@ -946,25 +955,11 @@ def generate_building_cards() -> int:
     cr = BLD_CORNER_RADIUS
     count = 0
     for card in config.buildings:
-        img = Image.new("RGBA", (cw, ch), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(img)
-        draw.rounded_rectangle(
-            [0, 0, cw - 1, ch - 1],
-            radius=cr,
-            fill=PARCHMENT_COLOR,
-        )
+        img, draw = create_card_base(cw, ch, cr)
 
         band_h = 80
         band_color = (30, 70, 30)
-        draw.rounded_rectangle(
-            [0, 0, cw - 1, band_h],
-            radius=cr,
-            fill=band_color,
-        )
-        draw.rectangle(
-            [0, band_h - cr, cw - 1, band_h],
-            fill=band_color,
-        )
+        _draw_color_band(draw, cw, band_h, band_color, cr)
 
         # Cost diamond in upper-left, centered vertically on the band
         diamond_sz = 36
@@ -1181,7 +1176,7 @@ def _draw_intrigue_effect_icons(
             prefix = ""
 
         icons: list[str] = []
-        for field in ("guitarists", "bass_players", "drummers", "singers", "coins"):
+        for field in _RESOURCE_FIELDS:
             v = effect_value.get(field, 0)
             icons.extend([field] * v)
 
@@ -1300,12 +1295,7 @@ def _draw_intrigue_bundle(
 
     bundle_icons: list[list[str]] = []
     for bundle in choice.bundles:
-        icons: list[str] = []
-        res = bundle.resources
-        for field in ("guitarists", "bass_players", "drummers", "singers", "coins"):
-            v = getattr(res, field, 0)
-            icons.extend([field] * v)
-        bundle_icons.append(icons)
+        bundle_icons.append(_resource_icon_list(bundle.resources))
 
     all_groups = bundle_icons
 
@@ -1371,25 +1361,11 @@ def generate_intrigue_cards() -> int:
     cr = INT_CORNER_RADIUS
     count = 0
     for card in config.intrigue_cards:
-        img = Image.new("RGBA", (cw, ch), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(img)
-        draw.rounded_rectangle(
-            [0, 0, cw - 1, ch - 1],
-            radius=cr,
-            fill=PARCHMENT_COLOR,
-        )
+        img, draw = create_card_base(cw, ch, cr)
 
         band_h = 80
         band_color = (60, 60, 60)
-        draw.rounded_rectangle(
-            [0, 0, cw - 1, band_h],
-            radius=cr,
-            fill=band_color,
-        )
-        draw.rectangle(
-            [0, band_h - cr, cw - 1, band_h],
-            fill=band_color,
-        )
+        _draw_color_band(draw, cw, band_h, band_color, cr)
 
         title_y = _title_start_y(draw, card.name, I_FONT_TITLE, 16, max_width=cw - 32)
         draw_text_wrapped(
@@ -1555,27 +1531,13 @@ def generate_space_cards() -> int:
     count = 0
 
     for space in spaces:
-        img = Image.new("RGBA", (cw, ch), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(img)
-        draw.rounded_rectangle(
-            [0, 0, cw - 1, ch - 1],
-            radius=cr,
-            fill=PARCHMENT_COLOR,
-        )
+        img, draw = create_card_base(cw, ch, cr)
         space_id = space.get("space_id", "")
         name = space.get("name", space_id)
 
         band_h = 70
         band_color = (50, 70, 100)
-        draw.rounded_rectangle(
-            [0, 0, cw - 1, band_h],
-            radius=cr,
-            fill=band_color,
-        )
-        draw.rectangle(
-            [0, band_h - cr, cw - 1, band_h],
-            fill=band_color,
-        )
+        _draw_color_band(draw, cw, band_h, band_color, cr)
 
         title_y = 10
         bbox = draw.textbbox((0, 0), name, font=Q_FONT_TITLE)
@@ -1681,23 +1643,9 @@ def generate_space_cards() -> int:
     # Backstage slots
     backstage_band_color = (100, 50, 50)
     for slot_num in range(1, 4):
-        img = Image.new("RGBA", (cw, ch), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(img)
-        draw.rounded_rectangle(
-            [0, 0, cw - 1, ch - 1],
-            radius=cr,
-            fill=PARCHMENT_COLOR,
-        )
+        img, draw = create_card_base(cw, ch, cr)
         band_h = 70
-        draw.rounded_rectangle(
-            [0, 0, cw - 1, band_h],
-            radius=cr,
-            fill=backstage_band_color,
-        )
-        draw.rectangle(
-            [0, band_h - cr, cw - 1, band_h],
-            fill=backstage_band_color,
-        )
+        _draw_color_band(draw, cw, band_h, backstage_band_color, cr)
         draw_text_centered(
             draw,
             f"Backstage {slot_num}",
