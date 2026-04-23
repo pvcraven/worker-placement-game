@@ -442,7 +442,7 @@ class BoardRenderer:
             constructed_cards,
             "buildings",
             constructed_positions,
-            scale=s,
+            scale=s * 0.5,
         )
 
         # Face-up quests
@@ -489,7 +489,7 @@ class BoardRenderer:
                 self._face_up_buildings,
                 "buildings",
                 self._bld_positions,
-                scale=s,
+                scale=s * 0.5,
             )
             for i, bld in enumerate(self._face_up_buildings):
                 bid = bld.get("id", f"building_{i}")
