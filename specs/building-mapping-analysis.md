@@ -60,12 +60,17 @@
 
 ---
 
-### Missing Buildings (4 not in our game)
+### Implemented Buildings (formerly missing)
+
+| # | Waterdeep Building | Our Building | Cost | Status | Notes |
+|---|-------------------|-------------|------|--------|-------|
+| 21 | Heroes' Garden | building_022 Audition Showcase | 4g | **DONE** | Visitor: draw 1 face-up contract, may immediately complete for +4 VP bonus. Owner: 2 VP. Uses `draw_contract_and_complete` visitor_reward_special + `pending_showcase_bonus` state. |
+| 22 | The Stone House | building_021 Royalty Collection Office | 4g | **DONE** | Visitor: 1 coin per player-purchased building in play. Owner: 2 coins. Uses `coins_per_building` visitor_reward_special. |
+
+### Still Missing Buildings (2 not in our game)
 
 | # | Waterdeep Building | Cost | Mechanic | Complexity |
 |---|-------------------|------|----------|------------|
-| 21 | Heroes' Garden | 4g | Take 1 face-up quest. May immediately complete it for +4 bonus VP (no bonus if completed later). Owner: 2 VP. | **Medium** — requires "immediate complete" mechanic with bonus VP tracking |
-| 22 | The Stone House | 4g | Take 1 Gold per building tile in play. Owner: 2 Gold. | **Low** — just count buildings on board, multiply by 1 gold |
 | 23 | The Palace of Waterdeep | 4g | Take the Ambassador piece — assign it as an extra worker before anyone else next round. Owner: 2 VP. | **High** — requires new Ambassador agent, special placement timing, complex edge cases |
 | 24 | The Zoarstar | 8g | Choose an opponent's occupied action space and use its action as your own. Owner: 2 VP. | **High** — requires copying another space's action, interacts with every space type |
 
@@ -81,15 +86,14 @@
 | **Mechanical Match (re-themed correctly)** | 6 | Red Rocks, Sun Studio, Fillmore, Ryman Auditorium, Trident Studios, Skulkway/Criteria |
 | **Owner Bonus Swapped** | 2 | Hansa Studios (building_003), J&M Recording Studio (building_004) — VP and draw_intrigue are swapped vs Waterdeep |
 | **Resource Type Mismatch** | 3 | Abbey Road (building_015), Compass Point (building_017), Electric Lady (building_018) — different resource compositions than their Waterdeep counterparts |
-| **Missing** | 4 | Heroes' Garden, The Stone House, The Palace of Waterdeep, The Zoarstar |
+| **Newly Implemented** | 2 | Audition Showcase (Heroes' Garden), Royalty Collection Office (The Stone House) |
+| **Missing** | 2 | The Palace of Waterdeep, The Zoarstar |
 
 ### Differences That May Be Intentional
 
 The 8-cost buildings (015-018) don't follow a strict 1:1 type mapping from their Waterdeep counterparts. Instead, they seem to have been designed to provide balanced coverage across all four resource types in our game. This may be intentional game design rather than a mapping error — the exact resource mix on 8-cost buildings matters less than ensuring each resource type has adequate supply buildings.
 
-### Missing Building Difficulty Ranking
+### Remaining Missing Building Difficulty Ranking
 
-1. **The Stone House** (easiest) — simple formula: count buildings, award that many coins
-2. **Heroes' Garden** (medium) — draw quest + optional immediate completion with bonus VP
-3. **The Palace of Waterdeep** (hard) — entirely new Ambassador agent mechanic
-4. **The Zoarstar** (hardest) — copy any occupied space's action, huge interaction surface
+1. **The Palace of Waterdeep** (hard) — entirely new Ambassador agent mechanic
+2. **The Zoarstar** (hardest) — copy any occupied space's action, huge interaction surface

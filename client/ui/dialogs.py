@@ -99,6 +99,8 @@ class CardSpriteSelectionDialog:
         on_select: callable,
         on_cancel: callable | None = None,
         cancel_label: str = "Cancel",
+        highlight_card_id: str | None = None,
+        highlight_text: str = "",
     ) -> None:
         self.title = title
         self.cards = cards[:6]
@@ -106,6 +108,8 @@ class CardSpriteSelectionDialog:
         self.on_select = on_select
         self.on_cancel = on_cancel
         self.cancel_label = cancel_label
+        self.highlight_card_id = highlight_card_id
+        self.highlight_text = highlight_text
         self._sprite_list: arcade.SpriteList | None = None
         self._card_ids: list[str] = []
         self._panel_rect: tuple[float, float, float, float] = (0, 0, 0, 0)
@@ -187,6 +191,28 @@ class CardSpriteSelectionDialog:
                     sprite.position = (cx, cy)
                     self._sprite_list.append(sprite)
             self._sprite_list.draw()
+
+            if self.highlight_card_id and self.highlight_text:
+                for card, (cx, cy) in zip(self.cards, positions):
+                    if card.get("id") == self.highlight_card_id:
+                        png_scale = (
+                            0.5
+                            if self.card_type in ("quests", "intrigue")
+                            else 1.0
+                        )
+                        card_h = 350 * s * png_scale
+                        bonus_label = arcade.Text(
+                            self.highlight_text,
+                            cx,
+                            cy - card_h / 2 - 14 * s,
+                            arcade.color.GOLD,
+                            max(8, int(13 * s)),
+                            anchor_x="center",
+                            anchor_y="center",
+                            bold=True,
+                        )
+                        bonus_label.draw()
+                        break
 
         hint = arcade.Text(
             "Click a card to select it",
@@ -359,8 +385,15 @@ class QuestCompletionDialog:
         quests: list[dict],
         on_select: callable,
         on_skip: callable,
+        bonus_quest_id: str | None = None,
+        bonus_vp: int = 0,
     ) -> None:
         self._visible = False
+        highlight_id = None
+        highlight_text = ""
+        if bonus_quest_id and bonus_vp > 0:
+            highlight_id = bonus_quest_id
+            highlight_text = f"+{bonus_vp}VP bonus"
         self._inner = CardSpriteSelectionDialog(
             title="Complete a Quest?",
             cards=quests,
@@ -368,6 +401,8 @@ class QuestCompletionDialog:
             on_select=on_select,
             on_cancel=on_skip,
             cancel_label="Skip",
+            highlight_card_id=highlight_id,
+            highlight_text=highlight_text,
         )
 
     def show(

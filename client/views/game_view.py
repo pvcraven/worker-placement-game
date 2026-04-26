@@ -684,6 +684,7 @@ class GameView(arcade.View):
         cid = msg.get("contract_id", "")
         vp = msg.get("victory_points_earned", 0)
         plot_bonus = msg.get("plot_quest_bonus_vp", 0)
+        showcase_bonus = msg.get("showcase_bonus_vp", 0)
         spent = msg.get("resources_spent", {})
         bonus = msg.get("bonus_resources", {})
         drawn_intr = msg.get("drawn_intrigue", [])
@@ -693,7 +694,9 @@ class GameView(arcade.View):
 
         for p in self.game_state.get("players", []):
             if p.get("player_id") == pid:
-                p["victory_points"] = p.get("victory_points", 0) + vp + plot_bonus
+                p["victory_points"] = (
+                    p.get("victory_points", 0) + vp + plot_bonus + showcase_bonus
+                )
                 hand = p.get("contract_hand", [])
                 completed_card = {"id": cid, "name": cname, "victory_points": vp}
                 for c in hand:
@@ -790,7 +793,8 @@ class GameView(arcade.View):
 
         if self.tabbed_panel:
             name = self._player_name(pid)
-            vp_str = f"{vp} VP" if not plot_bonus else f"{vp}+{plot_bonus} VP"
+            total_bonus = plot_bonus + showcase_bonus
+            vp_str = f"{vp} VP" if not total_bonus else f"{vp}+{total_bonus} VP"
             parts = [vp_str]
             for k, sym in RESOURCE_SYMBOLS:
                 v = bonus.get(k, 0)
@@ -1226,6 +1230,8 @@ class GameView(arcade.View):
             quests=quests,
             on_select=on_select,
             on_skip=on_skip,
+            bonus_quest_id=msg.get("bonus_quest_id"),
+            bonus_vp=msg.get("bonus_vp", 0),
         )
         self._quest_completion_dialog.show(
             self.window.width,

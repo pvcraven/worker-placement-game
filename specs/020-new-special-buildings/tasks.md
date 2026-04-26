@@ -14,8 +14,8 @@
 
 **Purpose**: Add the two new building entries to the game configuration
 
-- [ ] T001 [P] Add building_021 "Royalty Collection" entry to config/buildings.json with `visitor_reward_special: "coins_per_building"`, `owner_bonus: {coins: 2}`, `cost_coins: 4`, all other rewards zero, no accumulation
-- [ ] T002 [P] Add building_022 "Audition Showcase" entry to config/buildings.json with `visitor_reward_special: "draw_contract_and_complete"`, `owner_bonus_vp: 2`, `cost_coins: 4`, all other rewards zero, no accumulation
+- [X] T001 [P] Add building_021 "Royalty Collection" entry to config/buildings.json with `visitor_reward_special: "coins_per_building"`, `owner_bonus: {coins: 2}`, `cost_coins: 4`, all other rewards zero, no accumulation
+- [X] T002 [P] Add building_022 "Audition Showcase" entry to config/buildings.json with `visitor_reward_special: "draw_contract_and_complete"`, `owner_bonus_vp: 2`, `cost_coins: 4`, all other rewards zero, no accumulation
 
 ---
 
@@ -23,9 +23,9 @@
 
 **Purpose**: Add state tracking fields and message fields that both user stories depend on
 
-- [ ] T003 Add `pending_showcase_bonus: dict | None = None` field to GameState in server/models/game.py
-- [ ] T004 Add `bonus_quest_id: str | None = None` and `bonus_vp: int = 0` fields to QuestCompletionPromptResponse in shared/messages.py
-- [ ] T005 Add `showcase_bonus_vp: int = 0` field to QuestCompletedResponse in shared/messages.py
+- [X] T003 Add `pending_showcase_bonus: dict | None = None` field to GameState in server/models/game.py
+- [X] T004 Add `bonus_quest_id: str | None = None` and `bonus_vp: int = 0` fields to QuestCompletionPromptResponse in shared/messages.py
+- [X] T005 Add `showcase_bonus_vp: int = 0` field to QuestCompletedResponse in shared/messages.py
 
 **Checkpoint**: All shared types and state fields are in place — user story implementation can begin
 
@@ -39,7 +39,7 @@
 
 ### Implementation
 
-- [ ] T006 [US1] In server/game_engine.py `handle_place_worker()`, after the existing `draw_intrigue` visitor_reward_special handling (~line 1086-1088), add a case for `visitor_reward_special == "coins_per_building"`: calculate `coin_count = len(state.board.constructed_buildings)`, add `coin_count` to `player.resources.coins`, and include in the reward dict for the WorkerPlacedResponse broadcast. No early return — continue to owner bonus and quest completion check as normal.
+- [X] T006 [US1] In server/game_engine.py `handle_place_worker()`, after the existing `draw_intrigue` visitor_reward_special handling (~line 1086-1088), add a case for `visitor_reward_special == "coins_per_building"`: calculate `coin_count = len(state.board.constructed_buildings)`, add `coin_count` to `player.resources.coins`, and include in the reward dict for the WorkerPlacedResponse broadcast. No early return — continue to owner bonus and quest completion check as normal.
 
 **Checkpoint**: Royalty Collection building is fully playable
 
@@ -53,13 +53,13 @@
 
 ### Implementation
 
-- [ ] T007 [US2] In server/game_engine.py `handle_place_worker()`, add a case for `visitor_reward_special == "draw_contract_and_complete"`: process owner bonus first (since we return early), then send a `QuestSelectionPromptResponse` to the player with the face-up contracts (same as the existing `draw_contract` flow). Set a flag to distinguish this from regular quest selection — store `state.pending_showcase_bonus = {"player_id": player.player_id, "contract_id": None, "bonus_vp": 4}` (contract_id is filled in after selection). Return early.
-- [ ] T008 [US2] In server/game_engine.py `handle_select_quest_card()`, add handling for when `state.pending_showcase_bonus` is set and `contract_id` is None (meaning we're in the showcase selection phase): after adding the selected contract to the player's hand and drawing a replacement, set `state.pending_showcase_bonus["contract_id"] = contract.id`. Then call `_check_quest_completion()` instead of the normal quest selection follow-up.
-- [ ] T009 [US2] In server/game_engine.py `_check_quest_completion()`, after building the `completable` list: if `state.pending_showcase_bonus` is set and has a `contract_id`, check if that contract ID is in the completable list. If so, pass `bonus_quest_id=contract_id` and `bonus_vp=4` in the `QuestCompletionPromptResponse`. If not (bonus contract isn't completable), pass no bonus fields. If no quests are completable at all, clear `state.pending_showcase_bonus` before advancing turn.
-- [ ] T010 [US2] In server/game_engine.py `handle_complete_quest()`, after the base VP award and plot quest bonus calculation: check if `state.pending_showcase_bonus` is set and `pending_showcase_bonus["contract_id"] == contract.id`. If so, add `pending_showcase_bonus["bonus_vp"]` (4) to `player.victory_points`, set `showcase_bonus_vp = 4` for the response, and log "earned N bonus VP from Audition Showcase". Clear `state.pending_showcase_bonus`.
-- [ ] T011 [US2] In server/game_engine.py `handle_skip_quest_completion()` and `_advance_turn()`: clear `state.pending_showcase_bonus` if it is set (player skipped or completed a different quest — no bonus awarded).
-- [ ] T012 [US2] In client/views/game_view.py, update the quest completion prompt handler to read `bonus_quest_id` and `bonus_vp` from the `QuestCompletionPromptResponse`. When rendering completable quest cards, if a card's ID matches `bonus_quest_id`, render "+4VP bonus" text (using `arcade.Text`) underneath that card. Store the bonus info so it can be included in game log on completion.
-- [ ] T013 [US2] In client/views/game_view.py `_on_quest_completed()`, if `showcase_bonus_vp > 0` in the response, include "+N bonus VP from building" in the game log entry and update the player's VP display.
+- [X] T007 [US2] In server/game_engine.py `handle_place_worker()`, add a case for `visitor_reward_special == "draw_contract_and_complete"`: process owner bonus first (since we return early), then send a `QuestSelectionPromptResponse` to the player with the face-up contracts (same as the existing `draw_contract` flow). Set a flag to distinguish this from regular quest selection — store `state.pending_showcase_bonus = {"player_id": player.player_id, "contract_id": None, "bonus_vp": 4}` (contract_id is filled in after selection). Return early.
+- [X] T008 [US2] In server/game_engine.py `handle_select_quest_card()`, add handling for when `state.pending_showcase_bonus` is set and `contract_id` is None (meaning we're in the showcase selection phase): after adding the selected contract to the player's hand and drawing a replacement, set `state.pending_showcase_bonus["contract_id"] = contract.id`. Then call `_check_quest_completion()` instead of the normal quest selection follow-up.
+- [X] T009 [US2] In server/game_engine.py `_check_quest_completion()`, after building the `completable` list: if `state.pending_showcase_bonus` is set and has a `contract_id`, check if that contract ID is in the completable list. If so, pass `bonus_quest_id=contract_id` and `bonus_vp=4` in the `QuestCompletionPromptResponse`. If not (bonus contract isn't completable), pass no bonus fields. If no quests are completable at all, clear `state.pending_showcase_bonus` before advancing turn.
+- [X] T010 [US2] In server/game_engine.py `handle_complete_quest()`, after the base VP award and plot quest bonus calculation: check if `state.pending_showcase_bonus` is set and `pending_showcase_bonus["contract_id"] == contract.id`. If so, add `pending_showcase_bonus["bonus_vp"]` (4) to `player.victory_points`, set `showcase_bonus_vp = 4` for the response, and log "earned N bonus VP from Audition Showcase". Clear `state.pending_showcase_bonus`.
+- [X] T011 [US2] In server/game_engine.py `handle_skip_quest_completion()` and `_advance_turn()`: clear `state.pending_showcase_bonus` if it is set (player skipped or completed a different quest — no bonus awarded).
+- [X] T012 [US2] In client/views/game_view.py, update the quest completion prompt handler to read `bonus_quest_id` and `bonus_vp` from the `QuestCompletionPromptResponse`. When rendering completable quest cards, if a card's ID matches `bonus_quest_id`, render "+4VP bonus" text (using `arcade.Text`) underneath that card. Store the bonus info so it can be included in game log on completion.
+- [X] T013 [US2] In client/views/game_view.py `_on_quest_completed()`, if `showcase_bonus_vp > 0` in the response, include "+N bonus VP from building" in the game log entry and update the player's VP display.
 
 **Checkpoint**: Audition Showcase building is fully playable
 
@@ -69,9 +69,9 @@
 
 **Purpose**: Tests, documentation updates, validation
 
-- [ ] T014 [P] Create tests/test_special_buildings.py with pytest tests covering: coins_per_building awards correct count, coins_per_building count is dynamic (changes as buildings are purchased), owner bonus does not trigger on self-visit, showcase bonus sets pending state correctly, showcase bonus +4 VP awarded when bonus contract completed, showcase bonus NOT awarded when different contract completed, showcase bonus cleared on skip, showcase with no completable quests advances turn
-- [ ] T015 [P] Update specs/waterdeep-card-mapping.md to mark The Stone House and Heroes' Garden as DONE with their music-themed equivalents (Royalty Collection / Audition Showcase)
-- [ ] T016 Run `pytest tests/` and `ruff check .` from project root — fix any failures or lint errors
+- [X] T014 [P] Create tests/test_special_buildings.py with pytest tests covering: coins_per_building awards correct count, coins_per_building count is dynamic (changes as buildings are purchased), owner bonus does not trigger on self-visit, showcase bonus sets pending state correctly, showcase bonus +4 VP awarded when bonus contract completed, showcase bonus NOT awarded when different contract completed, showcase bonus cleared on skip, showcase with no completable quests advances turn
+- [X] T015 [P] Update specs/waterdeep-card-mapping.md to mark The Stone House and Heroes' Garden as DONE with their music-themed equivalents (Royalty Collection / Audition Showcase)
+- [X] T016 Run `pytest tests/` and `ruff check .` from project root — fix any failures or lint errors
 
 ---
 

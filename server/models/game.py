@@ -170,6 +170,7 @@ class GameState(BaseModel):
     pending_opponent_coins: dict | None = None
     pending_worker_recall: dict | None = None
     pending_round_start_choices: list[str] = Field(default_factory=list)
+    pending_showcase_bonus: dict | None = None
 
     def get_player(self, player_id: str) -> Player | None:
         for p in self.players:
