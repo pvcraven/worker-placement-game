@@ -317,3 +317,48 @@ This shows each quest type has a primary resource affinity:
 - **Jazz** (Skullduggery) favors Bass Players
 - **Funk** (Arcana) favors Drummers
 - **Pop** (Commerce) favors Coins (and is more spread across other resources)
+
+---
+
+## Implementation Status
+
+Tracks which special mechanics are implemented in the game engine.
+
+### One-Time Completion Rewards
+
+| Mechanic ID          | Status      | Notes                                              |
+|----------------------|-------------|----------------------------------------------------|
+| choose_building      | DONE        | reward_building = "market_choice"                  |
+| random_building      | DONE        | reward_building = "random_draw"                    |
+| face_up_quest        | DONE        | reward_draw_quests + reward_quest_draw_mode="choose"|
+| random_quest         | DONE        | reward_draw_quests + reward_quest_draw_mode="random"|
+| play_intrigue        | NOT STARTED | Data in JSON but no ContractCard field or logic    |
+| opponent_gains_coins | NOT STARTED | Data in JSON but no ContractCard field or logic    |
+
+### Scoring Plot Quests
+
+| Mechanic ID              | Status      | Notes                                          |
+|--------------------------|-------------|-------------------------------------------------|
+| score_per_genre (×5)     | DONE        | bonus_vp_per_genre_quest + bonus_vp_genre fields|
+| score_per_intrigue       | DONE        | bonus_vp_per_intrigue_played field              |
+| score_per_building       | DONE        | +4 VP per future building purchased             |
+| score_existing_buildings | DONE        | bonus_vp_per_building_owned field               |
+
+### Resource Trigger Plot Quests
+
+| Mechanic ID         | Status      | Notes |
+|---------------------|-------------|-------|
+| on_gain_guitarist   | NOT STARTED |       |
+| on_gain_guitarist_i | NOT STARTED |       |
+| on_gain_singer_swap | NOT STARTED |       |
+| on_gain_bass_coins  | NOT STARTED |       |
+| on_gain_coins_bass  | NOT STARTED |       |
+
+### Persistent Ability Plot Quests
+
+| Mechanic ID         | Status      | Notes |
+|---------------------|-------------|-------|
+| extra_worker        | NOT STARTED |       |
+| gain_resource_round | NOT STARTED |       |
+| worker_recall       | NOT STARTED |       |
+| use_occupied        | NOT STARTED |       |

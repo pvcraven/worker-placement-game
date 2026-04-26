@@ -600,7 +600,8 @@
       "victory_points": 8,
       "bonus_resources": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
       "is_plot_quest": true,
-      "ongoing_benefit_description": "+2 VP per building you already own at the time of completion"
+      "ongoing_benefit_description": "+2 VP per building you already own at the time of completion",
+      "bonus_vp_per_building_owned": 2
     },
     {
       "id": "contract_jazz_005",
