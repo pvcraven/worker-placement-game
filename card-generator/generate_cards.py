@@ -989,9 +989,10 @@ def generate_building_cards() -> int:
 
         y = band_h + 10
 
-        # "Visitor:" label
-        draw_text_centered(draw, "Visitor:", y, B_FONT_LABEL, TEXT_COLOR, width=cw)
-        y += 34
+        # "Visitor:" label (skip for cramped cards)
+        if card.id != "building_014":
+            draw_text_centered(draw, "Visitor:", y, B_FONT_LABEL, TEXT_COLOR, width=cw)
+            y += 34
 
         # Visitor reward value
         if card.accumulation_type:

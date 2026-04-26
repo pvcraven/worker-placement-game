@@ -752,6 +752,9 @@ class GameView(arcade.View):
                             "owner_bonus",
                             {},
                         ),
+                        "building_tile": {
+                            "id": building.get("building_id", ""),
+                        },
                         "occupied_by": None,
                     }
             self._refresh_board(board)
