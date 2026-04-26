@@ -207,6 +207,7 @@ class WorkerPlacedBackstageResponse(BaseModel):
     slot_number: int
     intrigue_card: dict
     intrigue_effect: dict
+    plot_quest_bonus_vp: int = 0
     next_player_id: str | None
 
 
@@ -275,6 +276,7 @@ class PlacementCancelledResponse(BaseModel):
     space_id: str
     next_player_id: str | None
     returned_card: dict = Field(default_factory=dict)
+    plot_quest_bonus_vp: int = 0
 
 
 class BuildingConstructedResponse(BaseModel):

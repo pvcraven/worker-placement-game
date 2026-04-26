@@ -636,7 +636,8 @@
       "victory_points": 0,
       "bonus_resources": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
       "is_plot_quest": true,
-      "ongoing_benefit_description": "+2 VP each time you play an intrigue card"
+      "ongoing_benefit_description": "+2 VP each time you play an intrigue card",
+      "bonus_vp_per_intrigue_played": 2
     },
     {
       "id": "contract_jazz_008",

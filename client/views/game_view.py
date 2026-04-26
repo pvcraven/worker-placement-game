@@ -443,14 +443,23 @@ class GameView(arcade.View):
                                 p[key] = p.get(key, 0) + len(drawn)
                         break
 
+        # Apply plot quest bonus VP for playing an intrigue card
+        plot_bonus = msg.get("plot_quest_bonus_vp", 0)
+        if plot_bonus:
+            for p in self.game_state.get("players", []):
+                if p.get("player_id") == pid:
+                    p["victory_points"] = p.get("victory_points", 0) + plot_bonus
+                    break
+
         self._refresh_board(board)
 
         if self.tabbed_panel:
             name = self._player_name(pid)
             card_name = card.get("name", "?")
+            bonus_str = f" (+{plot_bonus} VP plot bonus)" if plot_bonus else ""
             self.tabbed_panel.add_entry(
                 f"{name} placed worker on Backstage"
-                f" slot {slot_num}, played {card_name}"
+                f" slot {slot_num}, played {card_name}{bonus_str}"
             )
             effect = msg.get("intrigue_effect", {})
             effect_type = effect.get("type", "")
@@ -1021,6 +1030,7 @@ class GameView(arcade.View):
                 spaces[space_id]["occupied_by"] = None
 
         returned_card = msg.get("returned_card", {})
+        reversed_bonus = msg.get("plot_quest_bonus_vp", 0)
         for p in self.game_state.get("players", []):
             if p.get("player_id") == pid:
                 p["available_workers"] = p.get("available_workers", 0) + 1
@@ -1028,6 +1038,8 @@ class GameView(arcade.View):
                     p.setdefault("intrigue_hand", []).append(
                         returned_card,
                     )
+                if reversed_bonus:
+                    p["victory_points"] = p.get("victory_points", 0) - reversed_bonus
                 break
 
         self._refresh_board(board)
