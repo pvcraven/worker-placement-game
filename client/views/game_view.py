@@ -400,9 +400,7 @@ class GameView(arcade.View):
                 for br in (tb.get("bonus_resources") or {}).items():
                     k, v = br
                     if v:
-                        sym = next(
-                            (s for rk, s in RESOURCE_SYMBOLS if rk == k), k
-                        )
+                        sym = next((s for rk, s in RESOURCE_SYMBOLS if rk == k), k)
                         parts.append(f"{v}{sym}")
                 if tb.get("drawn_intrigue"):
                     parts.append(f"{len(tb['drawn_intrigue'])} intrigue")
@@ -1118,9 +1116,7 @@ class GameView(arcade.View):
 
         if self.tabbed_panel:
             name = self._player_name(pid)
-            self.tabbed_panel.add_entry(
-                f"{name} recalled worker from {space_name}"
-            )
+            self.tabbed_panel.add_entry(f"{name} recalled worker from {space_name}")
 
     def _on_round_start_resource_choice_prompt(self, msg: dict) -> None:
         player_id = msg.get("player_id", "")
@@ -1171,14 +1167,13 @@ class GameView(arcade.View):
                             "resource_type": rt,
                         }
                     )
+
                 return handler
 
             btn.on_click = make_handler(resource_type)
             v_box.add(btn)
 
-        bg = v_box.with_padding(all=int(20 * s)).with_background(
-            color=(0, 0, 0, 230)
-        )
+        bg = v_box.with_padding(all=int(20 * s)).with_background(color=(0, 0, 0, 230))
         anchor.add(child=bg, anchor_x="center", anchor_y="center")
         widget_ref[0] = self.ui.add(anchor)
 
@@ -1448,9 +1443,7 @@ class GameView(arcade.View):
                 parts = []
                 for k, v in (tb.get("bonus_resources") or {}).items():
                     if v:
-                        sym = next(
-                            (s for rk, s in RESOURCE_SYMBOLS if rk == k), k
-                        )
+                        sym = next((s for rk, s in RESOURCE_SYMBOLS if rk == k), k)
                         parts.append(f"{v}{sym}")
                 if tb.get("drawn_intrigue"):
                     parts.append(f"{len(tb['drawn_intrigue'])} intrigue")

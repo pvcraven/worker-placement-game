@@ -1943,7 +1943,10 @@ async def handle_complete_quest(
 
     if has_interactive:
         # Existing quest reward prompts (choose quest draw, market building choice)
-        if contract.reward_draw_quests > 0 and contract.reward_quest_draw_mode == "choose":
+        if (
+            contract.reward_draw_quests > 0
+            and contract.reward_quest_draw_mode == "choose"
+        ):
             await _send_quest_reward_prompt(server, state, player, contract)
             return
         if contract.reward_building == "market_choice":
@@ -1962,9 +1965,7 @@ async def handle_complete_quest(
 
         # Opponent choice prompt (3+ players)
         if state.pending_opponent_coins:
-            opponents = [
-                p for p in state.players if p.player_id != player.player_id
-            ]
+            opponents = [p for p in state.players if p.player_id != player.player_id]
             await server.send_to_player(
                 player.player_id,
                 OpponentChoicePromptResponse(
@@ -3086,9 +3087,7 @@ async def handle_cancel_intrigue_target(
 # ------------------------------------------------------------------
 
 
-async def _advance_after_quest_rewards(
-    server: GameServer, state, player
-) -> None:
+async def _advance_after_quest_rewards(server: GameServer, state, player) -> None:
     """After resolving one quest-completion reward, check if more are pending."""
     # Chain: play_intrigue → opponent_coins → recall → done
     if state.pending_play_intrigue:
@@ -3101,9 +3100,7 @@ async def _advance_after_quest_rewards(
         return
 
     if state.pending_opponent_coins:
-        opponents = [
-            p for p in state.players if p.player_id != player.player_id
-        ]
+        opponents = [p for p in state.players if p.player_id != player.player_id]
         await server.send_to_player(
             player.player_id,
             OpponentChoicePromptResponse(
@@ -3184,9 +3181,7 @@ async def handle_play_intrigue_from_quest(
             plot_bonus_vp += completed.bonus_vp_per_intrigue_played
     player.victory_points += plot_bonus_vp
 
-    log_detail = (
-        f"{player.display_name} played {card.name} from quest reward"
-    )
+    log_detail = f"{player.display_name} played {card.name} from quest reward"
     if plot_bonus_vp:
         log_detail += f" (+{plot_bonus_vp} plot quest bonus)"
 
@@ -3286,9 +3281,7 @@ async def handle_choose_opponent(
     await _advance_after_quest_rewards(server, state, player)
 
 
-async def handle_recall_worker(
-    server: GameServer, conn: ClientConnection, msg
-) -> None:
+async def handle_recall_worker(server: GameServer, conn: ClientConnection, msg) -> None:
     """Handle recalling a placed worker as a quest completion reward."""
     state = _get_game_state(server, conn)
     if state is None:
@@ -3310,9 +3303,7 @@ async def handle_recall_worker(
 
     space = state.board.action_spaces.get(msg.space_id)
     if space is None or space.occupied_by != player.player_id:
-        await conn.send_error(
-            "INVALID_ACTION", "Not a valid space to recall from."
-        )
+        await conn.send_error("INVALID_ACTION", "Not a valid space to recall from.")
         return
 
     space.occupied_by = None
@@ -3351,9 +3342,7 @@ async def handle_round_start_resource_choice(
         return
 
     if not state.pending_round_start_choices:
-        await conn.send_error(
-            "INVALID_ACTION", "No pending round-start choice."
-        )
+        await conn.send_error("INVALID_ACTION", "No pending round-start choice.")
         return
 
     if state.pending_round_start_choices[0] != conn.player_id:
