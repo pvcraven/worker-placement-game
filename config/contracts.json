@@ -70,7 +70,8 @@
       "victory_points": 6,
       "bonus_resources": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
       "is_plot_quest": true,
-      "ongoing_benefit_description": "+4 VP each time you purchase a building"
+      "ongoing_benefit_description": "+4 VP each time you purchase a building",
+      "bonus_vp_per_building_purchased": 4
     },
     {
       "id": "contract_pop_007",

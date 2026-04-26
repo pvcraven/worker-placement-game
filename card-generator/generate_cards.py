@@ -331,14 +331,22 @@ def _draw_resource_symbols(
     sz = _SYMBOL_SIZE
     gap = _SYMBOL_GAP
 
-    # Pack groups into rows, keeping each type together
+    # Pack groups into rows, keeping each type together when possible
     rows: list[list[str]] = []
     current_row: list[str] = []
     for res_type, count in groups:
         if current_row and len(current_row) + count > _SYMBOLS_PER_ROW:
             rows.append(current_row)
             current_row = []
-        current_row.extend([res_type] * count)
+        remaining = count
+        while remaining > 0:
+            space = _SYMBOLS_PER_ROW - len(current_row)
+            batch = min(remaining, space)
+            current_row.extend([res_type] * batch)
+            remaining -= batch
+            if len(current_row) >= _SYMBOLS_PER_ROW:
+                rows.append(current_row)
+                current_row = []
     if current_row:
         rows.append(current_row)
 

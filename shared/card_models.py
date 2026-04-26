@@ -68,6 +68,7 @@ class ContractCard(BaseModel):
     bonus_vp_genre: Genre | None = None
     bonus_vp_per_intrigue_played: int = 0
     bonus_vp_per_building_owned: int = 0
+    bonus_vp_per_building_purchased: int = 0
     resource_trigger_type: str | None = None
     resource_trigger_bonus: ResourceCost = Field(default_factory=ResourceCost)
     resource_trigger_draw_intrigue: int = 0

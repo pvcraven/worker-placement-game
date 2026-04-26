@@ -1310,16 +1310,21 @@ class GameView(arcade.View):
         bname = msg.get("building_name", "?")
         new_space_id = msg.get("new_space_id", "")
         cost = msg.get("cost_coins", 0)
+        accum_vp = msg.get("accumulated_vp", 0)
+        plot_bonus = msg.get("plot_quest_bonus_vp", 0)
+        total_vp = accum_vp + plot_bonus
 
-        if cost:
-            for p in self.game_state.get("players", []):
-                if p.get("player_id") == pid:
+        for p in self.game_state.get("players", []):
+            if p.get("player_id") == pid:
+                if cost:
                     res = p.get("resources", {})
                     res["coins"] = max(0, res.get("coins", 0) - cost)
                     my_id = getattr(self.window, "player_id", None)
                     if pid == my_id and self.resource_bar:
                         self.resource_bar.update_resources(res)
-                    break
+                if total_vp:
+                    p["victory_points"] = p.get("victory_points", 0) + total_vp
+                break
 
         # Update local board state
         board = self.game_state.get("board", {})
@@ -1349,8 +1354,13 @@ class GameView(arcade.View):
 
         if self.tabbed_panel:
             name = self._player_name(pid)
-            vp = msg.get("accumulated_vp", 0)
-            vp_str = f" (+{vp} VP)" if vp else ""
+            if total_vp:
+                if plot_bonus:
+                    vp_str = f" (+{accum_vp}+{plot_bonus} VP)"
+                else:
+                    vp_str = f" (+{accum_vp} VP)"
+            else:
+                vp_str = ""
             self.tabbed_panel.add_entry(
                 f"{name} built {bname}{vp_str}",
             )

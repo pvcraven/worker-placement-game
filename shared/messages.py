@@ -323,6 +323,7 @@ class BuildingConstructedResponse(BaseModel):
     owner_id: str = ""
     cost_coins: int = 0
     accumulated_vp: int = 0
+    plot_quest_bonus_vp: int = 0
     building_tile: dict = Field(default_factory=dict)
     next_player_id: str | None = None
 

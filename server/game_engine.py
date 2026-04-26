@@ -2398,6 +2398,13 @@ async def handle_purchase_building(
     # Purchase: deduct coins, award VP
     player.resources.coins -= building.cost_coins
     player.victory_points += building.accumulated_vp
+
+    plot_bonus_vp = 0
+    for completed in player.completed_contracts:
+        if completed.bonus_vp_per_building_purchased > 0:
+            plot_bonus_vp += completed.bonus_vp_per_building_purchased
+    player.victory_points += plot_bonus_vp
+
     state.board.face_up_buildings.remove(building)
     state.board.building_lots.remove(lot_id)
 
@@ -2423,6 +2430,11 @@ async def handle_purchase_building(
     )
     state.board.constructed_buildings.append(space_id)
 
+    vp_detail = f"+{building.accumulated_vp} VP" if building.accumulated_vp else ""
+    if plot_bonus_vp:
+        bonus_part = f"+{plot_bonus_vp} plot quest bonus"
+        vp_detail = f"{vp_detail} {bonus_part}".strip() if vp_detail else bonus_part
+
     state.game_log.append(
         GameLog(
             round_number=state.current_round,
@@ -2430,7 +2442,8 @@ async def handle_purchase_building(
             action="purchase_building",
             details=(
                 f"{player.display_name} built {building.name}"
-                f" (+{building.accumulated_vp} VP)"
+                f" ({vp_detail})" if vp_detail else
+                f"{player.display_name} built {building.name}"
             ),
             timestamp=time.time(),
         )
@@ -2456,6 +2469,7 @@ async def handle_purchase_building(
             owner_id=player.player_id,
             cost_coins=building.cost_coins,
             accumulated_vp=building.accumulated_vp,
+            plot_quest_bonus_vp=plot_bonus_vp,
             building_tile=building.model_dump(),
             next_player_id=(next_player.player_id if next_player else None),
         ),
