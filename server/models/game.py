@@ -163,6 +163,7 @@ class GameState(BaseModel):
     last_activity: float = 0.0
     pending_quest_reward: dict | None = None
     pending_resource_choice: dict | None = None
+    pending_resource_trigger_swap: dict | None = None
 
     def get_player(self, player_id: str) -> Player | None:
         for p in self.players:
