@@ -57,7 +57,9 @@
       "victory_points": 8,
       "bonus_resources": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
       "is_plot_quest": true,
-      "ongoing_benefit_description": "+2 VP each time you complete a Pop quest"
+      "ongoing_benefit_description": "+2 VP each time you complete a Pop quest",
+      "bonus_vp_per_genre_quest": 2,
+      "bonus_vp_genre": "pop"
     },
     {
       "id": "contract_pop_006",
@@ -160,7 +162,9 @@
       "victory_points": 8,
       "bonus_resources": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
       "is_plot_quest": true,
-      "ongoing_benefit_description": "+2 VP each time you complete a Rock quest"
+      "ongoing_benefit_description": "+2 VP each time you complete a Rock quest",
+      "bonus_vp_per_genre_quest": 2,
+      "bonus_vp_genre": "rock"
     },
     {
       "id": "contract_rock_003",
@@ -332,7 +336,9 @@
       "victory_points": 8,
       "bonus_resources": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
       "is_plot_quest": true,
-      "ongoing_benefit_description": "+2 VP each time you complete a Soul quest"
+      "ongoing_benefit_description": "+2 VP each time you complete a Soul quest",
+      "bonus_vp_per_genre_quest": 2,
+      "bonus_vp_genre": "soul"
     },
     {
       "id": "contract_soul_006",
@@ -454,7 +460,9 @@
       "victory_points": 8,
       "bonus_resources": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
       "is_plot_quest": true,
-      "ongoing_benefit_description": "+2 VP each time you complete a Funk quest"
+      "ongoing_benefit_description": "+2 VP each time you complete a Funk quest",
+      "bonus_vp_per_genre_quest": 2,
+      "bonus_vp_genre": "funk"
     },
     {
       "id": "contract_funk_005",
@@ -579,7 +587,9 @@
       "victory_points": 8,
       "bonus_resources": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
       "is_plot_quest": true,
-      "ongoing_benefit_description": "+2 VP each time you complete a Jazz quest"
+      "ongoing_benefit_description": "+2 VP each time you complete a Jazz quest",
+      "bonus_vp_per_genre_quest": 2,
+      "bonus_vp_genre": "jazz"
     },
     {
       "id": "contract_jazz_004",

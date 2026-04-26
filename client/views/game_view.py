@@ -807,12 +807,9 @@ class GameView(arcade.View):
                 {},
             ).get("face_up_quests", [])
             cid = choice.get("id")
-            self.game_state.setdefault(
-                "board",
-                {},
-            )[
-                "face_up_quests"
-            ] = [q for q in face_up if q.get("id") != cid]
+            board = self.game_state.setdefault("board", {})
+            board["face_up_quests"] = [q for q in face_up if q.get("id") != cid]
+            self._refresh_board(board)
         elif reward_type == "choose_building":
             board = self.game_state.get("board", {})
             sid = choice.get("space_id", "")
@@ -1110,7 +1107,7 @@ class GameView(arcade.View):
 
         my_id = getattr(self.window, "player_id", None)
         if slots:
-            first_owner = slots[0].get("occupied_by")
+            first_owner = slots[0].get("player_id") or slots[0].get("occupied_by")
             if first_owner == my_id:
                 self._status_text = "Reassignment — YOUR TURN"
             else:

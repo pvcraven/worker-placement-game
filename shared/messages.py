@@ -246,6 +246,7 @@ class QuestCompletedResponse(BaseModel):
         default_factory=list,
     )
     building_granted: dict | None = None
+    plot_quest_bonus_vp: int = 0
     pending_choice: bool = False
     next_player_id: str | None = None
 
