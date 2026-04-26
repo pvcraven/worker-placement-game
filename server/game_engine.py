@@ -1551,6 +1551,17 @@ async def handle_complete_quest(
             and completed.bonus_vp_genre == contract.genre
         ):
             plot_bonus_vp += completed.bonus_vp_per_genre_quest
+
+    # One-time bonus: count buildings player currently owns
+    if contract.bonus_vp_per_building_owned > 0:
+        buildings_owned = sum(
+            1
+            for sid in state.board.constructed_buildings
+            if state.board.action_spaces.get(sid)
+            and state.board.action_spaces[sid].owner_id == player.player_id
+        )
+        plot_bonus_vp += contract.bonus_vp_per_building_owned * buildings_owned
+
     player.victory_points += plot_bonus_vp
 
     player.contract_hand.remove(contract)
