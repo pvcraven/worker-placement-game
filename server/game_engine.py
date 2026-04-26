@@ -1282,8 +1282,7 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
     if (
         space.space_type == "building"
         and space.building_tile
-        and space.building_tile.visitor_reward_special
-        == "draw_contract_and_complete"
+        and space.building_tile.visitor_reward_special == "draw_contract_and_complete"
     ):
         state.pending_showcase_bonus = {
             "player_id": player.player_id,
@@ -2441,9 +2440,9 @@ async def handle_purchase_building(
             player_id=player.player_id,
             action="purchase_building",
             details=(
-                f"{player.display_name} built {building.name}"
-                f" ({vp_detail})" if vp_detail else
-                f"{player.display_name} built {building.name}"
+                f"{player.display_name} built {building.name}" f" ({vp_detail})"
+                if vp_detail
+                else f"{player.display_name} built {building.name}"
             ),
             timestamp=time.time(),
         )
@@ -2963,8 +2962,7 @@ async def handle_reassign_worker(
     if (
         target.space_type == "building"
         and target.building_tile
-        and target.building_tile.visitor_reward_special
-        == "draw_contract_and_complete"
+        and target.building_tile.visitor_reward_special == "draw_contract_and_complete"
     ):
         state.pending_showcase_bonus = {
             "player_id": state.reassignment_active_player_id,

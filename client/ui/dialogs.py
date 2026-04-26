@@ -196,9 +196,7 @@ class CardSpriteSelectionDialog:
                 for card, (cx, cy) in zip(self.cards, positions):
                     if card.get("id") == self.highlight_card_id:
                         png_scale = (
-                            0.5
-                            if self.card_type in ("quests", "intrigue")
-                            else 1.0
+                            0.5 if self.card_type in ("quests", "intrigue") else 1.0
                         )
                         card_h = 350 * s * png_scale
                         bonus_label = arcade.Text(
