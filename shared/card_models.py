@@ -66,6 +66,7 @@ class ContractCard(BaseModel):
     ongoing_benefit_description: str | None = None
     bonus_vp_per_genre_quest: int = 0
     bonus_vp_genre: Genre | None = None
+    bonus_vp_per_intrigue_played: int = 0
 
 
 class IntrigueCard(BaseModel):

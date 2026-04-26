@@ -1292,12 +1292,23 @@ async def handle_place_worker_backstage(
     # Resolve intrigue card effect
     effect_details = _resolve_intrigue_effect(state, player, card)
 
+    # Check for plot quest intrigue bonus
+    plot_bonus_vp = 0
+    for completed in player.completed_contracts:
+        if completed.bonus_vp_per_intrigue_played > 0:
+            plot_bonus_vp += completed.bonus_vp_per_intrigue_played
+    player.victory_points += plot_bonus_vp
+
+    log_detail = f"{player.display_name} placed worker on Backstage slot {msg.slot_number}, played {card.name}"
+    if plot_bonus_vp:
+        log_detail += f" (+{plot_bonus_vp} plot quest bonus)"
+
     state.game_log.append(
         GameLog(
             round_number=state.current_round,
             player_id=player.player_id,
             action="place_worker_backstage",
-            details=f"{player.display_name} placed worker on Backstage slot {msg.slot_number}, played {card.name}",
+            details=log_detail,
             timestamp=time.time(),
         )
     )
@@ -1315,6 +1326,7 @@ async def handle_place_worker_backstage(
             "effect_type": card.effect_type,
             "effect_value": card.effect_value,
             "eligible_targets": eligible,
+            "plot_bonus_vp": plot_bonus_vp,
         }
 
         # Build target info with resource counts
@@ -1355,6 +1367,7 @@ async def handle_place_worker_backstage(
                     "details": {},
                     "pending": True,
                 },
+                plot_quest_bonus_vp=plot_bonus_vp,
                 next_player_id=None,
             ),
         )
@@ -1371,6 +1384,7 @@ async def handle_place_worker_backstage(
                 "description": card.description,
             },
             intrigue_effect=effect_details,
+            plot_quest_bonus_vp=plot_bonus_vp,
             next_player_id=None,
         ),
     )
@@ -2615,6 +2629,10 @@ async def handle_cancel_intrigue_target(
     player.intrigue_hand.append(card)
     player.available_workers += 1
 
+    # Reverse plot quest bonus VP that was awarded when the card was played
+    reversed_bonus = pending.get("plot_bonus_vp", 0)
+    player.victory_points -= reversed_bonus
+
     state.pending_intrigue_target = None
 
     state.game_log.append(
@@ -2634,5 +2652,6 @@ async def handle_cancel_intrigue_target(
             space_id=f"backstage_slot_{slot_number}",
             next_player_id=None,
             returned_card=pending["intrigue_card"],
+            plot_quest_bonus_vp=reversed_bonus,
         ),
     )
