@@ -371,6 +371,37 @@ class GameView(arcade.View):
                         f"{owner_name} earned owner bonus: {' '.join(bonus_parts)}"
                     )
 
+        # Resource trigger plot quest bonuses
+        for tb in msg.get("trigger_bonuses", []):
+            if tb.get("drawn_intrigue"):
+                my_id = getattr(self.window, "player_id", None)
+                if pid == my_id:
+                    for p in self.game_state.get("players", []):
+                        if p.get("player_id") == pid:
+                            p.setdefault("intrigue_hand", []).extend(
+                                tb["drawn_intrigue"]
+                            )
+                            break
+            if self.tabbed_panel:
+                name = self._player_name(pid)
+                parts = []
+                for br in (tb.get("bonus_resources") or {}).items():
+                    k, v = br
+                    if v:
+                        sym = next(
+                            (s for rk, s in RESOURCE_SYMBOLS if rk == k), k
+                        )
+                        parts.append(f"{v}{sym}")
+                if tb.get("drawn_intrigue"):
+                    parts.append(f"{len(tb['drawn_intrigue'])} intrigue")
+                if tb.get("swap_pending"):
+                    parts.append("swap pending")
+                cname = tb.get("contract_name", "plot quest")
+                if parts:
+                    self.tabbed_panel.add_entry(
+                        f"{name} triggered {cname}: {' '.join(parts)}"
+                    )
+
     def _on_worker_placed_backstage(self, msg: dict) -> None:
         slot_num = msg.get("slot_number", 0)
         pid = msg.get("player_id", "")
@@ -721,6 +752,9 @@ class GameView(arcade.View):
                             "owner_bonus",
                             {},
                         ),
+                        "building_tile": {
+                            "id": building.get("building_id", ""),
+                        },
                         "occupied_by": None,
                     }
             self._refresh_board(board)
@@ -1191,6 +1225,35 @@ class GameView(arcade.View):
                 if bonus_parts:
                     self.tabbed_panel.add_entry(
                         f"{owner_name} earned owner bonus:" f" {' '.join(bonus_parts)}"
+                    )
+
+        # Resource trigger plot quest bonuses
+        for tb in msg.get("trigger_bonuses", []):
+            if tb.get("drawn_intrigue"):
+                if pid == getattr(self.window, "player_id", None):
+                    for p in self.game_state.get("players", []):
+                        if p.get("player_id") == pid:
+                            p.setdefault("intrigue_hand", []).extend(
+                                tb["drawn_intrigue"]
+                            )
+                            break
+            if self.tabbed_panel:
+                name = self._player_name(pid)
+                parts = []
+                for k, v in (tb.get("bonus_resources") or {}).items():
+                    if v:
+                        sym = next(
+                            (s for rk, s in RESOURCE_SYMBOLS if rk == k), k
+                        )
+                        parts.append(f"{v}{sym}")
+                if tb.get("drawn_intrigue"):
+                    parts.append(f"{len(tb['drawn_intrigue'])} intrigue")
+                if tb.get("swap_pending"):
+                    parts.append("swap pending")
+                cname = tb.get("contract_name", "plot quest")
+                if parts:
+                    self.tabbed_panel.add_entry(
+                        f"{name} triggered {cname}: {' '.join(parts)}"
                     )
 
         my_id = getattr(self.window, "player_id", None)

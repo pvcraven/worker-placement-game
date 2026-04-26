@@ -321,7 +321,6 @@ This shows each quest type has a primary resource affinity:
 ---
 
 ## Implementation Status
-
 Tracks which special mechanics are implemented in the game engine.
 
 ### One-Time Completion Rewards
@@ -346,13 +345,13 @@ Tracks which special mechanics are implemented in the game engine.
 
 ### Resource Trigger Plot Quests
 
-| Mechanic ID         | Status      | Notes |
-|---------------------|-------------|-------|
-| on_gain_guitarist   | NOT STARTED |       |
-| on_gain_guitarist_i | NOT STARTED |       |
-| on_gain_singer_swap | NOT STARTED |       |
-| on_gain_bass_coins  | NOT STARTED |       |
-| on_gain_coins_bass  | NOT STARTED |       |
+| Mechanic ID         | Status | Notes                                                    |
+|---------------------|--------|----------------------------------------------------------|
+| on_gain_guitarist   | DONE   | resource_trigger_type + resource_trigger_bonus fields     |
+| on_gain_guitarist_i | DONE   | resource_trigger_type + resource_trigger_draw_intrigue    |
+| on_gain_singer_swap | DONE   | resource_trigger_type + resource_trigger_is_swap          |
+| on_gain_bass_coins  | DONE   | resource_trigger_type + resource_trigger_bonus fields     |
+| on_gain_coins_bass  | DONE   | resource_trigger_type + resource_trigger_bonus fields     |
 
 ### Persistent Ability Plot Quests
 

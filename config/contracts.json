@@ -116,7 +116,9 @@
       "victory_points": 10,
       "bonus_resources": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
       "is_plot_quest": true,
-      "ongoing_benefit_description": "When you gain coins from a board action, also gain 1 bass player"
+      "ongoing_benefit_description": "When you gain coins from a board action, also gain 1 bass player",
+      "resource_trigger_type": "coins",
+      "resource_trigger_bonus": {"guitarists": 0, "bass_players": 1, "drummers": 0, "singers": 0, "coins": 0}
     },
     {
       "id": "contract_pop_011",
@@ -151,7 +153,9 @@
       "victory_points": 6,
       "bonus_resources": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
       "is_plot_quest": true,
-      "ongoing_benefit_description": "When you gain a guitarist from a board action, gain 1 extra guitarist"
+      "ongoing_benefit_description": "When you gain a guitarist from a board action, gain 1 extra guitarist",
+      "resource_trigger_type": "guitarists",
+      "resource_trigger_bonus": {"guitarists": 1, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0}
     },
     {
       "id": "contract_rock_002",
@@ -325,7 +329,9 @@
       "victory_points": 5,
       "bonus_resources": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
       "is_plot_quest": true,
-      "ongoing_benefit_description": "When you gain a singer from a board action, you may trade any 1 resource you own for 1 additional singer"
+      "ongoing_benefit_description": "When you gain a singer from a board action, you may trade any 1 resource you own for 1 additional singer",
+      "resource_trigger_type": "singers",
+      "resource_trigger_is_swap": true
     },
     {
       "id": "contract_soul_005",
@@ -438,7 +444,9 @@
       "victory_points": 6,
       "bonus_resources": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
       "is_plot_quest": true,
-      "ongoing_benefit_description": "When you gain a guitarist from a board action, also draw 1 intrigue card"
+      "ongoing_benefit_description": "When you gain a guitarist from a board action, also draw 1 intrigue card",
+      "resource_trigger_type": "guitarists",
+      "resource_trigger_draw_intrigue": 1
     },
     {
       "id": "contract_funk_003",
@@ -576,7 +584,9 @@
       "victory_points": 6,
       "bonus_resources": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
       "is_plot_quest": true,
-      "ongoing_benefit_description": "When you gain a bass player from a board action, also gain 2 coins"
+      "ongoing_benefit_description": "When you gain a bass player from a board action, also gain 2 coins",
+      "resource_trigger_type": "bass_players",
+      "resource_trigger_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 2}
     },
     {
       "id": "contract_jazz_003",

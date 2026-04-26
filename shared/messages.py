@@ -198,6 +198,7 @@ class WorkerPlacedResponse(BaseModel):
     space_id: str
     reward_granted: dict
     owner_bonus: dict = Field(default_factory=dict)
+    trigger_bonuses: list[dict] = Field(default_factory=list)
     next_player_id: str | None
 
 
@@ -313,6 +314,7 @@ class WorkerReassignedResponse(BaseModel):
     to_space_id: str
     reward_granted: dict
     owner_bonus: dict = Field(default_factory=dict)
+    trigger_bonuses: list[dict] = Field(default_factory=list)
 
 
 class RoundEndResponse(BaseModel):

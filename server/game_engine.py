@@ -84,6 +84,69 @@ def _draw_intrigue_cards(state, player, count: int) -> list[dict]:
     return drawn
 
 
+def _evaluate_resource_triggers(state, player, reward: ResourceCost):
+    """Check completed plot quests for resource triggers and apply bonuses.
+
+    Only evaluates against the original board-action reward, not cascade.
+    Returns (trigger_results, pending_swap) where pending_swap is a dict
+    if a singer-swap trigger needs interactive resolution.
+    """
+    trigger_results: list[dict] = []
+    pending_swap: dict | None = None
+
+    resource_types = [
+        "guitarists",
+        "bass_players",
+        "drummers",
+        "singers",
+        "coins",
+    ]
+    gained_types = [rt for rt in resource_types if getattr(reward, rt, 0) > 0]
+    if not gained_types:
+        return trigger_results, pending_swap
+
+    for contract in player.completed_contracts:
+        if not contract.resource_trigger_type:
+            continue
+        if contract.resource_trigger_type not in gained_types:
+            continue
+
+        entry: dict = {
+            "contract_id": contract.id,
+            "contract_name": contract.name,
+            "trigger_type": contract.resource_trigger_type,
+        }
+
+        if contract.resource_trigger_bonus.total() > 0:
+            player.resources.add(contract.resource_trigger_bonus)
+            entry["bonus_resources"] = contract.resource_trigger_bonus.model_dump()
+
+        if contract.resource_trigger_draw_intrigue > 0:
+            drawn = _draw_intrigue_cards(
+                state, player, contract.resource_trigger_draw_intrigue
+            )
+            entry["drawn_intrigue"] = drawn
+
+        if contract.resource_trigger_is_swap:
+            non_singer_total = (
+                player.resources.guitarists
+                + player.resources.bass_players
+                + player.resources.drummers
+                + player.resources.coins
+            )
+            if non_singer_total > 0:
+                pending_swap = {
+                    "contract_id": contract.id,
+                    "contract_name": contract.name,
+                    "player_id": player.player_id,
+                }
+                entry["swap_pending"] = True
+
+        trigger_results.append(entry)
+
+    return trigger_results, pending_swap
+
+
 def _grant_random_building(state, player) -> dict | None:
     if not state.board.building_deck:
         return None
@@ -678,6 +741,56 @@ async def handle_resource_choice(
         )
     )
 
+    # Handle trigger swap resolution (singer swap: spend 1 non-singer → gain 1 singer)
+    if pending.get("source_type") == "trigger_swap" and is_spend:
+        player.resources.singers += 1
+        swap_info = state.pending_resource_trigger_swap
+        state.pending_resource_trigger_swap = None
+        state.pending_resource_choice = None
+        state.game_log.append(
+            GameLog(
+                round_number=state.current_round,
+                player_id=player.player_id,
+                action="resource_trigger_swap",
+                details=(
+                    f"{player.display_name} swapped a resource for"
+                    f" 1 Singer ({swap_info.get('contract_name', 'plot quest')})"
+                ),
+                timestamp=time.time(),
+            )
+        )
+        await server.broadcast_to_game(
+            state.game_code,
+            ResourceChoiceResolvedResponse(
+                player_id=player.player_id,
+                chosen_resources={"singers": 1},
+                is_spend=False,
+                source_description=f"Singer swap ({swap_info.get('contract_name', '')})",
+            ),
+        )
+        # Resume pending owner choice if any
+        pending_owner = swap_info.get("pending_owner_choice") if swap_info else None
+        if pending_owner:
+            from shared.card_models import ResourceChoiceReward
+
+            owner = state.get_player(pending_owner["owner_id"])
+            if owner:
+                rcr = ResourceChoiceReward(**pending_owner["choice_dump"])
+                await _send_resource_choice_prompt(
+                    server,
+                    state,
+                    owner,
+                    rcr,
+                    "owner_bonus",
+                    pending_owner["space_name"],
+                )
+                return
+        if swap_info and swap_info.get("is_reassignment"):
+            await _finish_reassignment(server, state)
+        else:
+            await _check_quest_completion(server, state)
+        return
+
     # Handle exchange phase 2 (spend → gain)
     if is_spend and pending.get("phase") == "spend":
         from shared.card_models import ResourceChoiceReward
@@ -841,6 +954,29 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
             reward_dict.get("victory_points", 0) + space.building_tile.visitor_reward_vp
         )
 
+    # Evaluate resource trigger plot quests (no cascade — uses base reward only)
+    trigger_bonuses, pending_swap = _evaluate_resource_triggers(
+        state, player, space.reward
+    )
+    trigger_bonuses_data = trigger_bonuses
+    for tb in trigger_bonuses:
+        if tb.get("bonus_resources"):
+            for k, v in tb["bonus_resources"].items():
+                if v and k in reward_dict:
+                    reward_dict[k] = reward_dict.get(k, 0) + v
+        state.game_log.append(
+            GameLog(
+                round_number=state.current_round,
+                player_id=player.player_id,
+                action="resource_trigger",
+                details=(
+                    f"{player.display_name} triggered"
+                    f" {tb.get('contract_name', 'plot quest')} bonus"
+                ),
+                timestamp=time.time(),
+            )
+        )
+
     # Handle Garage spots (quest selection)
     if space.space_type == "garage":
         await _handle_garage_placement(server, state, player, space, msg.space_id)
@@ -866,6 +1002,7 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
                 player_id=player.player_id,
                 space_id=msg.space_id,
                 reward_granted=reward_dict,
+                trigger_bonuses=trigger_bonuses_data,
                 next_player_id=None,
             ),
         )
@@ -962,9 +1099,37 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
             space_id=msg.space_id,
             reward_granted=reward_dict,
             owner_bonus=owner_bonus_info,
+            trigger_bonuses=trigger_bonuses_data,
             next_player_id=None,
         ),
     )
+
+    # Singer swap trigger prompt
+    if pending_swap:
+        from shared.card_models import ResourceChoiceReward
+
+        swap_choice = ResourceChoiceReward(
+            choice_type="pick",
+            allowed_types=["guitarists", "bass_players", "drummers", "coins"],
+            pick_count=1,
+        )
+        state.pending_resource_trigger_swap = {
+            "player_id": player.player_id,
+            "contract_id": pending_swap["contract_id"],
+            "contract_name": pending_swap["contract_name"],
+            "space_id": msg.space_id,
+            "pending_owner_choice": pending_owner_choice,
+        }
+        await _send_resource_choice_prompt(
+            server,
+            state,
+            player,
+            swap_choice,
+            "trigger_swap",
+            f"Swap for Singer ({pending_swap['contract_name']})",
+            is_spend=True,
+        )
+        return
 
     # Resource choice reward on buildings
     if space.building_tile and space.building_tile.visitor_reward_choice:
@@ -2368,6 +2533,29 @@ async def handle_reassign_worker(
                 "space_name": target.name,
             }
 
+    # Evaluate resource trigger plot quests (no cascade — uses base reward only)
+    trigger_bonuses, pending_swap = _evaluate_resource_triggers(
+        state, player, target.reward
+    )
+    trigger_bonuses_data = trigger_bonuses
+    for tb in trigger_bonuses:
+        if tb.get("bonus_resources"):
+            for k, v in tb["bonus_resources"].items():
+                if v and k in reward_dict:
+                    reward_dict[k] = reward_dict.get(k, 0) + v
+        state.game_log.append(
+            GameLog(
+                round_number=state.current_round,
+                player_id=player.player_id,
+                action="resource_trigger",
+                details=(
+                    f"{player.display_name} triggered"
+                    f" {tb.get('contract_name', 'plot quest')} bonus"
+                ),
+                timestamp=time.time(),
+            )
+        )
+
     # Handle Castle Waterdeep special
     if target.space_type == "castle":
         for p in state.players:
@@ -2402,8 +2590,37 @@ async def handle_reassign_worker(
             to_space_id=msg.target_space_id,
             reward_granted=reward_dict,
             owner_bonus=owner_bonus_info,
+            trigger_bonuses=trigger_bonuses_data,
         ),
     )
+
+    # Singer swap trigger prompt (reassignment)
+    if pending_swap:
+        from shared.card_models import ResourceChoiceReward
+
+        swap_choice = ResourceChoiceReward(
+            choice_type="pick",
+            allowed_types=["guitarists", "bass_players", "drummers", "coins"],
+            pick_count=1,
+        )
+        state.pending_resource_trigger_swap = {
+            "player_id": player.player_id,
+            "contract_id": pending_swap["contract_id"],
+            "contract_name": pending_swap["contract_name"],
+            "space_id": msg.target_space_id,
+            "pending_owner_choice": pending_owner_choice,
+            "is_reassignment": True,
+        }
+        await _send_resource_choice_prompt(
+            server,
+            state,
+            player,
+            swap_choice,
+            "trigger_swap",
+            f"Swap for Singer ({pending_swap['contract_name']})",
+            is_spend=True,
+        )
+        return
 
     # Handle Real Estate Listings during reassignment
     if target.reward_special == "purchase_building":
