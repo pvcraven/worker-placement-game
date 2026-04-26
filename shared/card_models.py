@@ -72,6 +72,12 @@ class ContractCard(BaseModel):
     resource_trigger_bonus: ResourceCost = Field(default_factory=ResourceCost)
     resource_trigger_draw_intrigue: int = 0
     resource_trigger_is_swap: bool = False
+    reward_play_intrigue: int = 0
+    reward_opponent_gains_coins: int = 0
+    reward_extra_worker: int = 0
+    reward_choose_resource_per_round: bool = False
+    reward_recall_worker: bool = False
+    reward_use_occupied_building: bool = False
 
 
 class IntrigueCard(BaseModel):

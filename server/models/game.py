@@ -78,6 +78,7 @@ class Player(BaseModel):
     has_first_player_marker: bool = False
     consecutive_timeouts: int = 0
     completed_quest_this_turn: bool = False
+    use_occupied_used_this_round: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -96,6 +97,7 @@ class ActionSpace(BaseModel):
     building_tile: BuildingTile | None = None
     reward: ResourceCost = Field(default_factory=ResourceCost)
     reward_special: str | None = None  # Non-resource effects
+    also_occupied_by: str | None = None
 
 
 class BackstageSlot(BaseModel):
@@ -164,6 +166,10 @@ class GameState(BaseModel):
     pending_quest_reward: dict | None = None
     pending_resource_choice: dict | None = None
     pending_resource_trigger_swap: dict | None = None
+    pending_play_intrigue: dict | None = None
+    pending_opponent_coins: dict | None = None
+    pending_worker_recall: dict | None = None
+    pending_round_start_choices: list[str] = Field(default_factory=list)
 
     def get_player(self, player_id: str) -> Player | None:
         for p in self.players:

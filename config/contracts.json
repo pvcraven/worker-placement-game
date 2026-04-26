@@ -244,6 +244,7 @@
       "cost": {"guitarists": 5, "bass_players": 1, "drummers": 1, "singers": 1, "coins": 0},
       "victory_points": 0,
       "bonus_resources": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
+      "reward_extra_worker": 1,
       "is_plot_quest": true,
       "ongoing_benefit_description": "Gain 1 extra permanent worker for the rest of the game"
     },
@@ -366,7 +367,8 @@
       "victory_points": 0,
       "bonus_resources": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
       "is_plot_quest": true,
-      "ongoing_benefit_description": "Gain 1 random non-coin resource at the start of each round"
+      "ongoing_benefit_description": "Choose 1 non-coin resource at the start of each round",
+      "reward_choose_resource_per_round": true
     },
     {
       "id": "contract_soul_008",
@@ -433,7 +435,8 @@
       "victory_points": 4,
       "bonus_resources": {"guitarists": 0, "bass_players": 0, "drummers": 1, "singers": 0, "coins": 0},
       "is_plot_quest": true,
-      "ongoing_benefit_description": "Once per round, recall one of your already-placed workers back to your pool"
+      "ongoing_benefit_description": "On completion, recall one placed worker back to your pool",
+      "reward_recall_worker": true
     },
     {
       "id": "contract_funk_002",
@@ -481,7 +484,8 @@
       "victory_points": 6,
       "bonus_resources": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
       "is_plot_quest": true,
-      "ongoing_benefit_description": "Once per round, use a building action space occupied by another player's worker"
+      "ongoing_benefit_description": "Once per round, use a building action space occupied by another player's worker",
+      "reward_use_occupied_building": true
     },
     {
       "id": "contract_funk_006",

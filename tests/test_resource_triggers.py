@@ -105,9 +105,7 @@ def test_simple_resource_bonus():
         resource_trigger_bonus=ResourceCost(guitarists=1),
     )
     state = _make_state()
-    player = _make_player(
-        completed=[contract], resources=ResourceCost(guitarists=3)
-    )
+    player = _make_player(completed=[contract], resources=ResourceCost(guitarists=3))
     reward = ResourceCost(guitarists=2)
     results, swap = _evaluate_resource_triggers(state, player, reward)
     assert len(results) == 1
@@ -128,9 +126,7 @@ def test_coins_trigger_grants_bass():
         resource_trigger_bonus=ResourceCost(bass_players=1),
     )
     state = _make_state()
-    player = _make_player(
-        completed=[contract], resources=ResourceCost(coins=5)
-    )
+    player = _make_player(completed=[contract], resources=ResourceCost(coins=5))
     reward = ResourceCost(coins=4)
     results, swap = _evaluate_resource_triggers(state, player, reward)
     assert len(results) == 1
@@ -194,9 +190,7 @@ def test_singer_swap_no_tradeable_resources():
         resource_trigger_is_swap=True,
     )
     state = _make_state()
-    player = _make_player(
-        completed=[contract], resources=ResourceCost(singers=3)
-    )
+    player = _make_player(completed=[contract], resources=ResourceCost(singers=3))
     reward = ResourceCost(singers=1)
     results, swap = _evaluate_resource_triggers(state, player, reward)
     assert len(results) == 1

@@ -331,8 +331,8 @@ Tracks which special mechanics are implemented in the game engine.
 | random_building      | DONE        | reward_building = "random_draw"                    |
 | face_up_quest        | DONE        | reward_draw_quests + reward_quest_draw_mode="choose"|
 | random_quest         | DONE        | reward_draw_quests + reward_quest_draw_mode="random"|
-| play_intrigue        | NOT STARTED | Data in JSON but no ContractCard field or logic    |
-| opponent_gains_coins | NOT STARTED | Data in JSON but no ContractCard field or logic    |
+| play_intrigue        | DONE        | reward_play_intrigue field + handle_play_intrigue_from_quest |
+| opponent_gains_coins | DONE        | reward_opponent_gains_coins field + handle_choose_opponent    |
 
 ### Scoring Plot Quests
 
@@ -357,7 +357,7 @@ Tracks which special mechanics are implemented in the game engine.
 
 | Mechanic ID         | Status      | Notes |
 |---------------------|-------------|-------|
-| extra_worker        | NOT STARTED |       |
-| gain_resource_round | NOT STARTED |       |
-| worker_recall       | NOT STARTED |       |
-| use_occupied        | NOT STARTED |       |
+| extra_worker        | DONE        | reward_extra_worker field, increments total_workers          |
+| gain_resource_round | DONE        | reward_choose_resource_per_round + round-start prompt        |
+| worker_recall       | DONE        | reward_recall_worker field + handle_recall_worker            |
+| use_occupied        | DONE        | reward_use_occupied_building + _can_use_occupied helper      |
