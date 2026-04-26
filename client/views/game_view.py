@@ -849,6 +849,7 @@ class GameView(arcade.View):
                 "building_reward",
                 bld_ids,
             )
+            self._status_text = "Pick a building as your quest reward"
 
     def _on_reward_quest_selected(
         self,

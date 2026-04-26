@@ -2089,6 +2089,7 @@ async def handle_quest_reward_choice(
             player,
             chosen_b,
         )
+        await _broadcast_building_market(server, state)
     else:
         await conn.send_error(
             "INVALID_ACTION",
