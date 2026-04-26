@@ -24,7 +24,7 @@ def test_all_buildings_have_unique_ids(buildings):
 
 
 def test_building_count(buildings):
-    assert len(buildings) == 20
+    assert len(buildings) == 22
 
 
 def test_cost_coins_range(buildings):

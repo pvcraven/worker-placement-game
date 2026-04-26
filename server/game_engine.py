@@ -251,6 +251,7 @@ async def _check_quest_completion(
     """Check if current player can complete quests."""
     player = state.current_player()
     if player is None or player.completed_quest_this_turn:
+        state.pending_showcase_bonus = None
         await _advance_turn(server, state)
         await _notify_turn_if_needed(
             server,
@@ -263,6 +264,7 @@ async def _check_quest_completion(
         c for c in player.contract_hand if player.resources.can_afford(c.cost)
     ]
     if not completable:
+        state.pending_showcase_bonus = None
         await _advance_turn(server, state)
         await _notify_turn_if_needed(
             server,
@@ -271,11 +273,23 @@ async def _check_quest_completion(
         )
         return
 
+    bonus_quest_id = None
+    bonus_vp = 0
+    if state.pending_showcase_bonus:
+        showcase_cid = state.pending_showcase_bonus.get("contract_id")
+        if showcase_cid and any(c.id == showcase_cid for c in completable):
+            bonus_quest_id = showcase_cid
+            bonus_vp = state.pending_showcase_bonus["bonus_vp"]
+        else:
+            state.pending_showcase_bonus = None
+
     state.waiting_for_quest_completion = True
     await server.send_to_player(
         player.player_id,
         QuestCompletionPromptResponse(
             completable_quests=[c.model_dump() for c in completable],
+            bonus_quest_id=bonus_quest_id,
+            bonus_vp=bonus_vp,
         ),
     )
 
@@ -304,6 +318,7 @@ async def _notify_turn_if_needed(
 async def _advance_turn(server: GameServer, state) -> None:
     """Advance to the next player, or trigger end-of-round if all placed."""
     state.last_activity = time.time()
+    state.pending_showcase_bonus = None
 
     if state.all_workers_placed():
         await _end_placement_phase(server, state)
@@ -1076,7 +1091,7 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
             card = state.board.intrigue_deck.pop(0)
             player.intrigue_hand.append(card)
 
-    # Building visitor_reward_special: draw_contract or draw_intrigue
+    # Building visitor_reward_special: draw_contract, draw_intrigue, coins_per_building
     if (
         space.space_type == "building"
         and space.building_tile
@@ -1086,6 +1101,10 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
         if special == "draw_intrigue" and state.board.intrigue_deck:
             card = state.board.intrigue_deck.pop(0)
             player.intrigue_hand.append(card)
+        elif special == "coins_per_building":
+            coin_count = len(state.board.constructed_buildings)
+            player.resources.coins += coin_count
+            reward_dict["coins"] = reward_dict.get("coins", 0) + coin_count
 
     # Owner bonus for buildings
     owner_bonus_info = {}
@@ -1259,6 +1278,19 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
     ):
         return
 
+    # Building draw_contract_and_complete: quest selection + bonus VP on completion
+    if (
+        space.space_type == "building"
+        and space.building_tile
+        and space.building_tile.visitor_reward_special == "draw_contract_and_complete"
+    ):
+        state.pending_showcase_bonus = {
+            "player_id": player.player_id,
+            "contract_id": None,
+            "bonus_vp": 4,
+        }
+        return
+
     await _check_quest_completion(server, state)
 
 
@@ -1376,9 +1408,10 @@ async def handle_select_quest_card(
         if (
             sp.space_type == "building"
             and sp.building_tile
-            and sp.building_tile.visitor_reward_special == "draw_contract"
+            and sp.building_tile.visitor_reward_special
+            in ("draw_contract", "draw_contract_and_complete")
         ):
-            spot_special = "draw_contract"
+            spot_special = sp.building_tile.visitor_reward_special
             is_building_draw = True
             break
 
@@ -1442,6 +1475,13 @@ async def handle_select_quest_card(
             face_up_quests=[q.model_dump() for q in state.board.face_up_quests]
         ),
     )
+
+    # Showcase bonus: track selected contract for potential +VP bonus
+    if (
+        state.pending_showcase_bonus
+        and state.pending_showcase_bonus.get("contract_id") is None
+    ):
+        state.pending_showcase_bonus["contract_id"] = card.id
 
     if state.phase == GamePhase.REASSIGNMENT:
         await _finish_reassignment(server, state)
@@ -1798,6 +1838,15 @@ async def handle_complete_quest(
 
     player.victory_points += plot_bonus_vp
 
+    showcase_bonus_vp = 0
+    if (
+        state.pending_showcase_bonus
+        and state.pending_showcase_bonus.get("contract_id") == contract.id
+    ):
+        showcase_bonus_vp = state.pending_showcase_bonus["bonus_vp"]
+        player.victory_points += showcase_bonus_vp
+        state.pending_showcase_bonus = None
+
     player.contract_hand.remove(contract)
     player.completed_contracts.append(contract)
     player.completed_quest_this_turn = True
@@ -1805,6 +1854,8 @@ async def handle_complete_quest(
     vp_detail = f"{contract.victory_points} VP"
     if plot_bonus_vp:
         vp_detail += f" + {plot_bonus_vp} plot quest bonus"
+    if showcase_bonus_vp:
+        vp_detail += f" + {showcase_bonus_vp} Audition Showcase bonus"
 
     state.game_log.append(
         GameLog(
@@ -1937,6 +1988,7 @@ async def handle_complete_quest(
             opponent_coins_granted=opponent_coins_granted,
             extra_workers_granted=extra_workers_granted,
             pending_recall=pending_recall,
+            showcase_bonus_vp=showcase_bonus_vp,
             next_player_id=None,
         ),
     )
@@ -2161,6 +2213,7 @@ async def handle_skip_quest_completion(
         return
 
     state.waiting_for_quest_completion = False
+    state.pending_showcase_bonus = None
 
     state.game_log.append(
         GameLog(
@@ -2344,6 +2397,13 @@ async def handle_purchase_building(
     # Purchase: deduct coins, award VP
     player.resources.coins -= building.cost_coins
     player.victory_points += building.accumulated_vp
+
+    plot_bonus_vp = 0
+    for completed in player.completed_contracts:
+        if completed.bonus_vp_per_building_purchased > 0:
+            plot_bonus_vp += completed.bonus_vp_per_building_purchased
+    player.victory_points += plot_bonus_vp
+
     state.board.face_up_buildings.remove(building)
     state.board.building_lots.remove(lot_id)
 
@@ -2369,14 +2429,20 @@ async def handle_purchase_building(
     )
     state.board.constructed_buildings.append(space_id)
 
+    vp_detail = f"+{building.accumulated_vp} VP" if building.accumulated_vp else ""
+    if plot_bonus_vp:
+        bonus_part = f"+{plot_bonus_vp} plot quest bonus"
+        vp_detail = f"{vp_detail} {bonus_part}".strip() if vp_detail else bonus_part
+
     state.game_log.append(
         GameLog(
             round_number=state.current_round,
             player_id=player.player_id,
             action="purchase_building",
             details=(
-                f"{player.display_name} built {building.name}"
-                f" (+{building.accumulated_vp} VP)"
+                f"{player.display_name} built {building.name}" f" ({vp_detail})"
+                if vp_detail
+                else f"{player.display_name} built {building.name}"
             ),
             timestamp=time.time(),
         )
@@ -2402,6 +2468,7 @@ async def handle_purchase_building(
             owner_id=player.player_id,
             cost_coins=building.cost_coins,
             accumulated_vp=building.accumulated_vp,
+            plot_quest_bonus_vp=plot_bonus_vp,
             building_tile=building.model_dump(),
             next_player_id=(next_player.player_id if next_player else None),
         ),
@@ -2889,6 +2956,19 @@ async def handle_reassign_worker(
         and target.building_tile
         and target.building_tile.visitor_reward_special == "draw_contract"
     ):
+        return
+
+    # Building draw_contract_and_complete: quest selection + bonus VP
+    if (
+        target.space_type == "building"
+        and target.building_tile
+        and target.building_tile.visitor_reward_special == "draw_contract_and_complete"
+    ):
+        state.pending_showcase_bonus = {
+            "player_id": state.reassignment_active_player_id,
+            "contract_id": None,
+            "bonus_vp": 4,
+        }
         return
 
     await _finish_reassignment(server, state)

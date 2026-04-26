@@ -278,12 +278,15 @@ class QuestCompletedResponse(BaseModel):
     opponent_coins_granted: dict | None = None
     extra_workers_granted: int = 0
     pending_recall: bool = False
+    showcase_bonus_vp: int = 0
     next_player_id: str | None = None
 
 
 class QuestCompletionPromptResponse(BaseModel):
     action: Literal["quest_completion_prompt"] = "quest_completion_prompt"
     completable_quests: list[dict]
+    bonus_quest_id: str | None = None
+    bonus_vp: int = 0
 
 
 class QuestSkippedResponse(BaseModel):
@@ -320,6 +323,7 @@ class BuildingConstructedResponse(BaseModel):
     owner_id: str = ""
     cost_coins: int = 0
     accumulated_vp: int = 0
+    plot_quest_bonus_vp: int = 0
     building_tile: dict = Field(default_factory=dict)
     next_player_id: str | None = None
 

@@ -311,6 +311,30 @@
         "allowed_types": ["guitarists", "bass_players", "drummers", "singers"],
         "pick_count": 1
       }
+    },
+    {
+      "id": "building_021",
+      "name": "Royalty Collection Office",
+      "description": "A sleek downtown office where royalty checks pile up — the more studios and venues in operation, the bigger the payout.",
+      "cost_coins": 4,
+      "visitor_reward": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
+      "visitor_reward_special": "coins_per_building",
+      "visitor_reward_choice": null,
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 2},
+      "owner_bonus_vp": 0,
+      "owner_bonus_choice": null
+    },
+    {
+      "id": "building_022",
+      "name": "Audition Showcase",
+      "description": "A high-profile audition stage where artists can be signed on the spot — pick a contract and seal the deal for a bonus.",
+      "cost_coins": 4,
+      "visitor_reward": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
+      "visitor_reward_special": "draw_contract_and_complete",
+      "visitor_reward_choice": null,
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
+      "owner_bonus_vp": 2,
+      "owner_bonus_choice": null
     }
   ]
 }
