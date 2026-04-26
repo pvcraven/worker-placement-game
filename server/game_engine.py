@@ -20,7 +20,9 @@ from shared.messages import (
     FinalPlayerScore,
     GameOverResponse,
     IntrigueEffectResolvedResponse,
+    IntriguePlayPromptResponse,
     IntrigueTargetPromptResponse,
+    OpponentChoicePromptResponse,
     PlacementCancelledResponse,
     QuestCardSelectedResponse,
     QuestCompletedResponse,
@@ -32,9 +34,13 @@ from shared.messages import (
     ResourceChoicePromptResponse,
     ResourceChoiceResolvedResponse,
     RoundEndResponse,
+    RoundStartBonusResponse,
+    RoundStartResourceChoicePromptResponse,
     WorkerPlacedBackstageResponse,
     WorkerPlacedResponse,
     WorkerReassignedResponse,
+    WorkerRecallPromptResponse,
+    WorkerRecalledResponse,
 )
 
 if TYPE_CHECKING:
@@ -1791,6 +1797,76 @@ async def handle_complete_quest(
     if contract.reward_building == "market_choice":
         has_interactive = True
 
+    # --- Special reward: play intrigue from hand ---
+    pending_play_intrigue = False
+    if contract.reward_play_intrigue > 0 and player.intrigue_hand:
+        state.pending_play_intrigue = {"player_id": player.player_id}
+        has_interactive = True
+        pending_play_intrigue = True
+
+    # --- Special reward: opponent gains coins ---
+    opponent_coins_granted = None
+    if contract.reward_opponent_gains_coins > 0:
+        opponents = [p for p in state.players if p.player_id != player.player_id]
+        if len(opponents) == 1:
+            opponents[0].resources.coins += contract.reward_opponent_gains_coins
+            opponent_coins_granted = {
+                "player_id": opponents[0].player_id,
+                "player_name": opponents[0].display_name,
+                "coins": contract.reward_opponent_gains_coins,
+            }
+            state.game_log.append(
+                GameLog(
+                    round_number=state.current_round,
+                    player_id=player.player_id,
+                    action="opponent_gains_coins",
+                    details=(
+                        f"{opponents[0].display_name} gained"
+                        f" {contract.reward_opponent_gains_coins} coins"
+                        f" from {contract.name}"
+                    ),
+                    timestamp=time.time(),
+                )
+            )
+        elif len(opponents) > 1:
+            state.pending_opponent_coins = {
+                "player_id": player.player_id,
+                "coins": contract.reward_opponent_gains_coins,
+            }
+            has_interactive = True
+
+    # --- Special reward: extra permanent worker ---
+    extra_workers_granted = 0
+    if contract.reward_extra_worker > 0:
+        player.total_workers += contract.reward_extra_worker
+        extra_workers_granted = contract.reward_extra_worker
+        state.game_log.append(
+            GameLog(
+                round_number=state.current_round,
+                player_id=player.player_id,
+                action="extra_worker",
+                details=(
+                    f"{player.display_name} gained"
+                    f" {extra_workers_granted} extra permanent worker(s)"
+                    f" from {contract.name}"
+                ),
+                timestamp=time.time(),
+            )
+        )
+
+    # --- Special reward: recall a placed worker ---
+    pending_recall = False
+    if contract.reward_recall_worker:
+        occupied_spaces = [
+            (sid, sp)
+            for sid, sp in state.board.action_spaces.items()
+            if sp.occupied_by == player.player_id
+        ]
+        if occupied_spaces:
+            state.pending_worker_recall = {"player_id": player.player_id}
+            has_interactive = True
+            pending_recall = True
+
     if state.waiting_for_quest_completion:
         state.waiting_for_quest_completion = False
 
@@ -1808,17 +1884,68 @@ async def handle_complete_quest(
             building_granted=building_granted,
             plot_quest_bonus_vp=plot_bonus_vp,
             pending_choice=has_interactive,
+            pending_play_intrigue=pending_play_intrigue,
+            opponent_coins_granted=opponent_coins_granted,
+            extra_workers_granted=extra_workers_granted,
+            pending_recall=pending_recall,
             next_player_id=None,
         ),
     )
 
     if has_interactive:
-        await _send_quest_reward_prompt(
-            server,
-            state,
-            player,
-            contract,
-        )
+        # Existing quest reward prompts (choose quest draw, market building choice)
+        if contract.reward_draw_quests > 0 and contract.reward_quest_draw_mode == "choose":
+            await _send_quest_reward_prompt(server, state, player, contract)
+            return
+        if contract.reward_building == "market_choice":
+            await _send_quest_reward_prompt(server, state, player, contract)
+            return
+
+        # Play intrigue from quest prompt
+        if pending_play_intrigue:
+            await server.send_to_player(
+                player.player_id,
+                IntriguePlayPromptResponse(
+                    intrigue_hand=[c.model_dump() for c in player.intrigue_hand],
+                ),
+            )
+            return
+
+        # Opponent choice prompt (3+ players)
+        if state.pending_opponent_coins:
+            opponents = [
+                p for p in state.players if p.player_id != player.player_id
+            ]
+            await server.send_to_player(
+                player.player_id,
+                OpponentChoicePromptResponse(
+                    opponents=[
+                        {"player_id": p.player_id, "player_name": p.display_name}
+                        for p in opponents
+                    ],
+                    coins_amount=contract.reward_opponent_gains_coins,
+                ),
+            )
+            return
+
+        # Worker recall prompt
+        if pending_recall:
+            occupied_spaces = [
+                (sid, sp)
+                for sid, sp in state.board.action_spaces.items()
+                if sp.occupied_by == player.player_id
+            ]
+            await server.send_to_player(
+                player.player_id,
+                WorkerRecallPromptResponse(
+                    occupied_spaces=[
+                        {"space_id": sid, "name": sp.name}
+                        for sid, sp in occupied_spaces
+                    ],
+                ),
+            )
+            return
+
         return
 
     if state.phase == GamePhase.REASSIGNMENT:

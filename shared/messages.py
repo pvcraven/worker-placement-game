@@ -109,6 +109,26 @@ class ResourceChoiceRequest(BaseModel):
     chosen_resources: dict = Field(default_factory=dict)
 
 
+class PlayIntrigueFromQuestRequest(BaseModel):
+    action: Literal["play_intrigue_from_quest"] = "play_intrigue_from_quest"
+    intrigue_card_id: str
+
+
+class ChooseOpponentRequest(BaseModel):
+    action: Literal["choose_opponent"] = "choose_opponent"
+    target_player_id: str
+
+
+class RecallWorkerRequest(BaseModel):
+    action: Literal["recall_worker"] = "recall_worker"
+    space_id: str
+
+
+class RoundStartResourceChoiceRequest(BaseModel):
+    action: Literal["round_start_resource_choice"] = "round_start_resource_choice"
+    resource_type: str
+
+
 class ReconnectRequest(BaseModel):
     action: Literal["reconnect"] = "reconnect"
     game_code: str
@@ -141,6 +161,10 @@ ClientMessage = Annotated[
         QuestRewardChoiceRequest,
         CancelIntrigueTargetRequest,
         ResourceChoiceRequest,
+        PlayIntrigueFromQuestRequest,
+        ChooseOpponentRequest,
+        RecallWorkerRequest,
+        RoundStartResourceChoiceRequest,
         ReconnectRequest,
         PingRequest,
     ],
@@ -250,6 +274,10 @@ class QuestCompletedResponse(BaseModel):
     building_granted: dict | None = None
     plot_quest_bonus_vp: int = 0
     pending_choice: bool = False
+    pending_play_intrigue: bool = False
+    opponent_coins_granted: dict | None = None
+    extra_workers_granted: int = 0
+    pending_recall: bool = False
     next_player_id: str | None = None
 
 
@@ -431,6 +459,44 @@ class ResourceChoiceResolvedResponse(BaseModel):
     next_player_id: str | None = None
 
 
+class IntriguePlayPromptResponse(BaseModel):
+    action: Literal["intrigue_play_prompt"] = "intrigue_play_prompt"
+    intrigue_hand: list[dict] = Field(default_factory=list)
+
+
+class OpponentChoicePromptResponse(BaseModel):
+    action: Literal["opponent_choice_prompt"] = "opponent_choice_prompt"
+    opponents: list[dict] = Field(default_factory=list)
+    coins_amount: int = 0
+
+
+class WorkerRecallPromptResponse(BaseModel):
+    action: Literal["worker_recall_prompt"] = "worker_recall_prompt"
+    occupied_spaces: list[dict] = Field(default_factory=list)
+
+
+class WorkerRecalledResponse(BaseModel):
+    action: Literal["worker_recalled"] = "worker_recalled"
+    player_id: str
+    space_id: str
+    space_name: str
+
+
+class RoundStartResourceChoicePromptResponse(BaseModel):
+    action: Literal["round_start_resource_choice_prompt"] = (
+        "round_start_resource_choice_prompt"
+    )
+    player_id: str
+    contract_name: str
+
+
+class RoundStartBonusResponse(BaseModel):
+    action: Literal["round_start_bonus"] = "round_start_bonus"
+    player_id: str
+    resource_type: str
+    contract_name: str
+
+
 class TurnTimeoutResponse(BaseModel):
     action: Literal["turn_timeout"] = "turn_timeout"
     player_id: str
@@ -473,6 +539,12 @@ ServerMessage = Annotated[
         IntrigueEffectResolvedResponse,
         ResourceChoicePromptResponse,
         ResourceChoiceResolvedResponse,
+        IntriguePlayPromptResponse,
+        OpponentChoicePromptResponse,
+        WorkerRecallPromptResponse,
+        WorkerRecalledResponse,
+        RoundStartResourceChoicePromptResponse,
+        RoundStartBonusResponse,
     ],
     Field(discriminator="action"),
 ]

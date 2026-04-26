@@ -190,6 +190,26 @@ class GameServer:
 
         await handle_resource_choice(self, conn, msg)
 
+    async def _handle_play_intrigue_from_quest(self, conn, msg) -> None:
+        from server.game_engine import handle_play_intrigue_from_quest
+
+        await handle_play_intrigue_from_quest(self, conn, msg)
+
+    async def _handle_choose_opponent(self, conn, msg) -> None:
+        from server.game_engine import handle_choose_opponent
+
+        await handle_choose_opponent(self, conn, msg)
+
+    async def _handle_recall_worker(self, conn, msg) -> None:
+        from server.game_engine import handle_recall_worker
+
+        await handle_recall_worker(self, conn, msg)
+
+    async def _handle_round_start_resource_choice(self, conn, msg) -> None:
+        from server.game_engine import handle_round_start_resource_choice
+
+        await handle_round_start_resource_choice(self, conn, msg)
+
     # ------------------------------------------------------------------
     # System handlers
     # ------------------------------------------------------------------
