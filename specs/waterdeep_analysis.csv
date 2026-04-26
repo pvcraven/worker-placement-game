@@ -1,0 +1,62 @@
+,,Cost,,,,,,Benefit,,,,,,,
+Card Name,Quest Type,Clerics,Warriors,Rogues,Wizards,Gold,,Clerics,Warriors,Rogues,Wizards,Gold,VP,Intrigue Cards,Special
+Lure Artisans of Mirabar,C,1,1,1,,2,,,,,,,4,,choose free building
+Train Bladesingers,W,,3,,1,,,,1,,1,,4,,
+Spy on the House of Light,C,,3,2,,,,,,,,6,6,,
+Convert a Noble to Lathander,P,2,,,1,,,,,,,,8,,face up quest
+Discover Hidden Temple of Lolth,P,2,1,1,,,,,,,,,10,,face up quest
+Form an Alliance with the Rashemi,P,2,,,1,,,,,,,,10,,face up quest
+Research Chronomancy,A,,,,2,4,,,,,1,,4,,free agent placement
+Safeguard Eltorchul Mage,C,,1,1,1,4,,,,,2,,4,,
+Expose Cult Corruption,S,1,,4,,,,2,,,,,4,,
+Produce a Miracle for the Masses,P,2,,,,4,,,,,,,5,,"when you get C, trade adv.->C"
+Explore Ahghairon's Tower,A,,1,,2,2,,,,,,,6,,"when you get W, +1 I"
+Fence Goods for Duke of Darkness,S,,1,3,,4,,,,,,,6,,"when you get R, +2 G"
+Bolster Griffon Cavalry,W,,4,,,4,,,,,,,6,,"when you get F, +1 F"
+Loot the Crypt of Chauntea,C,1,,3,,2,,,,,,,7,1,random quest
+Domesticate Owlbears,A,1,,,2,,,,1,,,2,8,,
+Study the Illusk Arch,A,1,,,2,,,,,,,,8,,+2 per future AQ
+Establish New Merchant Guild,C,1,2,,,4,,,,,,,8,,+2 per future CQ
+Protect the House of Wonder,P,2,1,,,2,,,,,,,8,,+2 per future PQ
+Install a Spy in Castle Waterdeep,S,,,4,,4,,,,,,,8,,+2 per future SQ
+Quell Mercenary Uprising,W,1,4,,,,,,,,,,8,,+2 per future WQ
+Infiltrate Builder's Hall,C,,2,2,,4,,,,,,,6,,+4 per future building
+Establish Harpers Safe House,S,,2,3,,2,,,,,,,8,,+2 per existing building
+Procure Stolen Goods,S,,,3,,6,,,,,,,8,2,
+Ambush Artor Morlin,W,1,3,1,,,,,,,,4,8,,
+Raid Orc Stronghold,W,,4,2,,,,,,,,4,8,,
+Thin the City Watch,C,1,1,1,,4,,,,4,,,9,,
+Build a Reputation in Skullport,S,,1,3,,4,,,,,,,10,1,
+Send Aid to the Harpers,C,1,1,1,,4,,,,,,,15,,one opponent gains 4g
+Place a Sleeper Agent in Skullport,S,,1,4,1,,,,,,,,0,,+2 per future played Intrigue
+Recover the Magister's Orb,A,,,3,2,,,,,,,,6,,use 1 occupied bldg per round
+Steal Spellbook from Silverhand,A,,1,2,2,,,,,,,4,7,2,
+Steal from House Adarbrent,S,,1,4,1,,,,,,,6,10,,
+Retrieve Ancient Artifacts,A,,2,1,2,,,,,,,4,11,,
+Eliminate Vampire Coven,P,2,2,1,,,,,,,,4,11,,
+Defeat Uprising from Undermountain,W,1,3,1,,2,,,2,,,,11,,
+Deliver an Ultimatum,W,,4,1,1,,,,,,,4,11,,
+Investigate Aberrant Infestation,A,1,1,,2,,,,,,,,13,1,
+Defend the Tower of Luck,P,2,1,1,1,,,,,,,,0,,1 adventurer per round
+Recruit for Blackstaff Academy,A,,1,1,2,4,,,,,3,,6,,
+Heal Fallen Gray Hand Soldiers,P,2,,,1,4,,,6,,,,6,,
+Host Festival for Sune,A,,2,,2,4,,2,,,,,9,,
+Deliver Weapons to Selune's Temple,W,,4,1,1,2,,2,,,,,9,,
+Placate the Walking Statue,C,2,,2,,4,,,,,,,10,,random free building
+Bribe the Shipwrights,C,,,4,1,4,,,,,,,10,,"when you get G, +1 R"
+Take Over Rival Organization,S,,1,2,1,6,,,,4,,,10,,
+Perform the Penance of Duty,P,2,2,,,4,,1,1,,,,12,,
+Repel Seawraiths,W,1,4,,1,,,,,,,2,15,,
+Prison Break,S,,,4,2,2,,,2,,,,14,,play Intrigue
+Seal Gate to Cyric's Realm,P,2,,3,,4,,,,,,,20,,
+Recruit Lieutenant,W,1,5,1,1,,,,,,,,0,,lieutenant
+Recruit Paladins for Tyr,P,2,4,,,4,,3,,,,,10,,
+Impersonate Adarbrent Noble,C,1,2,2,1,4,,,,,,,18,2,
+Expose Red Wizards' Spies,A,1,1,2,2,2,,,,,,,20,1,
+Raid on Undermountain,S,1,2,4,1,,,,,,,2,20,,
+Confront the Xanathar,W,1,4,2,1,,,,,,,2,20,,
+Infiltrate Halaster's Circle,A,,,,5,2,,,,,,,25,,
+Ally with House Thann,C,1,,3,1,8,,,,,,,25,,
+Create a Shrine to Oghma,P,5,,,,2,,,,,,,25,,
+Establish Shadow Thieves' Guild,S,,1,8,1,,,,,,,,25,,
+Bolster City Guard,W,,9,2,,,,,,,,,25,,

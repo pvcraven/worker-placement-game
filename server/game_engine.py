@@ -1541,9 +1541,25 @@ async def handle_complete_quest(
     player.resources.deduct(contract.cost)
     player.victory_points += contract.victory_points
     player.resources.add(contract.bonus_resources)
+
+    # Check for plot quest genre bonuses BEFORE appending (so a plot quest
+    # doesn't trigger its own bonus).
+    plot_bonus_vp = 0
+    for completed in player.completed_contracts:
+        if (
+            completed.bonus_vp_per_genre_quest > 0
+            and completed.bonus_vp_genre == contract.genre
+        ):
+            plot_bonus_vp += completed.bonus_vp_per_genre_quest
+    player.victory_points += plot_bonus_vp
+
     player.contract_hand.remove(contract)
     player.completed_contracts.append(contract)
     player.completed_quest_this_turn = True
+
+    vp_detail = f"{contract.victory_points} VP"
+    if plot_bonus_vp:
+        vp_detail += f" + {plot_bonus_vp} plot quest bonus"
 
     state.game_log.append(
         GameLog(
@@ -1553,7 +1569,7 @@ async def handle_complete_quest(
             details=(
                 f"{player.display_name} completed"
                 f" '{contract.name}'"
-                f" for {contract.victory_points} VP"
+                f" for {vp_detail}"
             ),
             timestamp=time.time(),
         )
@@ -1600,6 +1616,7 @@ async def handle_complete_quest(
             drawn_intrigue=drawn_intrigue,
             drawn_quests=drawn_quests,
             building_granted=building_granted,
+            plot_quest_bonus_vp=plot_bonus_vp,
             pending_choice=has_interactive,
             next_player_id=None,
         ),

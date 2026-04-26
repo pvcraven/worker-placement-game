@@ -64,6 +64,8 @@ class ContractCard(BaseModel):
     reward_building: str | None = None
     is_plot_quest: bool = False
     ongoing_benefit_description: str | None = None
+    bonus_vp_per_genre_quest: int = 0
+    bonus_vp_genre: Genre | None = None
 
 
 class IntrigueCard(BaseModel):
