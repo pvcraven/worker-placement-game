@@ -43,9 +43,9 @@ cd src && pytest && ruff check .
 Python 3.12+: Follow standard conventions
 
 ## Recent Changes
+- 020-new-special-buildings: Added Python 3.12+ + Arcade (local source), websockets, Pydantic v2
 - 019-remaining-special-quests: Added Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), websockets, Pydantic v2
 - 018-resource-trigger-plots: Added Python 3.12+ + Arcade (local source), websockets, Pydantic v2
-- 017-resource-bar-revamp: Added Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), Pillow (PIL) for card/icon generation, Pydantic v2
 
 
 <!-- MANUAL ADDITIONS START -->
