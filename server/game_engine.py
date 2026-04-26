@@ -353,10 +353,12 @@ async def _end_round(server: GameServer, state) -> None:
     for player in state.players:
         player.available_workers = player.total_workers
         player.completed_quest_this_turn = False
+        player.use_occupied_used_this_round = False
 
     # Clear board occupants
     for space in state.board.action_spaces.values():
         space.occupied_by = None
+        space.also_occupied_by = None
     for slot in state.board.backstage_slots:
         slot.occupied_by = None
         slot.intrigue_card_played = None
@@ -434,6 +436,35 @@ async def _end_round(server: GameServer, state) -> None:
 
     # Broadcast updated building market with incremented VP
     await _broadcast_building_market(server, state)
+
+    # Round-start resource choice for players with reward_choose_resource_per_round
+    eligible_players = []
+    for pid in state.turn_order:
+        p = state.get_player(pid)
+        if p:
+            for c in p.completed_contracts:
+                if c.reward_choose_resource_per_round:
+                    eligible_players.append(pid)
+                    break
+
+    if eligible_players:
+        state.pending_round_start_choices = eligible_players
+        first_pid = eligible_players[0]
+        first_player = state.get_player(first_pid)
+        contract_name = ""
+        if first_player:
+            for c in first_player.completed_contracts:
+                if c.reward_choose_resource_per_round:
+                    contract_name = c.name
+                    break
+            await server.send_to_player(
+                first_pid,
+                RoundStartResourceChoicePromptResponse(
+                    player_id=first_pid,
+                    contract_name=contract_name,
+                ),
+            )
+        return
 
 
 async def _end_game(server: GameServer, state) -> None:
@@ -870,6 +901,20 @@ async def handle_resource_choice(
     await _check_quest_completion(server, state)
 
 
+def _can_use_occupied(player, space, state) -> bool:
+    """Check if player can place on an occupied building via special quest ability."""
+    if player.use_occupied_used_this_round:
+        return False
+    if space.space_type != "building":
+        return False
+    if space.occupied_by == player.player_id:
+        return False
+    for c in player.completed_contracts:
+        if c.reward_use_occupied_building:
+            return True
+    return False
+
+
 # ------------------------------------------------------------------
 # Worker placement handler
 # ------------------------------------------------------------------
@@ -893,8 +938,12 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
         return
 
     if space.occupied_by is not None:
-        await conn.send_error("SPACE_OCCUPIED", "That space is already occupied.")
-        return
+        if _can_use_occupied(player, space, state):
+            player.use_occupied_used_this_round = True
+            space.also_occupied_by = space.occupied_by
+        else:
+            await conn.send_error("SPACE_OCCUPIED", "That space is already occupied.")
+            return
 
     if player.available_workers <= 0:
         await conn.send_error("INVALID_ACTION", "No workers available.")
@@ -2946,7 +2995,10 @@ async def handle_choose_intrigue_target(
         ),
     )
 
-    await _check_quest_completion(server, state)
+    if pending.get("source") == "quest_completion":
+        await _advance_after_quest_rewards(server, state, player)
+    else:
+        await _check_quest_completion(server, state)
 
 
 async def handle_cancel_intrigue_target(
@@ -2968,6 +3020,29 @@ async def handle_cancel_intrigue_target(
         await conn.send_error("INVALID_ACTION", "Player not found.")
         return
 
+    from shared.card_models import IntrigueCard
+
+    reversed_bonus = pending.get("plot_bonus_vp", 0)
+    card = IntrigueCard(**pending["intrigue_card"])
+
+    if pending.get("source") == "quest_completion":
+        player.intrigue_hand.append(card)
+        player.victory_points -= reversed_bonus
+        state.pending_intrigue_target = None
+
+        state.game_log.append(
+            GameLog(
+                round_number=state.current_round,
+                player_id=player.player_id,
+                action="cancel_intrigue_target",
+                details=f"{player.display_name} cancelled intrigue target from quest reward",
+                timestamp=time.time(),
+            )
+        )
+
+        await _advance_after_quest_rewards(server, state, player)
+        return
+
     slot_number = pending["slot_number"]
 
     # Unwind: clear backstage slot
@@ -2977,15 +3052,8 @@ async def handle_cancel_intrigue_target(
             s.intrigue_card_played = None
             break
 
-    # Return intrigue card to hand
-    from shared.card_models import IntrigueCard
-
-    card = IntrigueCard(**pending["intrigue_card"])
     player.intrigue_hand.append(card)
     player.available_workers += 1
-
-    # Reverse plot quest bonus VP that was awarded when the card was played
-    reversed_bonus = pending.get("plot_bonus_vp", 0)
     player.victory_points -= reversed_bonus
 
     state.pending_intrigue_target = None
@@ -3010,3 +3078,349 @@ async def handle_cancel_intrigue_target(
             plot_quest_bonus_vp=reversed_bonus,
         ),
     )
+
+
+# ------------------------------------------------------------------
+# Quest-completion special reward handlers
+# ------------------------------------------------------------------
+
+
+async def _advance_after_quest_rewards(
+    server: GameServer, state, player
+) -> None:
+    """After resolving one quest-completion reward, check if more are pending."""
+    # Chain: play_intrigue → opponent_coins → recall → done
+    if state.pending_play_intrigue:
+        await server.send_to_player(
+            player.player_id,
+            IntriguePlayPromptResponse(
+                intrigue_hand=[c.model_dump() for c in player.intrigue_hand],
+            ),
+        )
+        return
+
+    if state.pending_opponent_coins:
+        opponents = [
+            p for p in state.players if p.player_id != player.player_id
+        ]
+        await server.send_to_player(
+            player.player_id,
+            OpponentChoicePromptResponse(
+                opponents=[
+                    {"player_id": p.player_id, "player_name": p.display_name}
+                    for p in opponents
+                ],
+                coins_amount=state.pending_opponent_coins["coins"],
+            ),
+        )
+        return
+
+    if state.pending_worker_recall:
+        occupied_spaces = [
+            (sid, sp)
+            for sid, sp in state.board.action_spaces.items()
+            if sp.occupied_by == player.player_id
+        ]
+        if occupied_spaces:
+            await server.send_to_player(
+                player.player_id,
+                WorkerRecallPromptResponse(
+                    occupied_spaces=[
+                        {"space_id": sid, "name": sp.name}
+                        for sid, sp in occupied_spaces
+                    ],
+                ),
+            )
+            return
+        else:
+            state.pending_worker_recall = None
+
+    if state.phase == GamePhase.REASSIGNMENT:
+        await _finish_reassignment(server, state)
+        return
+
+    await _advance_turn(server, state)
+    await _notify_turn_if_needed(server, state, player)
+
+
+async def handle_play_intrigue_from_quest(
+    server: GameServer, conn: ClientConnection, msg
+) -> None:
+    """Handle playing an intrigue card as a quest completion reward."""
+    state = _get_game_state(server, conn)
+    if state is None:
+        await conn.send_error("GAME_NOT_FOUND", "Not in a game.")
+        return
+
+    if not state.pending_play_intrigue:
+        await conn.send_error("INVALID_ACTION", "No pending intrigue play.")
+        return
+
+    if state.pending_play_intrigue["player_id"] != conn.player_id:
+        await conn.send_error("NOT_YOUR_TURN", "Not your pending action.")
+        return
+
+    player = state.get_player(conn.player_id)
+    if player is None:
+        await conn.send_error("INVALID_ACTION", "Player not found.")
+        return
+
+    card = None
+    for c in player.intrigue_hand:
+        if c.id == msg.intrigue_card_id:
+            card = c
+            break
+    if card is None:
+        await conn.send_error("INVALID_ACTION", "Intrigue card not in hand.")
+        return
+
+    player.intrigue_hand.remove(card)
+    effect_details = _resolve_intrigue_effect(state, player, card)
+
+    plot_bonus_vp = 0
+    for completed in player.completed_contracts:
+        if completed.bonus_vp_per_intrigue_played > 0:
+            plot_bonus_vp += completed.bonus_vp_per_intrigue_played
+    player.victory_points += plot_bonus_vp
+
+    log_detail = (
+        f"{player.display_name} played {card.name} from quest reward"
+    )
+    if plot_bonus_vp:
+        log_detail += f" (+{plot_bonus_vp} plot quest bonus)"
+
+    state.game_log.append(
+        GameLog(
+            round_number=state.current_round,
+            player_id=player.player_id,
+            action="play_intrigue_from_quest",
+            details=log_detail,
+            timestamp=time.time(),
+        )
+    )
+
+    state.pending_play_intrigue = None
+
+    if effect_details.get("pending"):
+        eligible = effect_details.get("eligible_targets", [])
+        state.pending_intrigue_target = {
+            "player_id": player.player_id,
+            "intrigue_card": card.model_dump(),
+            "effect_type": card.effect_type,
+            "effect_value": card.effect_value,
+            "eligible_targets": eligible,
+            "plot_bonus_vp": plot_bonus_vp,
+            "source": "quest_completion",
+        }
+
+        target_info = []
+        for tid in eligible:
+            tp = state.get_player(tid)
+            if tp:
+                target_info.append(
+                    {
+                        "player_id": tp.player_id,
+                        "player_name": tp.display_name,
+                        "resources": tp.resources.model_dump(),
+                    }
+                )
+
+        await server.send_to_player(
+            player.player_id,
+            IntrigueTargetPromptResponse(
+                effect_type=card.effect_type,
+                effect_value=card.effect_value,
+                eligible_targets=target_info,
+            ),
+        )
+        return
+
+    await _advance_after_quest_rewards(server, state, player)
+
+
+async def handle_choose_opponent(
+    server: GameServer, conn: ClientConnection, msg
+) -> None:
+    """Handle choosing which opponent receives coins from quest reward."""
+    state = _get_game_state(server, conn)
+    if state is None:
+        await conn.send_error("GAME_NOT_FOUND", "Not in a game.")
+        return
+
+    if not state.pending_opponent_coins:
+        await conn.send_error("INVALID_ACTION", "No pending opponent choice.")
+        return
+
+    if state.pending_opponent_coins["player_id"] != conn.player_id:
+        await conn.send_error("NOT_YOUR_TURN", "Not your pending action.")
+        return
+
+    player = state.get_player(conn.player_id)
+    target = state.get_player(msg.target_player_id)
+    if player is None or target is None:
+        await conn.send_error("INVALID_ACTION", "Invalid player.")
+        return
+
+    if target.player_id == player.player_id:
+        await conn.send_error("INVALID_ACTION", "Cannot choose yourself.")
+        return
+
+    coins = state.pending_opponent_coins["coins"]
+    target.resources.coins += coins
+
+    state.game_log.append(
+        GameLog(
+            round_number=state.current_round,
+            player_id=player.player_id,
+            action="opponent_gains_coins",
+            details=(
+                f"{target.display_name} gained {coins} coins"
+                f" (chosen by {player.display_name})"
+            ),
+            timestamp=time.time(),
+        )
+    )
+
+    state.pending_opponent_coins = None
+    await _advance_after_quest_rewards(server, state, player)
+
+
+async def handle_recall_worker(
+    server: GameServer, conn: ClientConnection, msg
+) -> None:
+    """Handle recalling a placed worker as a quest completion reward."""
+    state = _get_game_state(server, conn)
+    if state is None:
+        await conn.send_error("GAME_NOT_FOUND", "Not in a game.")
+        return
+
+    if not state.pending_worker_recall:
+        await conn.send_error("INVALID_ACTION", "No pending worker recall.")
+        return
+
+    if state.pending_worker_recall["player_id"] != conn.player_id:
+        await conn.send_error("NOT_YOUR_TURN", "Not your pending action.")
+        return
+
+    player = state.get_player(conn.player_id)
+    if player is None:
+        await conn.send_error("INVALID_ACTION", "Player not found.")
+        return
+
+    space = state.board.action_spaces.get(msg.space_id)
+    if space is None or space.occupied_by != player.player_id:
+        await conn.send_error(
+            "INVALID_ACTION", "Not a valid space to recall from."
+        )
+        return
+
+    space.occupied_by = None
+    player.available_workers += 1
+    state.pending_worker_recall = None
+
+    state.game_log.append(
+        GameLog(
+            round_number=state.current_round,
+            player_id=player.player_id,
+            action="recall_worker",
+            details=f"{player.display_name} recalled worker from {space.name}",
+            timestamp=time.time(),
+        )
+    )
+
+    await server.broadcast_to_game(
+        state.game_code,
+        WorkerRecalledResponse(
+            player_id=player.player_id,
+            space_id=msg.space_id,
+            space_name=space.name,
+        ),
+    )
+
+    await _advance_after_quest_rewards(server, state, player)
+
+
+async def handle_round_start_resource_choice(
+    server: GameServer, conn: ClientConnection, msg
+) -> None:
+    """Handle a player's round-start resource choice."""
+    state = _get_game_state(server, conn)
+    if state is None:
+        await conn.send_error("GAME_NOT_FOUND", "Not in a game.")
+        return
+
+    if not state.pending_round_start_choices:
+        await conn.send_error(
+            "INVALID_ACTION", "No pending round-start choice."
+        )
+        return
+
+    if state.pending_round_start_choices[0] != conn.player_id:
+        await conn.send_error("NOT_YOUR_TURN", "Not your turn to choose.")
+        return
+
+    player = state.get_player(conn.player_id)
+    if player is None:
+        await conn.send_error("INVALID_ACTION", "Player not found.")
+        return
+
+    valid_types = {"guitarists", "bass_players", "drummers", "singers"}
+    if msg.resource_type not in valid_types:
+        await conn.send_error(
+            "INVALID_ACTION",
+            "Must choose a non-coin resource: guitarists, bass_players, drummers, or singers.",
+        )
+        return
+
+    current = getattr(player.resources, msg.resource_type, 0)
+    setattr(player.resources, msg.resource_type, current + 1)
+
+    contract_name = ""
+    for c in player.completed_contracts:
+        if c.reward_choose_resource_per_round:
+            contract_name = c.name
+            break
+
+    state.game_log.append(
+        GameLog(
+            round_number=state.current_round,
+            player_id=player.player_id,
+            action="round_start_resource",
+            details=(
+                f"{player.display_name} chose 1 {msg.resource_type}"
+                f" from {contract_name}"
+            ),
+            timestamp=time.time(),
+        )
+    )
+
+    await server.broadcast_to_game(
+        state.game_code,
+        RoundStartBonusResponse(
+            player_id=player.player_id,
+            resource_type=msg.resource_type,
+            contract_name=contract_name,
+        ),
+    )
+
+    state.pending_round_start_choices.pop(0)
+
+    if state.pending_round_start_choices:
+        next_pid = state.pending_round_start_choices[0]
+        next_player = state.get_player(next_pid)
+        if next_player:
+            next_contract = ""
+            for c in next_player.completed_contracts:
+                if c.reward_choose_resource_per_round:
+                    next_contract = c.name
+                    break
+            await server.send_to_player(
+                next_pid,
+                RoundStartResourceChoicePromptResponse(
+                    player_id=next_pid,
+                    contract_name=next_contract,
+                ),
+            )
+        return
+
+    await _notify_turn_if_needed(server, state, player)

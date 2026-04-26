@@ -267,6 +267,18 @@ class GameView(arcade.View):
             self._on_resource_choice_prompt(msg)
         elif action == "resource_choice_resolved":
             self._on_resource_choice_resolved(msg)
+        elif action == "intrigue_play_prompt":
+            self._on_intrigue_play_prompt(msg)
+        elif action == "opponent_choice_prompt":
+            self._on_opponent_choice_prompt(msg)
+        elif action == "worker_recall_prompt":
+            self._on_worker_recall_prompt(msg)
+        elif action == "worker_recalled":
+            self._on_worker_recalled(msg)
+        elif action == "round_start_resource_choice_prompt":
+            self._on_round_start_resource_choice_prompt(msg)
+        elif action == "round_start_bonus":
+            self._on_round_start_bonus(msg)
         elif action == "error":
             self._status_text = msg.get("message", "Error")
 
@@ -759,6 +771,25 @@ class GameView(arcade.View):
                     }
             self._refresh_board(board)
 
+        extra_workers = msg.get("extra_workers_granted", 0)
+        if extra_workers > 0:
+            for p in self.game_state.get("players", []):
+                if p.get("player_id") == pid:
+                    p["total_workers"] = p.get("total_workers", 0) + extra_workers
+                    break
+
+        opp_coins = msg.get("opponent_coins_granted")
+        if opp_coins:
+            opp_pid = opp_coins.get("player_id", "")
+            opp_coins_amt = opp_coins.get("coins", 0)
+            for p in self.game_state.get("players", []):
+                if p.get("player_id") == opp_pid:
+                    res = p.get("resources", {})
+                    res["coins"] = res.get("coins", 0) + opp_coins_amt
+                    if opp_pid == my_id and self.resource_bar:
+                        self.resource_bar.update_resources(res)
+                    break
+
         if self.tabbed_panel:
             name = self._player_name(pid)
             vp_str = f"{vp} VP" if not plot_bonus else f"{vp}+{plot_bonus} VP"
@@ -774,6 +805,11 @@ class GameView(arcade.View):
             if building:
                 bname = building.get("building_name", "?")
                 parts.append(f"building: {bname}")
+            if extra_workers:
+                parts.append(f"+{extra_workers} worker(s)")
+            if opp_coins:
+                oname = opp_coins.get("player_name", "?")
+                parts.append(f"{oname} got {opp_coins.get('coins', 0)} coins")
             reward_str = ", ".join(parts)
             self.tabbed_panel.add_entry(
                 f"{name} completed '{cname}'" f" ({reward_str})"
@@ -995,6 +1031,175 @@ class GameView(arcade.View):
         next_pid = msg.get("next_player_id")
         if next_pid:
             self._update_current_player(next_pid)
+
+    def _on_intrigue_play_prompt(self, msg: dict) -> None:
+        cards = msg.get("intrigue_hand", [])
+        if not cards:
+            return
+
+        def on_select(card_id: str) -> None:
+            self._card_sprite_dialog = None
+            self.window.network.send(
+                {
+                    "action": "play_intrigue_from_quest",
+                    "intrigue_card_id": card_id,
+                }
+            )
+
+        self._card_sprite_dialog = CardSpriteSelectionDialog(
+            title="Play an Intrigue Card (Quest Reward)",
+            cards=cards,
+            card_type="intrigue",
+            on_select=on_select,
+            on_cancel=None,
+            cancel_label="",
+        )
+
+    def _on_opponent_choice_prompt(self, msg: dict) -> None:
+        opponents = msg.get("opponents", [])
+        coins = msg.get("coins_amount", 0)
+
+        def on_select(player_id: str) -> None:
+            self._target_dialog = None
+            self.window.network.send(
+                {
+                    "action": "choose_opponent",
+                    "target_player_id": player_id,
+                }
+            )
+
+        self._target_dialog = PlayerTargetDialog(
+            title="Choose Opponent",
+            effect_description=f"Choose an opponent to receive {coins} coins",
+            eligible_targets=[
+                {
+                    "player_id": o.get("player_id"),
+                    "player_name": o.get("player_name"),
+                }
+                for o in opponents
+            ],
+            on_select=on_select,
+            on_cancel=None,
+            ui_manager=self.ui,
+        )
+        self._target_dialog.show(
+            self.window.width,
+            self.window.height,
+            scale=self.window.ui_scale,
+        )
+
+    def _on_worker_recall_prompt(self, msg: dict) -> None:
+        spaces = msg.get("occupied_spaces", [])
+        if not spaces:
+            return
+        space_ids = [s.get("space_id", "") for s in spaces]
+        self._enter_highlight_mode("worker_recall", space_ids)
+        self._status_text = "Select a worker to recall"
+
+    def _on_worker_recalled(self, msg: dict) -> None:
+        pid = msg.get("player_id", "")
+        space_id = msg.get("space_id", "")
+        space_name = msg.get("space_name", "?")
+        my_id = getattr(self.window, "player_id", None)
+
+        board = self.game_state.get("board", {})
+        spaces = board.get("action_spaces", {})
+        if space_id in spaces:
+            spaces[space_id]["occupied_by"] = None
+
+        for p in self.game_state.get("players", []):
+            if p.get("player_id") == pid:
+                p["available_workers"] = p.get("available_workers", 0) + 1
+                break
+
+        if pid == my_id:
+            self._exit_highlight_mode()
+
+        if self.tabbed_panel:
+            name = self._player_name(pid)
+            self.tabbed_panel.add_entry(
+                f"{name} recalled worker from {space_name}"
+            )
+
+    def _on_round_start_resource_choice_prompt(self, msg: dict) -> None:
+        player_id = msg.get("player_id", "")
+        contract_name = msg.get("contract_name", "")
+        my_id = getattr(self.window, "player_id", None)
+
+        if player_id != my_id:
+            name = self._player_name(player_id)
+            self._status_text = f"Waiting on {name}: round-start resource choice"
+            return
+
+        options = [
+            {"label": "Guitarist", "value": "guitarists"},
+            {"label": "Bass Player", "value": "bass_players"},
+            {"label": "Drummer", "value": "drummers"},
+            {"label": "Singer", "value": "singers"},
+        ]
+
+        s = self.window.ui_scale
+        anchor = arcade.gui.UIAnchorLayout()
+        v_box = arcade.gui.UIBoxLayout(space_between=int(8 * s))
+
+        title = arcade.gui.UILabel(
+            text=f"Choose a resource ({contract_name})",
+            font_size=max(8, int(16 * s)),
+            text_color=arcade.color.WHITE,
+            bold=True,
+        )
+        v_box.add(title)
+
+        widget_ref = [None]
+
+        for opt in options:
+            btn = arcade.gui.UIFlatButton(
+                text=opt["label"],
+                width=int(200 * s),
+                height=int(36 * s),
+            )
+            resource_type = opt["value"]
+
+            def make_handler(rt):
+                def handler(_event=None):
+                    if widget_ref[0]:
+                        self.ui.remove(widget_ref[0])
+                    self.window.network.send(
+                        {
+                            "action": "round_start_resource_choice",
+                            "resource_type": rt,
+                        }
+                    )
+                return handler
+
+            btn.on_click = make_handler(resource_type)
+            v_box.add(btn)
+
+        bg = v_box.with_padding(all=int(20 * s)).with_background(
+            color=(0, 0, 0, 230)
+        )
+        anchor.add(child=bg, anchor_x="center", anchor_y="center")
+        widget_ref[0] = self.ui.add(anchor)
+
+    def _on_round_start_bonus(self, msg: dict) -> None:
+        pid = msg.get("player_id", "")
+        resource_type = msg.get("resource_type", "")
+        contract_name = msg.get("contract_name", "")
+
+        for p in self.game_state.get("players", []):
+            if p.get("player_id") == pid:
+                res = p.get("resources", {})
+                res[resource_type] = res.get(resource_type, 0) + 1
+                my_id = getattr(self.window, "player_id", None)
+                if pid == my_id and self.resource_bar:
+                    self.resource_bar.update_resources(res)
+                break
+
+        if self.tabbed_panel:
+            name = self._player_name(pid)
+            self.tabbed_panel.add_entry(
+                f"{name} gained 1 {resource_type} from {contract_name}"
+            )
 
     def _on_quest_completion_prompt(
         self,
@@ -1666,6 +1871,15 @@ class GameView(arcade.View):
                         }
                     )
                     self._exit_highlight_mode()
+        elif self._highlight_mode == "worker_recall":
+            if clicked in self._highlighted_ids:
+                self.window.network.send(
+                    {
+                        "action": "recall_worker",
+                        "space_id": clicked,
+                    }
+                )
+                self._exit_highlight_mode()
 
     def _enter_highlight_mode(
         self,
