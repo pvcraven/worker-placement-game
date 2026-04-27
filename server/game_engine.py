@@ -1760,9 +1760,7 @@ async def handle_place_worker_backstage(
     # Check for singer swap trigger from intrigue-granted resources
     intrigue_reward = _extract_intrigue_reward(effect_details)
     if intrigue_reward:
-        _, pending_swap = _evaluate_resource_triggers(
-            state, player, intrigue_reward
-        )
+        _, pending_swap = _evaluate_resource_triggers(state, player, intrigue_reward)
         if pending_swap:
             from shared.card_models import ResourceChoiceReward
 
@@ -2943,10 +2941,7 @@ async def handle_reassign_worker(
 
     # Reset quests before broadcasting WorkerReassignedResponse so the
     # client enters quest_selection with the NEW quest IDs.
-    if (
-        target.space_type == "garage"
-        and target.reward_special == "reset_quests"
-    ):
+    if target.space_type == "garage" and target.reward_special == "reset_quests":
         state.board.quest_discard.extend(state.board.face_up_quests)
         state.board.face_up_quests.clear()
         for _ in range(FACE_UP_QUEST_COUNT):
@@ -2956,9 +2951,7 @@ async def handle_reassign_worker(
         await server.broadcast_to_game(
             state.game_code,
             FaceUpQuestsUpdatedResponse(
-                face_up_quests=[
-                    q.model_dump() for q in state.board.face_up_quests
-                ]
+                face_up_quests=[q.model_dump() for q in state.board.face_up_quests]
             ),
         )
 
@@ -3205,9 +3198,7 @@ async def handle_choose_intrigue_target(
             }
         )
         if stolen_reward.total() > 0:
-            _, pending_swap = _evaluate_resource_triggers(
-                state, player, stolen_reward
-            )
+            _, pending_swap = _evaluate_resource_triggers(state, player, stolen_reward)
             if pending_swap:
                 from shared.card_models import ResourceChoiceReward
 
