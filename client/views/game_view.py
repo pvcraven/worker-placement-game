@@ -280,7 +280,13 @@ class GameView(arcade.View):
         elif action == "round_start_bonus":
             self._on_round_start_bonus(msg)
         elif action == "error":
-            self._status_text = msg.get("message", "Error")
+            error_msg = msg.get("message", "Error")
+            self._status_text = error_msg
+            if self._highlight_mode == "building_purchase":
+                self._show_info_dialog(error_msg)
+                my_id = getattr(self.window, "player_id", None)
+                if my_id:
+                    self._enter_building_highlight(my_id)
 
     def _on_worker_placed(self, msg: dict) -> None:
         space_id = msg.get("space_id", "")
@@ -979,6 +985,15 @@ class GameView(arcade.View):
                 }
             )
 
+        def on_skip(p_id: str) -> None:
+            self.window.network.send(
+                {
+                    "action": "skip_resource_choice",
+                    "prompt_id": p_id,
+                }
+            )
+
+        can_skip = msg.get("can_skip", False)
         dialog = ResourceChoiceDialog(
             prompt_id=prompt_id,
             title=msg.get("title", "Choose Resources"),
@@ -991,6 +1006,8 @@ class GameView(arcade.View):
             is_spend=msg.get("is_spend", False),
             on_select=on_select,
             ui_manager=self.ui,
+            can_skip=can_skip,
+            on_skip=on_skip if can_skip else None,
         )
         dialog.show(
             self.window.width,
@@ -1306,6 +1323,9 @@ class GameView(arcade.View):
             )
 
     def _on_building_constructed(self, msg: dict) -> None:
+        if self._highlight_mode == "building_purchase":
+            self._exit_highlight_mode()
+
         pid = msg.get("player_id", "")
         bname = msg.get("building_name", "?")
         new_space_id = msg.get("new_space_id", "")
@@ -1864,7 +1884,6 @@ class GameView(arcade.View):
                             "building_id": bid,
                         }
                     )
-                    self._exit_highlight_mode()
                 else:
                     self._status_text = "You can't afford that building"
                     self._show_info_dialog(

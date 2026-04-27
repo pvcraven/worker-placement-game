@@ -44,6 +44,7 @@ def _make_player(completed=None, resources=None, player_id="player_1"):
     else:
         p.resources = resources
     p.intrigue_hand = []
+    p.singer_swap_used_this_round = False
     return p
 
 

@@ -79,6 +79,7 @@ class Player(BaseModel):
     consecutive_timeouts: int = 0
     completed_quest_this_turn: bool = False
     use_occupied_used_this_round: bool = False
+    singer_swap_used_this_round: bool = False
 
 
 # ---------------------------------------------------------------------------
