@@ -56,6 +56,9 @@ _player_ready: dict[str, bool] = {}
 
 async def create_game(server: GameServer, conn: ClientConnection, msg) -> None:
     """Handle create_game: create session, add host player."""
+    if conn.player_id:
+        await conn.send_error("INVALID_ACTION", "Already in a game.")
+        return
     state = server.session_manager.create_session(msg.max_players)
     player_id = str(uuid.uuid4())
     player = Player(
@@ -83,6 +86,9 @@ async def create_game(server: GameServer, conn: ClientConnection, msg) -> None:
 
 async def join_game(server: GameServer, conn: ClientConnection, msg) -> None:
     """Handle join_game: add player to existing session."""
+    if conn.player_id:
+        await conn.send_error("INVALID_ACTION", "Already in a game.")
+        return
     state = server.session_manager.get_session(msg.game_code)
     if state is None:
         await conn.send_error("GAME_NOT_FOUND", "No game with that code.")
