@@ -645,6 +645,8 @@ class ResourceChoiceDialog:
         is_spend: bool,
         on_select: callable,
         ui_manager: arcade.gui.UIManager,
+        can_skip: bool = False,
+        on_skip: callable | None = None,
     ) -> None:
         self.prompt_id = prompt_id
         self.title = title
@@ -657,6 +659,8 @@ class ResourceChoiceDialog:
         self.is_spend = is_spend
         self.on_select = on_select
         self.ui = ui_manager
+        self.can_skip = can_skip
+        self.on_skip = on_skip
         self._widget = None
         self._selection: dict[str, int] = {}
         self._count_labels: dict[str, arcade.gui.UILabel] = {}
@@ -717,6 +721,15 @@ class ResourceChoiceDialog:
         )
         reset_btn.on_click = lambda e: self._pick_reset()
         v_box.add(reset_btn)
+
+        if self.can_skip and self.on_skip:
+            skip_btn = arcade.gui.UIFlatButton(
+                text="Skip",
+                width=btn_w,
+                height=int(30 * s),
+            )
+            skip_btn.on_click = lambda e: self._do_skip()
+            v_box.add(skip_btn)
 
         self._mount(v_box)
 
@@ -891,6 +904,11 @@ class ResourceChoiceDialog:
         chosen = {k: v for k, v in self._selection.items()}
         self.hide()
         self.on_select(self.prompt_id, chosen)
+
+    def _do_skip(self) -> None:
+        self.hide()
+        if self.on_skip:
+            self.on_skip(self.prompt_id)
 
     def hide(self) -> None:
         if self._widget:

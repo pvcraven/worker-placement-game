@@ -133,12 +133,11 @@ def _evaluate_resource_triggers(state, player, reward: ResourceCost):
             )
             entry["drawn_intrigue"] = drawn
 
-        if contract.resource_trigger_is_swap:
+        if contract.resource_trigger_is_swap and not player.singer_swap_used_this_round:
             non_singer_total = (
                 player.resources.guitarists
                 + player.resources.bass_players
                 + player.resources.drummers
-                + player.resources.coins
             )
             if non_singer_total > 0:
                 pending_swap = {
@@ -151,6 +150,33 @@ def _evaluate_resource_triggers(state, player, reward: ResourceCost):
         trigger_results.append(entry)
 
     return trigger_results, pending_swap
+
+
+def _extract_intrigue_reward(effect_details: dict) -> ResourceCost | None:
+    """Build a ResourceCost from intrigue effect details, if resources were gained."""
+    details = effect_details.get("details", {})
+    etype = effect_details.get("type", "")
+    if etype in ("gain_resources", "all_players_gain"):
+        rc = ResourceCost(
+            **{k: v for k, v in details.items() if k in ResourceCost.model_fields}
+        )
+        if rc.total() > 0:
+            return rc
+    elif etype == "gain_coins":
+        coins = details.get("coins", 0)
+        if coins > 0:
+            return ResourceCost(coins=coins)
+    elif etype == "steal_resources" and "all_gained" in details:
+        rc = ResourceCost(
+            **{
+                k: v
+                for k, v in details["all_gained"].items()
+                if k in ResourceCost.model_fields
+            }
+        )
+        if rc.total() > 0:
+            return rc
+    return None
 
 
 def _grant_random_building(state, player) -> dict | None:
@@ -369,6 +395,7 @@ async def _end_round(server: GameServer, state) -> None:
         player.available_workers = player.total_workers
         player.completed_quest_this_turn = False
         player.use_occupied_used_this_round = False
+        player.singer_swap_used_this_round = False
 
     # Clear board occupants
     for space in state.board.action_spaces.values():
@@ -646,6 +673,7 @@ async def _send_resource_choice_prompt(
     is_spend: bool = False,
     pick_count_override: int | None = None,
     phase: str = "gain",
+    can_skip: bool = False,
 ) -> None:
     """Send a resource choice prompt to a player."""
     import uuid
@@ -690,6 +718,7 @@ async def _send_resource_choice_prompt(
         "others_pick_count": choice_reward.others_pick_count,
         "remaining_players": [],
         "choice_reward_dump": choice_reward.model_dump(),
+        "can_skip": can_skip,
     }
 
     await server.broadcast_to_game(
@@ -705,6 +734,7 @@ async def _send_resource_choice_prompt(
             total=total,
             bundles=bundles_data,
             is_spend=is_spend,
+            can_skip=can_skip,
         ),
     )
 
@@ -796,6 +826,7 @@ async def handle_resource_choice(
     # Handle trigger swap resolution (singer swap: spend 1 non-singer → gain 1 singer)
     if pending.get("source_type") == "trigger_swap" and is_spend:
         player.resources.singers += 1
+        player.singer_swap_used_this_round = True
         swap_info = state.pending_resource_trigger_swap
         state.pending_resource_trigger_swap = None
         state.pending_resource_choice = None
@@ -928,6 +959,55 @@ def _can_use_occupied(player, space, state) -> bool:
         if c.reward_use_occupied_building:
             return True
     return False
+
+
+async def handle_skip_resource_choice(
+    server: GameServer, conn: ClientConnection, msg
+) -> None:
+    """Handle skipping an optional resource choice (e.g. singer swap)."""
+    state = _get_game_state(server, conn)
+    if state is None:
+        await conn.send_error("GAME_NOT_FOUND", "Not in a game.")
+        return
+
+    pending = state.pending_resource_choice
+    if pending is None or pending["player_id"] != conn.player_id:
+        await conn.send_error("INVALID_ACTION", "No pending resource choice.")
+        return
+
+    if not pending.get("can_skip"):
+        await conn.send_error("INVALID_ACTION", "This choice cannot be skipped.")
+        return
+
+    player = state.get_player(conn.player_id)
+    if player is None:
+        return
+
+    swap_info = state.pending_resource_trigger_swap
+    state.pending_resource_trigger_swap = None
+    state.pending_resource_choice = None
+
+    if swap_info and swap_info.get("is_reassignment"):
+        await _finish_reassignment(server, state)
+    else:
+        # Resume pending owner choice if any
+        pending_owner = swap_info.get("pending_owner_choice") if swap_info else None
+        if pending_owner:
+            from shared.card_models import ResourceChoiceReward
+
+            owner = state.get_player(pending_owner["owner_id"])
+            if owner:
+                rcr = ResourceChoiceReward(**pending_owner["choice_dump"])
+                await _send_resource_choice_prompt(
+                    server,
+                    state,
+                    owner,
+                    rcr,
+                    "owner_bonus",
+                    pending_owner["space_name"],
+                )
+                return
+        await _check_quest_completion(server, state)
 
 
 # ------------------------------------------------------------------
@@ -1184,7 +1264,7 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
 
         swap_choice = ResourceChoiceReward(
             choice_type="pick",
-            allowed_types=["guitarists", "bass_players", "drummers", "coins"],
+            allowed_types=["guitarists", "bass_players", "drummers"],
             pick_count=1,
         )
         state.pending_resource_trigger_swap = {
@@ -1202,6 +1282,7 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
             "trigger_swap",
             f"Swap for Singer ({pending_swap['contract_name']})",
             is_spend=True,
+            can_skip=True,
         )
         return
 
@@ -1675,6 +1756,37 @@ async def handle_place_worker_backstage(
                 card.name,
             )
         return
+
+    # Check for singer swap trigger from intrigue-granted resources
+    intrigue_reward = _extract_intrigue_reward(effect_details)
+    if intrigue_reward:
+        _, pending_swap = _evaluate_resource_triggers(state, player, intrigue_reward)
+        if pending_swap:
+            from shared.card_models import ResourceChoiceReward
+
+            swap_choice = ResourceChoiceReward(
+                choice_type="pick",
+                allowed_types=["guitarists", "bass_players", "drummers"],
+                pick_count=1,
+            )
+            state.pending_resource_trigger_swap = {
+                "player_id": player.player_id,
+                "contract_id": pending_swap["contract_id"],
+                "contract_name": pending_swap["contract_name"],
+                "space_id": f"backstage_{msg.slot_number}",
+                "pending_owner_choice": None,
+            }
+            await _send_resource_choice_prompt(
+                server,
+                state,
+                player,
+                swap_choice,
+                "trigger_swap",
+                f"Swap for Singer ({pending_swap['contract_name']})",
+                is_spend=True,
+                can_skip=True,
+            )
+            return
 
     await _check_quest_completion(server, state)
 
@@ -2827,6 +2939,22 @@ async def handle_reassign_worker(
         )
     )
 
+    # Reset quests before broadcasting WorkerReassignedResponse so the
+    # client enters quest_selection with the NEW quest IDs.
+    if target.space_type == "garage" and target.reward_special == "reset_quests":
+        state.board.quest_discard.extend(state.board.face_up_quests)
+        state.board.face_up_quests.clear()
+        for _ in range(FACE_UP_QUEST_COUNT):
+            card = _draw_from_quest_deck(state)
+            if card:
+                state.board.face_up_quests.append(card)
+        await server.broadcast_to_game(
+            state.game_code,
+            FaceUpQuestsUpdatedResponse(
+                face_up_quests=[q.model_dump() for q in state.board.face_up_quests]
+            ),
+        )
+
     await server.broadcast_to_game(
         state.game_code,
         WorkerReassignedResponse(
@@ -2845,7 +2973,7 @@ async def handle_reassign_worker(
 
         swap_choice = ResourceChoiceReward(
             choice_type="pick",
-            allowed_types=["guitarists", "bass_players", "drummers", "coins"],
+            allowed_types=["guitarists", "bass_players", "drummers"],
             pick_count=1,
         )
         state.pending_resource_trigger_swap = {
@@ -2864,6 +2992,7 @@ async def handle_reassign_worker(
             "trigger_swap",
             f"Swap for Singer ({pending_swap['contract_name']})",
             is_spend=True,
+            can_skip=True,
         )
         return
 
@@ -2871,28 +3000,10 @@ async def handle_reassign_worker(
     if target.reward_special == "purchase_building":
         return
 
-    # Handle Garage spots: pause for quest selection
+    # Handle Garage spots: pause for quest selection (reset already
+    # happened above for reset_quests before WorkerReassignedResponse)
     if target.space_type == "garage":
-        special = target.reward_special
-        if special == "reset_quests":
-            state.board.quest_discard.extend(state.board.face_up_quests)
-            state.board.face_up_quests.clear()
-            for _ in range(FACE_UP_QUEST_COUNT):
-                card = _draw_from_quest_deck(state)
-                if card:
-                    state.board.face_up_quests.append(card)
-            await server.broadcast_to_game(
-                state.game_code,
-                FaceUpQuestsUpdatedResponse(
-                    face_up_quests=[q.model_dump() for q in state.board.face_up_quests]
-                ),
-            )
-            return
-        elif special in (
-            "quest_and_coins",
-            "quest_and_intrigue",
-        ):
-            return
+        return
 
     # Resource choice reward on buildings
     if target.building_tile and target.building_tile.visitor_reward_choice:
@@ -3076,6 +3187,48 @@ async def handle_choose_intrigue_target(
             resources_affected=resources_affected,
         ),
     )
+
+    # Check for singer swap trigger from stolen resources
+    if effect_type == "steal_resources" and resources_affected:
+        stolen_reward = ResourceCost(
+            **{
+                k: v
+                for k, v in resources_affected.items()
+                if k in ResourceCost.model_fields
+            }
+        )
+        if stolen_reward.total() > 0:
+            _, pending_swap = _evaluate_resource_triggers(state, player, stolen_reward)
+            if pending_swap:
+                from shared.card_models import ResourceChoiceReward
+
+                swap_choice = ResourceChoiceReward(
+                    choice_type="pick",
+                    allowed_types=[
+                        "guitarists",
+                        "bass_players",
+                        "drummers",
+                    ],
+                    pick_count=1,
+                )
+                state.pending_resource_trigger_swap = {
+                    "player_id": player.player_id,
+                    "contract_id": pending_swap["contract_id"],
+                    "contract_name": pending_swap["contract_name"],
+                    "space_id": "backstage_intrigue",
+                    "pending_owner_choice": None,
+                }
+                await _send_resource_choice_prompt(
+                    server,
+                    state,
+                    player,
+                    swap_choice,
+                    "trigger_swap",
+                    f"Swap for Singer ({pending_swap['contract_name']})",
+                    is_spend=True,
+                    can_skip=True,
+                )
+                return
 
     if pending.get("source") == "quest_completion":
         await _advance_after_quest_rewards(server, state, player)

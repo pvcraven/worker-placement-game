@@ -190,6 +190,11 @@ class GameServer:
 
         await handle_resource_choice(self, conn, msg)
 
+    async def _handle_skip_resource_choice(self, conn, msg) -> None:
+        from server.game_engine import handle_skip_resource_choice
+
+        await handle_skip_resource_choice(self, conn, msg)
+
     async def _handle_play_intrigue_from_quest(self, conn, msg) -> None:
         from server.game_engine import handle_play_intrigue_from_quest
 
