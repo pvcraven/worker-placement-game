@@ -339,7 +339,8 @@ class GameView(arcade.View):
         bt = space_data.get("building_tile", {})
         if (
             space_data.get("space_type") == "building"
-            and bt.get("visitor_reward_special") == "draw_contract"
+            and bt.get("visitor_reward_special")
+            in ("draw_contract", "draw_contract_and_complete")
             and pid == my_id
         ):
             board = self.game_state.get("board", {})
@@ -1274,6 +1275,7 @@ class GameView(arcade.View):
         pid = msg.get("player_id", "")
 
         board = self.game_state.get("board", {})
+        sp = {}
 
         if space_id.startswith("backstage_slot_"):
             slot_num = int(space_id.split("_")[-1])
@@ -1284,11 +1286,15 @@ class GameView(arcade.View):
                     break
         else:
             spaces = board.get("action_spaces", {})
+            sp = spaces.get(space_id, {})
             if space_id in spaces:
                 spaces[space_id]["occupied_by"] = None
 
         returned_card = msg.get("returned_card", {})
         reversed_bonus = msg.get("plot_quest_bonus_vp", 0)
+        reversed_rewards = msg.get("reversed_rewards", {})
+        reversed_owner_bonus = msg.get("reversed_owner_bonus", {})
+        res_keys = ("guitarists", "bass_players", "drummers", "singers", "coins")
         for p in self.game_state.get("players", []):
             if p.get("player_id") == pid:
                 p["available_workers"] = p.get("available_workers", 0) + 1
@@ -1298,7 +1304,42 @@ class GameView(arcade.View):
                     )
                 if reversed_bonus:
                     p["victory_points"] = p.get("victory_points", 0) - reversed_bonus
+                if reversed_rewards:
+                    res = p.get("resources", {})
+                    for key in res_keys:
+                        amt = reversed_rewards.get(key, 0)
+                        if amt:
+                            res[key] = max(0, res.get(key, 0) - amt)
+                    my_id = getattr(self.window, "player_id", None)
+                    if pid == my_id and self.resource_bar:
+                        self.resource_bar.update_resources(res)
                 break
+
+        if reversed_owner_bonus:
+            owner_id = (
+                sp.get("owner_id", "") if not space_id.startswith("backstage") else ""
+            )
+            if owner_id:
+                for p in self.game_state.get("players", []):
+                    if p.get("player_id") == owner_id:
+                        res = p.get("resources", {})
+                        for key in res_keys:
+                            amt = reversed_owner_bonus.get(key, 0)
+                            if amt:
+                                res[key] = max(0, res.get(key, 0) - amt)
+                        ovp = reversed_owner_bonus.get("victory_points", 0)
+                        if ovp:
+                            p["victory_points"] = p.get("victory_points", 0) - ovp
+                        my_id = getattr(self.window, "player_id", None)
+                        if owner_id == my_id and self.resource_bar:
+                            self.resource_bar.update_resources(res)
+                        break
+
+        stock_restored = msg.get("accumulated_stock_restored", 0)
+        if stock_restored and not space_id.startswith("backstage"):
+            bt = sp.get("building_tile", {})
+            if bt:
+                bt["accumulated_stock"] = stock_restored
 
         self._refresh_board(board)
 
@@ -1389,6 +1430,9 @@ class GameView(arcade.View):
         slots = msg.get("backstage_slots", [])
         self.game_state["phase"] = "reassignment"
         self.game_state["reassignment_queue"] = [s["slot_number"] for s in slots]
+        self._reassignment_slot_owners = {
+            s["slot_number"]: s.get("player_id") or s.get("occupied_by") for s in slots
+        }
 
         my_id = getattr(self.window, "player_id", None)
         if slots:
@@ -1432,6 +1476,20 @@ class GameView(arcade.View):
         queue = self.game_state.get("reassignment_queue", [])
         if queue and queue[0] == from_slot:
             queue.pop(0)
+
+        # Update header to show next reassigning player
+        my_id_for_header = getattr(self.window, "player_id", None)
+        if queue:
+            next_slot = queue[0]
+            slot_owners = getattr(self, "_reassignment_slot_owners", {})
+            next_pid = slot_owners.get(next_slot)
+            if next_pid == my_id_for_header:
+                self._status_text = "Reassignment — YOUR TURN"
+            elif next_pid:
+                nname = self._player_name(next_pid)
+                self._status_text = f"Reassignment — {nname}'s turn"
+        else:
+            self._status_text = "Reassignment — ending round..."
 
         self._refresh_board(board)
 
@@ -1530,7 +1588,8 @@ class GameView(arcade.View):
         bt = space_data.get("building_tile", {})
         if (
             space_data.get("space_type") == "building"
-            and bt.get("visitor_reward_special") == "draw_contract"
+            and bt.get("visitor_reward_special")
+            in ("draw_contract", "draw_contract_and_complete")
             and pid == my_id
         ):
             board_data = self.game_state.get("board", {})

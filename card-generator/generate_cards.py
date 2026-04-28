@@ -432,6 +432,18 @@ def _draw_special_icon(
         _draw_intrigue_card_icon(draw, card_width // 2, cy)
     elif special == "draw_contract":
         _draw_quest_card_icon(draw, card_width // 2, cy)
+    elif special == "draw_contract_and_complete":
+        _draw_quest_card_icon(draw, card_width // 2, cy)
+        y += icon_h + 2
+        draw_text_centered(
+            draw,
+            "+4 VP if completed",
+            y,
+            B_FONT_BODY_SMALL,
+            (20, 60, 20),
+            width=card_width,
+        )
+        return y + 28
     else:
         label = special.replace("_", " ").title()
         draw_text_centered(

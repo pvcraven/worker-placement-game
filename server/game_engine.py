@@ -1351,25 +1351,51 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
             )
             return
 
-    # Building draw_contract: pause for quest selection
+    # Building draw_contract / draw_contract_and_complete: pause for quest selection.
+    # Store granted rewards so cancel can fully unwind.
     if (
         space.space_type == "building"
         and space.building_tile
-        and space.building_tile.visitor_reward_special == "draw_contract"
+        and space.building_tile.visitor_reward_special
+        in ("draw_contract", "draw_contract_and_complete")
     ):
-        return
-
-    # Building draw_contract_and_complete: quest selection + bonus VP on completion
-    if (
-        space.space_type == "building"
-        and space.building_tile
-        and space.building_tile.visitor_reward_special == "draw_contract_and_complete"
-    ):
-        state.pending_showcase_bonus = {
-            "player_id": player.player_id,
-            "contract_id": None,
-            "bonus_vp": 4,
+        granted_vp = reward_dict.get("victory_points", 0)
+        granted_resources = {
+            k: v for k, v in reward_dict.items() if k != "victory_points" and v
         }
+        accumulated_stock_consumed = 0
+        if space.building_tile.accumulation_type:
+            atype = space.building_tile.accumulation_type
+            if atype == "victory_points":
+                vp_from_visitor = space.building_tile.visitor_reward_vp
+                accumulated_stock_consumed = max(0, granted_vp - vp_from_visitor)
+            else:
+                base = (
+                    getattr(space.reward, atype, 0)
+                    if hasattr(space.reward, atype)
+                    else 0
+                )
+                accumulated_stock_consumed = max(0, reward_dict.get(atype, 0) - base)
+        state.pending_building_quest = {
+            "player_id": player.player_id,
+            "space_id": msg.space_id,
+            "granted_vp": granted_vp,
+            "granted_resources": granted_resources,
+            "accumulated_stock_consumed": accumulated_stock_consumed,
+            "accumulation_type": (
+                space.building_tile.accumulation_type
+                if space.building_tile.accumulation_type
+                else None
+            ),
+            "owner_bonus_info": owner_bonus_info,
+            "trigger_bonuses": trigger_bonuses_data,
+        }
+        if space.building_tile.visitor_reward_special == "draw_contract_and_complete":
+            state.pending_showcase_bonus = {
+                "player_id": player.player_id,
+                "contract_id": None,
+                "bonus_vp": 4,
+            }
         return
 
     await _check_quest_completion(server, state)
@@ -1556,6 +1582,8 @@ async def handle_select_quest_card(
             face_up_quests=[q.model_dump() for q in state.board.face_up_quests]
         ),
     )
+
+    state.pending_building_quest = None
 
     # Showcase bonus: track selected contract for potential +VP bonus
     if (
@@ -2669,18 +2697,34 @@ async def handle_cancel_quest_selection(
         await conn.send_error("INVALID_ACTION", "Player not found.")
         return
 
+    # Find the space the player is on — could be a garage or a building
+    # with draw_contract / draw_contract_and_complete
     freed_space_id = None
+    is_building = False
     for sid, sp in state.board.action_spaces.items():
-        if sp.space_type == "garage" and sp.occupied_by == player.player_id:
+        if sp.occupied_by != player.player_id:
+            continue
+        if sp.space_type == "garage":
             freed_space_id = sid
+            break
+        if (
+            sp.space_type == "building"
+            and sp.building_tile
+            and sp.building_tile.visitor_reward_special
+            in ("draw_contract", "draw_contract_and_complete")
+        ):
+            freed_space_id = sid
+            is_building = True
             break
 
     if freed_space_id is None:
         await conn.send_error(
             "INVALID_ACTION",
-            "No garage spot to cancel.",
+            "No quest selection to cancel.",
         )
         return
+
+    state.pending_showcase_bonus = None
 
     state.game_log.append(
         GameLog(
@@ -2694,13 +2738,67 @@ async def handle_cancel_quest_selection(
 
     if state.phase == GamePhase.REASSIGNMENT:
         # During reassignment, keep worker placed, skip quest
+        state.pending_building_quest = None
         await _finish_reassignment(server, state)
         return
 
-    # Normal placement: unwind the placement
+    # Unwind the placement: free space, return worker
     sp = state.board.action_spaces[freed_space_id]
     sp.occupied_by = None
     player.available_workers += 1
+
+    reversed_vp = 0
+    reversed_rewards = {}
+    reversed_owner_bonus = {}
+    stock_restored = 0
+
+    if is_building and state.pending_building_quest:
+        pending = state.pending_building_quest
+        reversed_vp = pending.get("granted_vp", 0)
+        player.victory_points -= reversed_vp
+
+        reversed_rewards = dict(pending.get("granted_resources", {}))
+        for res, amount in reversed_rewards.items():
+            if hasattr(player.resources, res):
+                cur = getattr(player.resources, res)
+                setattr(player.resources, res, max(0, cur - amount))
+
+        stock_consumed = pending.get("accumulated_stock_consumed", 0)
+        if stock_consumed and pending.get("accumulation_type"):
+            tile = sp.building_tile
+            if tile:
+                tile.accumulated_stock += stock_consumed
+                stock_restored = tile.accumulated_stock
+
+        owner_info = pending.get("owner_bonus_info", {})
+        if owner_info:
+            owner = state.get_player(owner_info["owner_id"])
+            if owner and sp.building_tile:
+                bonus = owner_info.get("bonus", {})
+                for res in (
+                    "guitarists",
+                    "bass_players",
+                    "drummers",
+                    "singers",
+                    "coins",
+                ):
+                    amt = bonus.get(res, 0)
+                    if amt and hasattr(owner.resources, res):
+                        cur = getattr(owner.resources, res)
+                        setattr(owner.resources, res, max(0, cur - amt))
+                owner_vp = bonus.get("victory_points", 0)
+                if owner_vp:
+                    owner.victory_points -= owner_vp
+                reversed_owner_bonus = bonus
+
+        for tb in pending.get("trigger_bonuses", []):
+            for res, amt in tb.get("bonus_resources", {}).items():
+                if amt and hasattr(player.resources, res):
+                    cur = getattr(player.resources, res)
+                    setattr(player.resources, res, max(0, cur - amt))
+                    reversed_rewards[res] = reversed_rewards.get(res, 0) + amt
+
+        state.pending_building_quest = None
 
     next_player = state.current_player()
     await server.broadcast_to_game(
@@ -2709,6 +2807,10 @@ async def handle_cancel_quest_selection(
             player_id=player.player_id,
             space_id=freed_space_id,
             next_player_id=(next_player.player_id if next_player else None),
+            plot_quest_bonus_vp=reversed_vp,
+            reversed_rewards=reversed_rewards,
+            reversed_owner_bonus=reversed_owner_bonus,
+            accumulated_stock_restored=stock_restored,
         ),
     )
 

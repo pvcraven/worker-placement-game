@@ -327,7 +327,7 @@
     {
       "id": "building_022",
       "name": "Audition Showcase",
-      "description": "A high-profile audition stage where artists can be signed on the spot — pick a contract and seal the deal for a bonus.",
+      "description": "Draw a face-up contract. If you immediately complete it, earn +4 VP bonus.",
       "cost_coins": 4,
       "visitor_reward": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
       "visitor_reward_special": "draw_contract_and_complete",

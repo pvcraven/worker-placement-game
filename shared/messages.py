@@ -309,6 +309,9 @@ class PlacementCancelledResponse(BaseModel):
     next_player_id: str | None
     returned_card: dict = Field(default_factory=dict)
     plot_quest_bonus_vp: int = 0
+    reversed_rewards: dict = Field(default_factory=dict)
+    reversed_owner_bonus: dict = Field(default_factory=dict)
+    accumulated_stock_restored: int = 0
 
 
 class BuildingConstructedResponse(BaseModel):
