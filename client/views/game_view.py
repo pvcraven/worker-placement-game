@@ -378,6 +378,11 @@ class GameView(arcade.View):
             bonus = owner_bonus.get("bonus", {})
             if owner_id and bonus:
                 self._apply_reward_to_player(owner_id, bonus)
+            if bonus.get("intrigue_card") and owner_id:
+                for p in self.game_state.get("players", []):
+                    if p.get("player_id") == owner_id:
+                        p["intrigue_hand_count"] = p.get("intrigue_hand_count", 0) + 1
+                        break
             if self.tabbed_panel:
                 owner_name = owner_bonus.get("owner_name", "???")
                 bonus_parts = []
@@ -385,6 +390,8 @@ class GameView(arcade.View):
                     val = bonus.get(key, 0)
                     if val > 0:
                         bonus_parts.append(f"{val}{sym}")
+                if bonus.get("intrigue_card"):
+                    bonus_parts.append("1 intrigue")
                 if bonus_parts:
                     self.tabbed_panel.add_entry(
                         f"{owner_name} earned owner bonus: {' '.join(bonus_parts)}"
@@ -1513,6 +1520,11 @@ class GameView(arcade.View):
             bonus = owner_bonus.get("bonus", {})
             if owner_id and bonus:
                 self._apply_reward_to_player(owner_id, bonus)
+            if bonus.get("intrigue_card") and owner_id:
+                for p in self.game_state.get("players", []):
+                    if p.get("player_id") == owner_id:
+                        p["intrigue_hand_count"] = p.get("intrigue_hand_count", 0) + 1
+                        break
             if self.tabbed_panel:
                 owner_name = owner_bonus.get("owner_name", "???")
                 bonus_parts = []
@@ -1520,9 +1532,11 @@ class GameView(arcade.View):
                     val = bonus.get(key, 0)
                     if val > 0:
                         bonus_parts.append(f"{val}{sym}")
+                if bonus.get("intrigue_card"):
+                    bonus_parts.append("1 intrigue")
                 if bonus_parts:
                     self.tabbed_panel.add_entry(
-                        f"{owner_name} earned owner bonus:" f" {' '.join(bonus_parts)}"
+                        f"{owner_name} earned owner bonus: {' '.join(bonus_parts)}"
                     )
 
         # Resource trigger plot quest bonuses

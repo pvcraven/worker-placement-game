@@ -2328,6 +2328,12 @@ async def handle_quest_reward_choice(
                 replacement,
             )
         choice_dict = chosen.model_dump()
+        await server.broadcast_to_game(
+            state.game_code,
+            FaceUpQuestsUpdatedResponse(
+                face_up_quests=[q.model_dump() for q in state.board.face_up_quests]
+            ),
+        )
 
     elif reward_type == "choose_building":
         chosen_b = None
