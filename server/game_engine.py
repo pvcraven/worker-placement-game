@@ -1038,7 +1038,28 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
             player.use_occupied_used_this_round = True
             space.also_occupied_by = space.occupied_by
         else:
-            await conn.send_error("SPACE_OCCUPIED", "That space is already occupied.")
+            has_ability = any(
+                c.reward_use_occupied_building for c in player.completed_contracts
+            )
+            if has_ability and player.use_occupied_used_this_round:
+                await conn.send_error(
+                    "SPACE_OCCUPIED",
+                    "Already used your occupied-building ability this round.",
+                )
+            elif has_ability and space.space_type != "building":
+                await conn.send_error(
+                    "SPACE_OCCUPIED",
+                    "Occupied-building ability only works on constructed buildings.",
+                )
+            elif has_ability and space.occupied_by == player.player_id:
+                await conn.send_error(
+                    "SPACE_OCCUPIED",
+                    "Cannot use occupied-building ability on your own worker.",
+                )
+            else:
+                await conn.send_error(
+                    "SPACE_OCCUPIED", "That space is already occupied."
+                )
             return
 
     if player.available_workers <= 0:

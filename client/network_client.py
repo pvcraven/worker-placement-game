@@ -39,6 +39,17 @@ class NetworkClient:
         """Start the background networking thread."""
         if self._running:
             return
+        # Drain stale queues from any previous session
+        while not self.incoming.empty():
+            try:
+                self.incoming.get_nowait()
+            except queue.Empty:
+                break
+        while not self.outgoing.empty():
+            try:
+                self.outgoing.get_nowait()
+            except queue.Empty:
+                break
         self._running = True
         self._thread = threading.Thread(target=self._run_loop, daemon=True)
         self._thread.start()

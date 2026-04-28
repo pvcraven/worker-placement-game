@@ -1728,7 +1728,7 @@ class GameView(arcade.View):
                 if rx <= x <= rx + rw and ry <= y <= ry + rh:
                     if self._game_over_final:
                         self.window.network.disconnect()
-                        self.window.show_lobby()
+                        self.window.show_menu()
                     else:
                         self._show_final_screen = False
             return
