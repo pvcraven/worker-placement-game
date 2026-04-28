@@ -345,6 +345,7 @@ async def _advance_turn(server: GameServer, state) -> None:
     """Advance to the next player, or trigger end-of-round if all placed."""
     state.last_activity = time.time()
     state.pending_showcase_bonus = None
+    state.pending_placement = None
 
     if state.all_workers_placed():
         await _end_placement_phase(server, state)
@@ -1127,13 +1128,44 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
             )
         )
 
+    # Build pending_placement base dict for cancel/unwind support
+    _acc_consumed = 0
+    if space.building_tile and space.building_tile.accumulation_type:
+        atype = space.building_tile.accumulation_type
+        if atype == "victory_points":
+            _acc_consumed = max(
+                0, reward_dict.get("victory_points", 0) - space.building_tile.visitor_reward_vp
+            )
+        else:
+            base = getattr(space.reward, atype, 0) if hasattr(space.reward, atype) else 0
+            _acc_consumed = max(0, reward_dict.get(atype, 0) - base)
+
+    _pending = {
+        "player_id": player.player_id,
+        "space_id": msg.space_id,
+        "granted_resources": {
+            k: v for k, v in reward_dict.items() if k != "victory_points" and v
+        },
+        "granted_vp": reward_dict.get("victory_points", 0),
+        "accumulated_stock_consumed": _acc_consumed,
+        "accumulation_type": (
+            space.building_tile.accumulation_type
+            if space.building_tile and space.building_tile.accumulation_type
+            else None
+        ),
+        "owner_bonus_info": {},
+        "trigger_bonuses": trigger_bonuses_data,
+    }
+
     # Handle Garage spots (quest selection)
     if space.space_type == "garage":
+        state.pending_placement = _pending
         await _handle_garage_placement(server, state, player, space, msg.space_id)
         return
 
     # Handle Real Estate Listings (building purchase — deferred turn)
     if space.reward_special == "purchase_building":
+        state.pending_placement = _pending
         state.game_log.append(
             GameLog(
                 round_number=state.current_round,
@@ -1186,6 +1218,12 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
             player.resources.coins += coin_count
             reward_dict["coins"] = reward_dict.get("coins", 0) + coin_count
 
+    # Update _pending with any extra resources from building specials
+    _pending["granted_resources"] = {
+        k: v for k, v in reward_dict.items() if k != "victory_points" and v
+    }
+    _pending["granted_vp"] = reward_dict.get("victory_points", 0)
+
     # Owner bonus for buildings
     owner_bonus_info = {}
     if space.space_type == "building" and space.owner_id:
@@ -1219,6 +1257,8 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
                     timestamp=time.time(),
                 )
             )
+
+    _pending["owner_bonus_info"] = owner_bonus_info
 
     # Detect pending owner bonus choice
     pending_owner_choice = None
@@ -1262,6 +1302,7 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
     if pending_swap:
         from shared.card_models import ResourceChoiceReward
 
+        state.pending_placement = _pending
         swap_choice = ResourceChoiceReward(
             choice_type="pick",
             allowed_types=["guitarists", "bass_players", "drummers"],
@@ -1288,6 +1329,7 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
 
     # Resource choice reward on buildings
     if space.building_tile and space.building_tile.visitor_reward_choice:
+        state.pending_placement = _pending
         choice = space.building_tile.visitor_reward_choice
         # Check cost affordability
         if choice.cost.total() > 0:
@@ -1338,6 +1380,7 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
     if pending_owner_choice:
         from shared.card_models import ResourceChoiceReward
 
+        state.pending_placement = _pending
         bonus_owner = state.get_player(pending_owner_choice["owner_id"])
         if bonus_owner:
             rcr = ResourceChoiceReward(**pending_owner_choice["choice_dump"])
@@ -1352,41 +1395,20 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
             return
 
     # Building draw_contract / draw_contract_and_complete: pause for quest selection.
-    # Store granted rewards so cancel can fully unwind.
     if (
         space.space_type == "building"
         and space.building_tile
         and space.building_tile.visitor_reward_special
         in ("draw_contract", "draw_contract_and_complete")
     ):
-        granted_vp = reward_dict.get("victory_points", 0)
-        granted_resources = {
-            k: v for k, v in reward_dict.items() if k != "victory_points" and v
-        }
-        accumulated_stock_consumed = 0
-        if space.building_tile.accumulation_type:
-            atype = space.building_tile.accumulation_type
-            if atype == "victory_points":
-                vp_from_visitor = space.building_tile.visitor_reward_vp
-                accumulated_stock_consumed = max(0, granted_vp - vp_from_visitor)
-            else:
-                base = (
-                    getattr(space.reward, atype, 0)
-                    if hasattr(space.reward, atype)
-                    else 0
-                )
-                accumulated_stock_consumed = max(0, reward_dict.get(atype, 0) - base)
+        state.pending_placement = _pending
         state.pending_building_quest = {
             "player_id": player.player_id,
             "space_id": msg.space_id,
-            "granted_vp": granted_vp,
-            "granted_resources": granted_resources,
-            "accumulated_stock_consumed": accumulated_stock_consumed,
-            "accumulation_type": (
-                space.building_tile.accumulation_type
-                if space.building_tile.accumulation_type
-                else None
-            ),
+            "granted_vp": _pending["granted_vp"],
+            "granted_resources": dict(_pending["granted_resources"]),
+            "accumulated_stock_consumed": _pending["accumulated_stock_consumed"],
+            "accumulation_type": _pending["accumulation_type"],
             "owner_bonus_info": owner_bonus_info,
             "trigger_bonuses": trigger_bonuses_data,
         }
@@ -1584,6 +1606,7 @@ async def handle_select_quest_card(
     )
 
     state.pending_building_quest = None
+    state.pending_placement = None
 
     # Showcase bonus: track selected contract for potential +VP bonus
     if (
@@ -1686,8 +1709,17 @@ async def handle_place_worker_backstage(
     if effect_details.get("pending"):
         eligible = effect_details.get("eligible_targets", [])
 
-        # Save pending state for target selection (even if empty —
-        # the client will show "no valid targets" with only Cancel)
+        state.pending_placement = {
+            "player_id": player.player_id,
+            "space_id": f"backstage_slot_{msg.slot_number}",
+            "granted_resources": {},
+            "granted_vp": plot_bonus_vp,
+            "accumulated_stock_consumed": 0,
+            "accumulation_type": None,
+            "owner_bonus_info": {},
+            "trigger_bonuses": [],
+        }
+
         state.pending_intrigue_target = {
             "player_id": player.player_id,
             "slot_number": msg.slot_number,
@@ -1785,10 +1817,42 @@ async def handle_place_worker_backstage(
             )
         return
 
-    # Check for singer swap trigger from intrigue-granted resources
+    # Check for resource triggers from intrigue-granted resources
     intrigue_reward = _extract_intrigue_reward(effect_details)
     if intrigue_reward:
-        _, pending_swap = _evaluate_resource_triggers(state, player, intrigue_reward)
+        trigger_bonuses, pending_swap = _evaluate_resource_triggers(
+            state, player, intrigue_reward
+        )
+        for tb in trigger_bonuses:
+            if tb.get("bonus_resources"):
+                bonus_rc = {
+                    k: v for k, v in tb["bonus_resources"].items() if v
+                }
+                if bonus_rc:
+                    await server.broadcast_to_game(
+                        state.game_code,
+                        ResourceChoiceResolvedResponse(
+                            player_id=player.player_id,
+                            chosen_resources=bonus_rc,
+                            is_spend=False,
+                            source_description=(
+                                f"{tb.get('contract_name', 'plot quest')} trigger"
+                            ),
+                        ),
+                    )
+            state.game_log.append(
+                GameLog(
+                    round_number=state.current_round,
+                    player_id=player.player_id,
+                    action="resource_trigger",
+                    details=(
+                        f"{player.display_name} triggered"
+                        f" {tb.get('contract_name', 'plot quest')} bonus"
+                        f" from intrigue card"
+                    ),
+                    timestamp=time.time(),
+                )
+            )
         if pending_swap:
             from shared.card_models import ResourceChoiceReward
 
@@ -2588,6 +2652,8 @@ async def handle_purchase_building(
         )
     )
 
+    state.pending_placement = None
+
     # Advance turn (deferred from placement on Real Estate Listings)
     if state.phase == GamePhase.REASSIGNMENT:
         next_player = None
@@ -2621,6 +2687,76 @@ async def handle_purchase_building(
         await _finish_reassignment(server, state)
 
 
+def _unwind_placement(state, player, pending: dict) -> dict:
+    """Reverse all state mutations from a worker placement.
+
+    Returns a dict with fields for PlacementCancelledResponse.
+    """
+    space_id = pending["space_id"]
+
+    if space_id.startswith("backstage_slot_"):
+        slot_num = int(space_id.split("_")[-1])
+        for s in state.board.backstage_slots:
+            if s.slot_number == slot_num:
+                s.occupied_by = None
+                s.intrigue_card_played = None
+                break
+    else:
+        space = state.board.action_spaces.get(space_id)
+        if space:
+            space.occupied_by = None
+
+    player.available_workers += 1
+
+    reversed_vp = pending.get("granted_vp", 0)
+    player.victory_points -= reversed_vp
+
+    reversed_resources = dict(pending.get("granted_resources", {}))
+    for res, amount in reversed_resources.items():
+        if hasattr(player.resources, res) and amount:
+            cur = getattr(player.resources, res)
+            setattr(player.resources, res, max(0, cur - amount))
+
+    stock_restored = 0
+    stock_consumed = pending.get("accumulated_stock_consumed", 0)
+    if stock_consumed and not space_id.startswith("backstage"):
+        space = state.board.action_spaces.get(space_id)
+        if space and space.building_tile:
+            space.building_tile.accumulated_stock += stock_consumed
+            stock_restored = space.building_tile.accumulated_stock
+
+    reversed_owner_bonus = {}
+    owner_info = pending.get("owner_bonus_info", {})
+    if owner_info:
+        owner = state.get_player(owner_info["owner_id"])
+        if owner:
+            bonus = owner_info.get("bonus", {})
+            for res in ("guitarists", "bass_players", "drummers", "singers", "coins"):
+                amt = bonus.get(res, 0)
+                if amt and hasattr(owner.resources, res):
+                    cur = getattr(owner.resources, res)
+                    setattr(owner.resources, res, max(0, cur - amt))
+            owner_vp = bonus.get("victory_points", 0)
+            if owner_vp:
+                owner.victory_points -= owner_vp
+            reversed_owner_bonus = bonus
+
+    for tb in pending.get("trigger_bonuses", []):
+        for res, amt in tb.get("bonus_resources", {}).items():
+            if amt and hasattr(player.resources, res):
+                cur = getattr(player.resources, res)
+                setattr(player.resources, res, max(0, cur - amt))
+                reversed_resources[res] = reversed_resources.get(res, 0) + amt
+
+    return {
+        "space_id": space_id,
+        "reversed_vp": reversed_vp,
+        "reversed_resources": reversed_resources,
+        "reversed_owner_bonus": reversed_owner_bonus,
+        "stock_restored": stock_restored,
+    }
+
+
 async def handle_cancel_purchase_building(
     server: GameServer, conn: ClientConnection, msg
 ) -> None:
@@ -2635,39 +2771,42 @@ async def handle_cancel_purchase_building(
         await conn.send_error("INVALID_ACTION", "Player not found.")
         return
 
+    pending = state.pending_placement
+    if pending is None or pending["player_id"] != conn.player_id:
+        await conn.send_error("INVALID_ACTION", "No building purchase to cancel.")
+        return
+
     if state.phase == GamePhase.REASSIGNMENT:
         state.game_log.append(
             GameLog(
                 round_number=state.current_round,
                 player_id=player.player_id,
                 action="cancel_purchase_building",
-                details=(f"{player.display_name}" " skipped building purchase"),
+                details=f"{player.display_name} skipped building purchase",
                 timestamp=time.time(),
             )
         )
+        state.pending_placement = None
         await server.broadcast_to_game(
             state.game_code,
             PlacementCancelledResponse(
                 player_id=player.player_id,
-                space_id="realtor",
+                space_id=pending["space_id"],
                 next_player_id=None,
             ),
         )
         await _finish_reassignment(server, state)
         return
 
-    # Unwind: free the space and return the worker
-    space = state.board.action_spaces.get("realtor")
-    if space and space.occupied_by == player.player_id:
-        space.occupied_by = None
-        player.available_workers += 1
+    result = _unwind_placement(state, player, pending)
+    state.pending_placement = None
 
     state.game_log.append(
         GameLog(
             round_number=state.current_round,
             player_id=player.player_id,
             action="cancel_purchase_building",
-            details=(f"{player.display_name}" " cancelled building purchase"),
+            details=f"{player.display_name} cancelled building purchase",
             timestamp=time.time(),
         )
     )
@@ -2677,8 +2816,12 @@ async def handle_cancel_purchase_building(
         state.game_code,
         PlacementCancelledResponse(
             player_id=player.player_id,
-            space_id="realtor",
+            space_id=result["space_id"],
             next_player_id=(next_player.player_id if next_player else None),
+            plot_quest_bonus_vp=result["reversed_vp"],
+            reversed_rewards=result["reversed_resources"],
+            reversed_owner_bonus=result["reversed_owner_bonus"],
+            accumulated_stock_restored=result["stock_restored"],
         ),
     )
 
@@ -2686,7 +2829,7 @@ async def handle_cancel_purchase_building(
 async def handle_cancel_quest_selection(
     server: GameServer, conn: ClientConnection, msg
 ) -> None:
-    """Handle cancel of quest selection — unwind the garage placement."""
+    """Handle cancel of quest selection — unwind the placement."""
     state = _get_game_state(server, conn)
     if state is None:
         await conn.send_error("GAME_NOT_FOUND", "Not in a game.")
@@ -2697,31 +2840,9 @@ async def handle_cancel_quest_selection(
         await conn.send_error("INVALID_ACTION", "Player not found.")
         return
 
-    # Find the space the player is on — could be a garage or a building
-    # with draw_contract / draw_contract_and_complete
-    freed_space_id = None
-    is_building = False
-    for sid, sp in state.board.action_spaces.items():
-        if sp.occupied_by != player.player_id:
-            continue
-        if sp.space_type == "garage":
-            freed_space_id = sid
-            break
-        if (
-            sp.space_type == "building"
-            and sp.building_tile
-            and sp.building_tile.visitor_reward_special
-            in ("draw_contract", "draw_contract_and_complete")
-        ):
-            freed_space_id = sid
-            is_building = True
-            break
-
-    if freed_space_id is None:
-        await conn.send_error(
-            "INVALID_ACTION",
-            "No quest selection to cancel.",
-        )
+    pending = state.pending_placement
+    if pending is None or pending["player_id"] != conn.player_id:
+        await conn.send_error("INVALID_ACTION", "No quest selection to cancel.")
         return
 
     state.pending_showcase_bonus = None
@@ -2731,86 +2852,32 @@ async def handle_cancel_quest_selection(
             round_number=state.current_round,
             player_id=player.player_id,
             action="cancel_quest_selection",
-            details=(f"{player.display_name}" " cancelled quest selection"),
+            details=f"{player.display_name} cancelled quest selection",
             timestamp=time.time(),
         )
     )
 
     if state.phase == GamePhase.REASSIGNMENT:
-        # During reassignment, keep worker placed, skip quest
         state.pending_building_quest = None
+        state.pending_placement = None
         await _finish_reassignment(server, state)
         return
 
-    # Unwind the placement: free space, return worker
-    sp = state.board.action_spaces[freed_space_id]
-    sp.occupied_by = None
-    player.available_workers += 1
-
-    reversed_vp = 0
-    reversed_rewards = {}
-    reversed_owner_bonus = {}
-    stock_restored = 0
-
-    if is_building and state.pending_building_quest:
-        pending = state.pending_building_quest
-        reversed_vp = pending.get("granted_vp", 0)
-        player.victory_points -= reversed_vp
-
-        reversed_rewards = dict(pending.get("granted_resources", {}))
-        for res, amount in reversed_rewards.items():
-            if hasattr(player.resources, res):
-                cur = getattr(player.resources, res)
-                setattr(player.resources, res, max(0, cur - amount))
-
-        stock_consumed = pending.get("accumulated_stock_consumed", 0)
-        if stock_consumed and pending.get("accumulation_type"):
-            tile = sp.building_tile
-            if tile:
-                tile.accumulated_stock += stock_consumed
-                stock_restored = tile.accumulated_stock
-
-        owner_info = pending.get("owner_bonus_info", {})
-        if owner_info:
-            owner = state.get_player(owner_info["owner_id"])
-            if owner and sp.building_tile:
-                bonus = owner_info.get("bonus", {})
-                for res in (
-                    "guitarists",
-                    "bass_players",
-                    "drummers",
-                    "singers",
-                    "coins",
-                ):
-                    amt = bonus.get(res, 0)
-                    if amt and hasattr(owner.resources, res):
-                        cur = getattr(owner.resources, res)
-                        setattr(owner.resources, res, max(0, cur - amt))
-                owner_vp = bonus.get("victory_points", 0)
-                if owner_vp:
-                    owner.victory_points -= owner_vp
-                reversed_owner_bonus = bonus
-
-        for tb in pending.get("trigger_bonuses", []):
-            for res, amt in tb.get("bonus_resources", {}).items():
-                if amt and hasattr(player.resources, res):
-                    cur = getattr(player.resources, res)
-                    setattr(player.resources, res, max(0, cur - amt))
-                    reversed_rewards[res] = reversed_rewards.get(res, 0) + amt
-
-        state.pending_building_quest = None
+    result = _unwind_placement(state, player, pending)
+    state.pending_building_quest = None
+    state.pending_placement = None
 
     next_player = state.current_player()
     await server.broadcast_to_game(
         state.game_code,
         PlacementCancelledResponse(
             player_id=player.player_id,
-            space_id=freed_space_id,
+            space_id=result["space_id"],
             next_player_id=(next_player.player_id if next_player else None),
-            plot_quest_bonus_vp=reversed_vp,
-            reversed_rewards=reversed_rewards,
-            reversed_owner_bonus=reversed_owner_bonus,
-            accumulated_stock_restored=stock_restored,
+            plot_quest_bonus_vp=result["reversed_vp"],
+            reversed_rewards=result["reversed_resources"],
+            reversed_owner_bonus=result["reversed_owner_bonus"],
+            accumulated_stock_restored=result["stock_restored"],
         ),
     )
 
@@ -3069,10 +3136,26 @@ async def handle_reassign_worker(
         ),
     )
 
+    # Build pending_placement for reassignment pause points
+    _pending_reassign = {
+        "player_id": player.player_id,
+        "space_id": msg.target_space_id,
+        "granted_resources": {
+            k: v for k, v in reward_dict.items() if k != "victory_points" and v
+        },
+        "granted_vp": reward_dict.get("victory_points", 0),
+        "accumulated_stock_consumed": 0,
+        "accumulation_type": None,
+        "owner_bonus_info": owner_bonus_info,
+        "trigger_bonuses": trigger_bonuses_data,
+        "is_reassignment": True,
+    }
+
     # Singer swap trigger prompt (reassignment)
     if pending_swap:
         from shared.card_models import ResourceChoiceReward
 
+        state.pending_placement = _pending_reassign
         swap_choice = ResourceChoiceReward(
             choice_type="pick",
             allowed_types=["guitarists", "bass_players", "drummers"],
@@ -3100,15 +3183,18 @@ async def handle_reassign_worker(
 
     # Handle Real Estate Listings during reassignment
     if target.reward_special == "purchase_building":
+        state.pending_placement = _pending_reassign
         return
 
     # Handle Garage spots: pause for quest selection (reset already
     # happened above for reset_quests before WorkerReassignedResponse)
     if target.space_type == "garage":
+        state.pending_placement = _pending_reassign
         return
 
     # Resource choice reward on buildings
     if target.building_tile and target.building_tile.visitor_reward_choice:
+        state.pending_placement = _pending_reassign
         choice = target.building_tile.visitor_reward_choice
         if choice.cost.total() > 0:
             if not player.resources.can_afford(choice.cost):
@@ -3150,6 +3236,7 @@ async def handle_reassign_worker(
     if pending_owner_choice:
         from shared.card_models import ResourceChoiceReward
 
+        state.pending_placement = _pending_reassign
         bonus_owner = state.get_player(pending_owner_choice["owner_id"])
         if bonus_owner:
             rcr = ResourceChoiceReward(**pending_owner_choice["choice_dump"])
@@ -3169,6 +3256,7 @@ async def handle_reassign_worker(
         and target.building_tile
         and target.building_tile.visitor_reward_special == "draw_contract"
     ):
+        state.pending_placement = _pending_reassign
         return
 
     # Building draw_contract_and_complete: quest selection + bonus VP
@@ -3177,6 +3265,7 @@ async def handle_reassign_worker(
         and target.building_tile
         and target.building_tile.visitor_reward_special == "draw_contract_and_complete"
     ):
+        state.pending_placement = _pending_reassign
         state.pending_showcase_bonus = {
             "player_id": state.reassignment_active_player_id,
             "contract_id": None,
@@ -3192,6 +3281,7 @@ async def _finish_reassignment(
     state,
 ) -> None:
     """Continue reassignment queue or end the round."""
+    state.pending_placement = None
     if state.reassignment_active_player_id:
         player = state.get_player(
             state.reassignment_active_player_id,
@@ -3266,6 +3356,7 @@ async def handle_choose_intrigue_target(
             resources_affected[k] = actual
 
     state.pending_intrigue_target = None
+    state.pending_placement = None
 
     state.game_log.append(
         GameLog(
@@ -3290,7 +3381,7 @@ async def handle_choose_intrigue_target(
         ),
     )
 
-    # Check for singer swap trigger from stolen resources
+    # Check for resource triggers from stolen resources
     if effect_type == "steal_resources" and resources_affected:
         stolen_reward = ResourceCost(
             **{
@@ -3300,7 +3391,39 @@ async def handle_choose_intrigue_target(
             }
         )
         if stolen_reward.total() > 0:
-            _, pending_swap = _evaluate_resource_triggers(state, player, stolen_reward)
+            trigger_bonuses, pending_swap = _evaluate_resource_triggers(
+                state, player, stolen_reward
+            )
+            for tb in trigger_bonuses:
+                if tb.get("bonus_resources"):
+                    bonus_rc = {
+                        k: v for k, v in tb["bonus_resources"].items() if v
+                    }
+                    if bonus_rc:
+                        await server.broadcast_to_game(
+                            state.game_code,
+                            ResourceChoiceResolvedResponse(
+                                player_id=player.player_id,
+                                chosen_resources=bonus_rc,
+                                is_spend=False,
+                                source_description=(
+                                    f"{tb.get('contract_name', 'plot quest')} trigger"
+                                ),
+                            ),
+                        )
+                state.game_log.append(
+                    GameLog(
+                        round_number=state.current_round,
+                        player_id=player.player_id,
+                        action="resource_trigger",
+                        details=(
+                            f"{player.display_name} triggered"
+                            f" {tb.get('contract_name', 'plot quest')} bonus"
+                            f" from stolen resources"
+                        ),
+                        timestamp=time.time(),
+                    )
+                )
             if pending_swap:
                 from shared.card_models import ResourceChoiceReward
 
@@ -3380,20 +3503,16 @@ async def handle_cancel_intrigue_target(
         await _advance_after_quest_rewards(server, state, player)
         return
 
-    slot_number = pending["slot_number"]
+    placement = state.pending_placement
+    if placement is None or placement["player_id"] != conn.player_id:
+        await conn.send_error("INVALID_ACTION", "No pending placement to cancel.")
+        return
 
-    # Unwind: clear backstage slot
-    for s in state.board.backstage_slots:
-        if s.slot_number == slot_number:
-            s.occupied_by = None
-            s.intrigue_card_played = None
-            break
-
+    result = _unwind_placement(state, player, placement)
     player.intrigue_hand.append(card)
-    player.available_workers += 1
-    player.victory_points -= reversed_bonus
 
     state.pending_intrigue_target = None
+    state.pending_placement = None
 
     state.game_log.append(
         GameLog(
@@ -3409,10 +3528,10 @@ async def handle_cancel_intrigue_target(
         state.game_code,
         PlacementCancelledResponse(
             player_id=player.player_id,
-            space_id=f"backstage_slot_{slot_number}",
+            space_id=result["space_id"],
             next_player_id=None,
             returned_card=pending["intrigue_card"],
-            plot_quest_bonus_vp=reversed_bonus,
+            plot_quest_bonus_vp=result["reversed_vp"],
         ),
     )
 

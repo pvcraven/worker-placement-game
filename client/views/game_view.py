@@ -1136,6 +1136,9 @@ class GameView(arcade.View):
         if pid == my_id:
             self._exit_highlight_mode()
 
+        board = self.game_state.get("board", {})
+        self._refresh_board(board)
+
         if self.tabbed_panel:
             name = self._player_name(pid)
             self.tabbed_panel.add_entry(f"{name} recalled worker from {space_name}")
