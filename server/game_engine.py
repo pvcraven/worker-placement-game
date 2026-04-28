@@ -1155,10 +1155,14 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
         atype = space.building_tile.accumulation_type
         if atype == "victory_points":
             _acc_consumed = max(
-                0, reward_dict.get("victory_points", 0) - space.building_tile.visitor_reward_vp
+                0,
+                reward_dict.get("victory_points", 0)
+                - space.building_tile.visitor_reward_vp,
             )
         else:
-            base = getattr(space.reward, atype, 0) if hasattr(space.reward, atype) else 0
+            base = (
+                getattr(space.reward, atype, 0) if hasattr(space.reward, atype) else 0
+            )
             _acc_consumed = max(0, reward_dict.get(atype, 0) - base)
 
     _pending = {
@@ -1846,9 +1850,7 @@ async def handle_place_worker_backstage(
         )
         for tb in trigger_bonuses:
             if tb.get("bonus_resources"):
-                bonus_rc = {
-                    k: v for k, v in tb["bonus_resources"].items() if v
-                }
+                bonus_rc = {k: v for k, v in tb["bonus_resources"].items() if v}
                 if bonus_rc:
                     await server.broadcast_to_game(
                         state.game_code,
@@ -3423,9 +3425,7 @@ async def handle_choose_intrigue_target(
             )
             for tb in trigger_bonuses:
                 if tb.get("bonus_resources"):
-                    bonus_rc = {
-                        k: v for k, v in tb["bonus_resources"].items() if v
-                    }
+                    bonus_rc = {k: v for k, v in tb["bonus_resources"].items() if v}
                     if bonus_rc:
                         await server.broadcast_to_game(
                             state.game_code,
