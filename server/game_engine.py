@@ -1361,8 +1361,11 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
         if choice.cost.total() > 0 and not future_resources.can_afford(choice.cost):
             logger.warning(
                 "Pre-validate fail: player %s coins=%d, cost=%s, future=%s, space=%s",
-                player.display_name, player.resources.coins,
-                choice.cost, future_resources, space.name,
+                player.display_name,
+                player.resources.coins,
+                choice.cost,
+                future_resources,
+                space.name,
             )
             await conn.send_error(
                 "INSUFFICIENT_RESOURCES",

@@ -318,11 +318,11 @@ class GameView(arcade.View):
         copied = msg.get("copied_space", {})
         my_id = getattr(self.window, "player_id", None)
         effective_type = copied.get("space_type") or space_data.get("space_type")
-        effective_reward_special = (
-            copied.get("reward_special") or space_data.get("reward_special")
+        effective_reward_special = copied.get("reward_special") or space_data.get(
+            "reward_special"
         )
-        effective_bt = (
-            copied.get("building_tile") or space_data.get("building_tile", {})
+        effective_bt = copied.get("building_tile") or space_data.get(
+            "building_tile", {}
         )
         if (
             effective_type == "garage"
