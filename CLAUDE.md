@@ -1,6 +1,6 @@
 # Worker Placement Game Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-04-26
+Auto-generated from all feature plans. Last updated: 2026-04-29
 
 ## Active Technologies
 - Python 3.12+ + Arcade (client UI), websockets (networking), Pydantic (validation) (002-garage-quest-display)
@@ -24,6 +24,7 @@ Auto-generated from all feature plans. Last updated: 2026-04-26
 - In-memory game state; JSON config files in `config/` (018-resource-trigger-plots)
 - Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), websockets, Pydantic v2 (019-remaining-special-quests)
 - In-memory game state; JSON configuration in `config/` (019-remaining-special-quests)
+- Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), websockets, Pydantic v2 (021-zoarstar-building)
 
 - Python 3.12+ + Arcade (graphics/client UI), websockets (async networking), Pydantic (data validation/serialization) (001-worker-placement-game)
 
@@ -43,9 +44,9 @@ cd src && pytest && ruff check .
 Python 3.12+: Follow standard conventions
 
 ## Recent Changes
+- 021-zoarstar-building: Added Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), websockets, Pydantic v2
 - 020-new-special-buildings: Added Python 3.12+ + Arcade (local source), websockets, Pydantic v2
 - 019-remaining-special-quests: Added Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), websockets, Pydantic v2
-- 018-resource-trigger-plots: Added Python 3.12+ + Arcade (local source), websockets, Pydantic v2
 
 
 <!-- MANUAL ADDITIONS START -->
