@@ -335,6 +335,18 @@
       "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
       "owner_bonus_vp": 2,
       "owner_bonus_choice": null
+    },
+    {
+      "id": "building_023",
+      "name": "Shadow Studio",
+      "description": "A mysterious studio that can mirror any other studio's session.",
+      "cost_coins": 8,
+      "visitor_reward": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
+      "visitor_reward_special": "copy_occupied_space",
+      "visitor_reward_choice": null,
+      "owner_bonus": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
+      "owner_bonus_vp": 2,
+      "owner_bonus_choice": null
     }
   ]
 }

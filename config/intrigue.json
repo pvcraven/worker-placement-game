@@ -431,6 +431,22 @@
         "pick_count": 2,
         "others_pick_count": 1
       }
+    },
+    {
+      "id": "intrigue_053",
+      "name": "Bootleg Recording",
+      "description": "Slip into a rival's studio and bootleg their session. Pay 2 coins to copy any opponent's occupied space.",
+      "effect_type": "copy_occupied_space",
+      "effect_target": "self",
+      "effect_value": {"cost_coins": 2}
+    },
+    {
+      "id": "intrigue_054",
+      "name": "Bootleg Recording",
+      "description": "Slip into a rival's studio and bootleg their session. Pay 2 coins to copy any opponent's occupied space.",
+      "effect_type": "copy_occupied_space",
+      "effect_target": "self",
+      "effect_value": {"cost_coins": 2}
     }
   ]
 }

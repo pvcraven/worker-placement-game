@@ -66,13 +66,13 @@
 |---|-------------------|-------------|------|--------|-------|
 | 21 | Heroes' Garden | building_022 Audition Showcase | 4g | **DONE** | Visitor: draw 1 face-up contract, may immediately complete for +4 VP bonus. Owner: 2 VP. Uses `draw_contract_and_complete` visitor_reward_special + `pending_showcase_bonus` state. |
 | 22 | The Stone House | building_021 Royalty Collection Office | 4g | **DONE** | Visitor: 1 coin per player-purchased building in play. Owner: 2 coins. Uses `coins_per_building` visitor_reward_special. |
+| 23 | The Zoarstar | building_023 Shadow Studio | 8g | **DONE** | Visitor: copy an opponent's occupied action space and receive its rewards. Owner: 2 VP. Uses `copy_occupied_space` visitor_reward_special + Bootleg Recording intrigue cards (intrigue_053, intrigue_054). |
 
-### Still Missing Buildings (2 not in our game)
+### Still Missing Buildings (1 not in our game)
 
 | # | Waterdeep Building | Cost | Mechanic | Complexity |
 |---|-------------------|------|----------|------------|
 | 23 | The Palace of Waterdeep | 4g | Take the Ambassador piece — assign it as an extra worker before anyone else next round. Owner: 2 VP. | **High** — requires new Ambassador agent, special placement timing, complex edge cases |
-| 24 | The Zoarstar | 8g | Choose an opponent's occupied action space and use its action as your own. Owner: 2 VP. | **High** — requires copying another space's action, interacts with every space type |
 
 ---
 
@@ -86,8 +86,8 @@
 | **Mechanical Match (re-themed correctly)** | 6 | Red Rocks, Sun Studio, Fillmore, Ryman Auditorium, Trident Studios, Skulkway/Criteria |
 | **Owner Bonus Swapped** | 2 | Hansa Studios (building_003), J&M Recording Studio (building_004) — VP and draw_intrigue are swapped vs Waterdeep |
 | **Resource Type Mismatch** | 3 | Abbey Road (building_015), Compass Point (building_017), Electric Lady (building_018) — different resource compositions than their Waterdeep counterparts |
-| **Newly Implemented** | 2 | Audition Showcase (Heroes' Garden), Royalty Collection Office (The Stone House) |
-| **Missing** | 2 | The Palace of Waterdeep, The Zoarstar |
+| **Newly Implemented** | 3 | Audition Showcase (Heroes' Garden), Royalty Collection Office (The Stone House), Shadow Studio (The Zoarstar) |
+| **Missing** | 1 | The Palace of Waterdeep |
 
 ### Differences That May Be Intentional
 
@@ -96,4 +96,3 @@ The 8-cost buildings (015-018) don't follow a strict 1:1 type mapping from their
 ### Remaining Missing Building Difficulty Ranking
 
 1. **The Palace of Waterdeep** (hard) — entirely new Ambassador agent mechanic
-2. **The Zoarstar** (hardest) — copy any occupied space's action, huge interaction surface

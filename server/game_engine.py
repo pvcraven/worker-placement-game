@@ -16,6 +16,7 @@ from shared.messages import (
     BonusWorkersGrantedResponse,
     BuildingMarketUpdateResponse,
     ContractAcquiredResponse,
+    CopySpacePromptResponse,
     FaceUpQuestsUpdatedResponse,
     FinalPlayerScore,
     GameOverResponse,
@@ -277,6 +278,11 @@ async def _check_quest_completion(
     """Check if current player can complete quests."""
     player = state.current_player()
     if player is None or player.completed_quest_this_turn:
+        logger.info(
+            "Quest completion skip: player=%s completed_this_turn=%s",
+            player.display_name if player else None,
+            player.completed_quest_this_turn if player else None,
+        )
         state.pending_showcase_bonus = None
         await _advance_turn(server, state)
         await _notify_turn_if_needed(
@@ -289,6 +295,13 @@ async def _check_quest_completion(
     completable = [
         c for c in player.contract_hand if player.resources.can_afford(c.cost)
     ]
+    logger.info(
+        "Quest completion check: player=%s resources=%s hand=%s completable=%s",
+        player.display_name,
+        player.resources,
+        [(c.name, c.cost) for c in player.contract_hand],
+        [c.name for c in completable],
+    )
     if not completable:
         state.pending_showcase_bonus = None
         await _advance_turn(server, state)
@@ -949,10 +962,8 @@ async def handle_resource_choice(
 
 
 def _can_use_occupied(player, space, state) -> bool:
-    """Check if player can place on an occupied building via special quest ability."""
+    """Check if player can place on an occupied space via special quest ability."""
     if player.use_occupied_used_this_round:
-        return False
-    if space.space_type != "building":
         return False
     if space.occupied_by == player.player_id:
         return False
@@ -960,6 +971,287 @@ def _can_use_occupied(player, space, state) -> bool:
         if c.reward_use_occupied_building:
             return True
     return False
+
+
+def _get_copy_eligible_spaces(state, player) -> list[dict]:
+    """Return opponent-occupied spaces eligible for copying (excludes backstage, own, empty)."""
+    eligible = []
+    for space in state.board.action_spaces.values():
+        if space.occupied_by is None:
+            continue
+        if space.occupied_by == player.player_id:
+            continue
+        if space.space_type == "backstage":
+            continue
+        preview = space.reward.model_dump() if space.reward else {}
+        eligible.append(
+            {
+                "space_id": space.space_id,
+                "name": space.name,
+                "space_type": space.space_type,
+                "reward_preview": preview,
+            }
+        )
+    return eligible
+
+
+async def _resolve_copied_space_rewards(
+    server: "GameServer",
+    state,
+    player,
+    target_space: ActionSpace,
+    source_space_id: str,
+    pending: dict,
+) -> None:
+    """Grant rewards from a copied space, handling all space types."""
+    reward = target_space.reward
+    reward_dict = reward.model_dump()
+    player.resources.add(reward)
+
+    # T016: Accumulated stock
+    if target_space.building_tile and target_space.building_tile.accumulation_type:
+        tile = target_space.building_tile
+        stock = tile.accumulated_stock
+        if stock > 0:
+            atype = tile.accumulation_type
+            if atype == "victory_points":
+                player.victory_points += stock
+                reward_dict["victory_points"] = stock
+            elif hasattr(player.resources, atype):
+                setattr(
+                    player.resources,
+                    atype,
+                    getattr(player.resources, atype) + stock,
+                )
+                reward_dict[atype] = reward_dict.get(atype, 0) + stock
+            tile.accumulated_stock = 0
+
+    # Visitor VP reward
+    if target_space.building_tile and target_space.building_tile.visitor_reward_vp > 0:
+        vp = target_space.building_tile.visitor_reward_vp
+        player.victory_points += vp
+        reward_dict["victory_points"] = reward_dict.get("victory_points", 0) + vp
+
+    # Resource triggers
+    trigger_bonuses, pending_swap = _evaluate_resource_triggers(state, player, reward)
+    for tb in trigger_bonuses:
+        if tb.get("bonus_resources"):
+            for k, v in tb["bonus_resources"].items():
+                if v:
+                    reward_dict[k] = reward_dict.get(k, 0) + v
+        state.game_log.append(
+            GameLog(
+                round_number=state.current_round,
+                player_id=player.player_id,
+                action="resource_trigger",
+                details=(
+                    f"{player.display_name} triggered"
+                    f" {tb.get('contract_name', 'plot quest')} bonus"
+                ),
+                timestamp=time.time(),
+            )
+        )
+
+    # T017: Building visitor_reward_special
+    if (
+        target_space.space_type == "building"
+        and target_space.building_tile
+        and target_space.building_tile.visitor_reward_special
+    ):
+        special = target_space.building_tile.visitor_reward_special
+        if special == "draw_intrigue" and state.board.intrigue_deck:
+            card = state.board.intrigue_deck.pop(0)
+            player.intrigue_hand.append(card)
+        elif special == "coins_per_building":
+            coin_count = len(state.board.constructed_buildings)
+            player.resources.coins += coin_count
+            reward_dict["coins"] = reward_dict.get("coins", 0) + coin_count
+
+    # T020: Castle space — first player marker + intrigue card
+    if target_space.space_type == "castle":
+        for p in state.players:
+            p.has_first_player_marker = False
+        player.has_first_player_marker = True
+        state.board.first_player_id = player.player_id
+        if state.board.intrigue_deck:
+            card = state.board.intrigue_deck.pop(0)
+            player.intrigue_hand.append(card)
+
+    # Update pending before potential early returns
+    pending["copied_from_space_id"] = target_space.space_id
+    pending["granted_resources"] = {
+        k: v for k, v in reward_dict.items() if k != "victory_points" and v
+    }
+    pending["granted_vp"] = reward_dict.get("victory_points", 0)
+    pending["trigger_bonuses"] = trigger_bonuses
+
+    state.game_log.append(
+        GameLog(
+            round_number=state.current_round,
+            player_id=player.player_id,
+            action="copy_space",
+            details=(
+                f"{player.display_name} copied {target_space.name}"
+                f" from {source_space_id}"
+            ),
+            timestamp=time.time(),
+        )
+    )
+
+    # T022: Owner bonus cascading for copied buildings
+    owner_bonus_info = {}
+    if target_space.space_type == "building" and target_space.owner_id:
+        owner = state.get_player(target_space.owner_id)
+        if owner and owner.player_id != player.player_id and target_space.building_tile:
+            tile = target_space.building_tile
+            owner.resources.add(tile.owner_bonus)
+            bonus_dict = tile.owner_bonus.model_dump()
+            if tile.owner_bonus_vp > 0:
+                owner.victory_points += tile.owner_bonus_vp
+                bonus_dict["victory_points"] = tile.owner_bonus_vp
+            if tile.owner_bonus_special == "draw_intrigue":
+                if state.board.intrigue_deck:
+                    card = state.board.intrigue_deck.pop(0)
+                    owner.intrigue_hand.append(card)
+                    bonus_dict["intrigue_card"] = True
+            owner_bonus_info = {
+                "owner_id": owner.player_id,
+                "owner_name": owner.display_name,
+                "bonus": bonus_dict,
+            }
+            pending["owner_bonus_info"] = owner_bonus_info
+            state.game_log.append(
+                GameLog(
+                    round_number=state.current_round,
+                    player_id=owner.player_id,
+                    action="owner_bonus",
+                    details=(
+                        f"{owner.display_name} received owner bonus from"
+                        f" {player.display_name} copying {target_space.name}"
+                    ),
+                    timestamp=time.time(),
+                )
+            )
+
+    copied_space_info = {
+        "space_type": target_space.space_type,
+        "reward_special": target_space.reward_special,
+    }
+    if target_space.building_tile:
+        copied_space_info["building_tile"] = {
+            "visitor_reward_special": target_space.building_tile.visitor_reward_special,
+        }
+
+    state.pending_copy_source = None
+
+    # Garage reset_quests must happen before WorkerPlacedResponse so client
+    # has updated quest IDs when entering quest selection highlight mode
+    if (
+        target_space.space_type == "garage"
+        and target_space.reward_special == "reset_quests"
+    ):
+        state.board.quest_discard.extend(state.board.face_up_quests)
+        state.board.face_up_quests.clear()
+        for _ in range(FACE_UP_QUEST_COUNT):
+            card = _draw_from_quest_deck(state)
+            if card:
+                state.board.face_up_quests.append(card)
+        await server.broadcast_to_game(
+            state.game_code,
+            FaceUpQuestsUpdatedResponse(
+                face_up_quests=[q.model_dump() for q in state.board.face_up_quests]
+            ),
+        )
+
+    await server.broadcast_to_game(
+        state.game_code,
+        WorkerPlacedResponse(
+            player_id=player.player_id,
+            space_id=source_space_id,
+            reward_granted=reward_dict,
+            owner_bonus=owner_bonus_info,
+            trigger_bonuses=trigger_bonuses,
+            next_player_id=None,
+            copied_space=copied_space_info,
+        ),
+    )
+
+    # T021: Realtor space — enter building purchase flow
+    if target_space.reward_special == "purchase_building":
+        state.pending_placement = pending
+        return
+
+    # T019: Garage spaces — enter quest selection flow
+    if target_space.space_type == "garage":
+        state.pending_placement = pending
+        return
+
+    # T018: Resource choice buildings
+    if target_space.building_tile and target_space.building_tile.visitor_reward_choice:
+        state.pending_placement = pending
+        choice = target_space.building_tile.visitor_reward_choice
+        if choice.cost.total() > 0:
+            if not player.resources.can_afford(choice.cost):
+                state.pending_placement = None
+                await _check_quest_completion(server, state)
+                return
+            player.resources.deduct(choice.cost)
+        if choice.choice_type == "exchange":
+            if _player_non_coin_total(player) < choice.pick_count:
+                state.pending_placement = None
+                await _check_quest_completion(server, state)
+                return
+            await _send_resource_choice_prompt(
+                server,
+                state,
+                player,
+                choice,
+                "building",
+                target_space.name,
+                is_spend=True,
+                phase="spend",
+            )
+            return
+        await _send_resource_choice_prompt(
+            server,
+            state,
+            player,
+            choice,
+            "building",
+            target_space.name,
+        )
+        return
+
+    # T017: draw_contract / draw_contract_and_complete — quest selection
+    if (
+        target_space.space_type == "building"
+        and target_space.building_tile
+        and target_space.building_tile.visitor_reward_special
+        in ("draw_contract", "draw_contract_and_complete")
+    ):
+        state.pending_placement = pending
+        state.pending_building_quest = {
+            "player_id": player.player_id,
+            "space_id": source_space_id,
+            "granted_vp": pending["granted_vp"],
+            "granted_resources": dict(pending["granted_resources"]),
+            "accumulated_stock_consumed": pending.get("accumulated_stock_consumed", 0),
+            "accumulation_type": pending.get("accumulation_type"),
+            "owner_bonus_info": owner_bonus_info,
+            "trigger_bonuses": trigger_bonuses,
+        }
+        if (
+            target_space.building_tile.visitor_reward_special
+            == "draw_contract_and_complete"
+        ):
+            state.pending_showcase_bonus = {
+                "player_id": player.player_id,
+                "contract_id": None,
+                "bonus_vp": 4,
+            }
+        return
+
+    await _check_quest_completion(server, state)
 
 
 async def handle_skip_resource_choice(
@@ -1044,17 +1336,12 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
             if has_ability and player.use_occupied_used_this_round:
                 await conn.send_error(
                     "SPACE_OCCUPIED",
-                    "Already used your occupied-building ability this round.",
-                )
-            elif has_ability and space.space_type != "building":
-                await conn.send_error(
-                    "SPACE_OCCUPIED",
-                    "Occupied-building ability only works on constructed buildings.",
+                    "Already used your occupied-space ability this round.",
                 )
             elif has_ability and space.occupied_by == player.player_id:
                 await conn.send_error(
                     "SPACE_OCCUPIED",
-                    "Cannot use occupied-building ability on your own worker.",
+                    "Cannot use occupied-space ability on your own worker.",
                 )
             else:
                 await conn.send_error(
@@ -1072,6 +1359,14 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
         future_resources = player.resources.model_copy()
         future_resources.add(space.reward)
         if choice.cost.total() > 0 and not future_resources.can_afford(choice.cost):
+            logger.warning(
+                "Pre-validate fail: player %s coins=%d, cost=%s, future=%s, space=%s",
+                player.display_name,
+                player.resources.coins,
+                choice.cost,
+                future_resources,
+                space.name,
+            )
             await conn.send_error(
                 "INSUFFICIENT_RESOURCES",
                 "Cannot afford this building's cost.",
@@ -1242,6 +1537,52 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
             coin_count = len(state.board.constructed_buildings)
             player.resources.coins += coin_count
             reward_dict["coins"] = reward_dict.get("coins", 0) + coin_count
+        elif special == "copy_occupied_space":
+            eligible = _get_copy_eligible_spaces(state, player)
+            if not eligible:
+                pass
+            else:
+                _pending["granted_resources"] = {
+                    k: v for k, v in reward_dict.items() if k != "victory_points" and v
+                }
+                _pending["granted_vp"] = reward_dict.get("victory_points", 0)
+                state.pending_placement = _pending
+                state.pending_copy_source = {
+                    "player_id": player.player_id,
+                    "source_space_id": msg.space_id,
+                    "source_type": "building",
+                    "eligible_spaces": [s["space_id"] for s in eligible],
+                }
+                state.game_log.append(
+                    GameLog(
+                        round_number=state.current_round,
+                        player_id=player.player_id,
+                        action="place_worker",
+                        details=(
+                            f"{player.display_name} placed worker on"
+                            f" {space.name} — selecting space to copy"
+                        ),
+                        timestamp=time.time(),
+                    )
+                )
+                await server.broadcast_to_game(
+                    state.game_code,
+                    WorkerPlacedResponse(
+                        player_id=player.player_id,
+                        space_id=msg.space_id,
+                        reward_granted=reward_dict,
+                        owner_bonus={},
+                        trigger_bonuses=trigger_bonuses_data,
+                        next_player_id=None,
+                    ),
+                )
+                await conn.send_model(
+                    CopySpacePromptResponse(
+                        eligible_spaces=eligible,
+                        source_type="building",
+                    )
+                )
+                return
 
     # Update _pending with any extra resources from building specials
     _pending["granted_resources"] = {
@@ -1730,6 +2071,82 @@ async def handle_place_worker_backstage(
         )
     )
 
+    # Handle copy_occupied_space intrigue card
+    if effect_details.get("insufficient_coins"):
+        slot.occupied_by = None
+        player.available_workers += 1
+        player.intrigue_hand.append(card)
+        slot.intrigue_card_played = None
+        player.victory_points -= plot_bonus_vp
+        await conn.send_error(
+            "INSUFFICIENT_COINS",
+            "You need 2 coins to play this card.",
+        )
+        return
+
+    if effect_details.get("no_valid_targets"):
+        slot.occupied_by = None
+        player.available_workers += 1
+        player.intrigue_hand.append(card)
+        slot.intrigue_card_played = None
+        player.victory_points -= plot_bonus_vp
+        await conn.send_error(
+            "NO_VALID_TARGETS",
+            "No valid target spaces available.",
+        )
+        return
+
+    if effect_details.get("eligible_spaces"):
+        state.pending_placement = {
+            "player_id": player.player_id,
+            "space_id": f"backstage_slot_{msg.slot_number}",
+            "granted_resources": {},
+            "granted_vp": plot_bonus_vp,
+            "accumulated_stock_consumed": 0,
+            "accumulation_type": None,
+            "owner_bonus_info": {},
+            "trigger_bonuses": [],
+        }
+        state.pending_copy_source = {
+            "player_id": player.player_id,
+            "source_space_id": f"backstage_slot_{msg.slot_number}",
+            "source_type": "intrigue",
+            "cost_deducted": effect_details.get("cost_deducted", 0),
+            "intrigue_card": card.model_dump(),
+            "slot_number": msg.slot_number,
+            "eligible_spaces": [
+                s["space_id"] for s in effect_details["eligible_spaces"]
+            ],
+        }
+
+        await server.broadcast_to_game(
+            state.game_code,
+            WorkerPlacedBackstageResponse(
+                player_id=player.player_id,
+                slot_number=msg.slot_number,
+                intrigue_card={
+                    "id": card.id,
+                    "name": card.name,
+                    "description": card.description,
+                },
+                intrigue_effect={
+                    "type": card.effect_type,
+                    "details": {},
+                    "pending": True,
+                },
+                plot_quest_bonus_vp=plot_bonus_vp,
+                next_player_id=None,
+            ),
+        )
+
+        await conn.send_model(
+            CopySpacePromptResponse(
+                eligible_spaces=effect_details["eligible_spaces"],
+                source_type="intrigue",
+            )
+        )
+        return
+
     # Handle choose_opponent targeting
     if effect_details.get("pending"):
         eligible = effect_details.get("eligible_targets", [])
@@ -1988,6 +2405,20 @@ def _resolve_intrigue_effect(state, player, card) -> dict:
     ):
         if card.choice_reward:
             effect["pending_resource_choice"] = True
+
+    elif card.effect_type == "copy_occupied_space":
+        cost_coins = ev.get("cost_coins", 2)
+        if player.resources.coins < cost_coins:
+            effect["insufficient_coins"] = True
+        else:
+            eligible = _get_copy_eligible_spaces(state, player)
+            if not eligible:
+                effect["no_valid_targets"] = True
+            else:
+                player.resources.coins -= cost_coins
+                effect["pending"] = True
+                effect["cost_deducted"] = cost_coins
+                effect["eligible_spaces"] = eligible
 
     return effect
 
@@ -3559,6 +3990,120 @@ async def handle_cancel_intrigue_target(
             next_player_id=None,
             returned_card=pending["intrigue_card"],
             plot_quest_bonus_vp=result["reversed_vp"],
+        ),
+    )
+
+
+# ------------------------------------------------------------------
+# Copy-space handlers
+# ------------------------------------------------------------------
+
+
+async def handle_select_copy_space(
+    server: GameServer, conn: ClientConnection, msg
+) -> None:
+    """Player selected a target space to copy."""
+    state = _get_game_state(server, conn)
+    if state is None:
+        await conn.send_error("GAME_NOT_FOUND", "Not in a game.")
+        return
+
+    pending_copy = state.pending_copy_source
+    if pending_copy is None or pending_copy["player_id"] != conn.player_id:
+        await conn.send_error("INVALID_ACTION", "No pending copy selection.")
+        return
+
+    player = state.get_player(conn.player_id)
+    if player is None:
+        await conn.send_error("INVALID_ACTION", "Player not found.")
+        return
+
+    if msg.space_id not in pending_copy["eligible_spaces"]:
+        await conn.send_error("INVALID_ACTION", "That space is not eligible to copy.")
+        return
+
+    target_space = state.board.action_spaces.get(msg.space_id)
+    if target_space is None:
+        await conn.send_error("INVALID_ACTION", "Unknown action space.")
+        return
+
+    pending = state.pending_placement
+    if pending is None:
+        await conn.send_error("INVALID_ACTION", "No pending placement.")
+        return
+
+    await _resolve_copied_space_rewards(
+        server,
+        state,
+        player,
+        target_space,
+        pending_copy["source_space_id"],
+        pending,
+    )
+
+
+async def handle_cancel_copy_space(
+    server: GameServer, conn: ClientConnection, msg
+) -> None:
+    """Cancel copy-space selection — unwind placement and return worker."""
+    state = _get_game_state(server, conn)
+    if state is None:
+        await conn.send_error("GAME_NOT_FOUND", "Not in a game.")
+        return
+
+    pending_copy = state.pending_copy_source
+    if pending_copy is None or pending_copy["player_id"] != conn.player_id:
+        await conn.send_error("INVALID_ACTION", "No pending copy selection.")
+        return
+
+    player = state.get_player(conn.player_id)
+    if player is None:
+        await conn.send_error("INVALID_ACTION", "Player not found.")
+        return
+
+    pending = state.pending_placement
+    if pending is None:
+        await conn.send_error("INVALID_ACTION", "No pending placement.")
+        return
+
+    # Return coins for intrigue source
+    returned_card = {}
+    if pending_copy.get("source_type") == "intrigue":
+        cost = pending_copy.get("cost_deducted", 0)
+        if cost > 0:
+            player.resources.coins += cost
+        card_data = pending_copy.get("intrigue_card")
+        if card_data:
+            from shared.card_models import IntrigueCard
+
+            card = IntrigueCard(**card_data)
+            player.intrigue_hand.append(card)
+            returned_card = card_data
+
+    result = _unwind_placement(state, player, pending)
+    state.pending_copy_source = None
+    state.pending_placement = None
+
+    state.game_log.append(
+        GameLog(
+            round_number=state.current_round,
+            player_id=player.player_id,
+            action="cancel_copy_space",
+            details=f"{player.display_name} cancelled copy-space selection",
+            timestamp=time.time(),
+        )
+    )
+
+    next_player = state.current_player()
+    await server.broadcast_to_game(
+        state.game_code,
+        PlacementCancelledResponse(
+            player_id=player.player_id,
+            space_id=result["space_id"],
+            next_player_id=(next_player.player_id if next_player else None),
+            returned_card=returned_card,
+            reversed_rewards=result.get("reversed_resources", {}),
+            accumulated_stock_restored=result.get("stock_restored", 0),
         ),
     )
 

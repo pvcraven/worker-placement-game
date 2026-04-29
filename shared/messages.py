@@ -136,6 +136,15 @@ class ReconnectRequest(BaseModel):
     slot_index: int = Field(ge=0)
 
 
+class SelectCopySpaceRequest(BaseModel):
+    action: Literal["select_copy_space"] = "select_copy_space"
+    space_id: str
+
+
+class CancelCopySpaceRequest(BaseModel):
+    action: Literal["cancel_copy_space"] = "cancel_copy_space"
+
+
 class PingRequest(BaseModel):
     action: Literal["ping"] = "ping"
 
@@ -165,6 +174,8 @@ ClientMessage = Annotated[
         ChooseOpponentRequest,
         RecallWorkerRequest,
         RoundStartResourceChoiceRequest,
+        SelectCopySpaceRequest,
+        CancelCopySpaceRequest,
         ReconnectRequest,
         PingRequest,
     ],
@@ -224,6 +235,7 @@ class WorkerPlacedResponse(BaseModel):
     owner_bonus: dict = Field(default_factory=dict)
     trigger_bonuses: list[dict] = Field(default_factory=list)
     next_player_id: str | None
+    copied_space: dict = Field(default_factory=dict)
 
 
 class WorkerPlacedBackstageResponse(BaseModel):
@@ -505,6 +517,12 @@ class RoundStartBonusResponse(BaseModel):
     contract_name: str
 
 
+class CopySpacePromptResponse(BaseModel):
+    action: Literal["copy_space_prompt"] = "copy_space_prompt"
+    eligible_spaces: list[dict]
+    source_type: str
+
+
 class TurnTimeoutResponse(BaseModel):
     action: Literal["turn_timeout"] = "turn_timeout"
     player_id: str
@@ -553,6 +571,7 @@ ServerMessage = Annotated[
         WorkerRecalledResponse,
         RoundStartResourceChoicePromptResponse,
         RoundStartBonusResponse,
+        CopySpacePromptResponse,
     ],
     Field(discriminator="action"),
 ]
