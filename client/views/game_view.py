@@ -279,6 +279,8 @@ class GameView(arcade.View):
             self._on_round_start_resource_choice_prompt(msg)
         elif action == "round_start_bonus":
             self._on_round_start_bonus(msg)
+        elif action == "copy_space_prompt":
+            self._on_copy_space_prompt(msg)
         elif action == "error":
             error_msg = msg.get("message", "Error")
             self._status_text = error_msg
@@ -563,6 +565,43 @@ class GameView(arcade.View):
         self._target_dialog = PlayerTargetDialog(
             title="Choose Target",
             effect_description=desc,
+            eligible_targets=targets,
+            on_select=on_select,
+            on_cancel=on_cancel,
+            ui_manager=self.ui,
+        )
+        self._target_dialog.show(
+            self.window.width,
+            self.window.height,
+            scale=self.window.ui_scale,
+        )
+
+    def _on_copy_space_prompt(self, msg: dict) -> None:
+        spaces = msg.get("eligible_spaces", [])
+        targets = []
+        for sp in spaces:
+            preview = sp.get("reward_preview", {})
+            targets.append(
+                {
+                    "player_id": sp["space_id"],
+                    "player_name": sp.get("name", sp["space_id"]),
+                    "resources": preview,
+                }
+            )
+
+        def on_select(space_id: str) -> None:
+            self._target_dialog = None
+            self.window.network.send(
+                {"action": "select_copy_space", "space_id": space_id}
+            )
+
+        def on_cancel() -> None:
+            self._target_dialog = None
+            self.window.network.send({"action": "cancel_copy_space"})
+
+        self._target_dialog = PlayerTargetDialog(
+            title="Copy a Space",
+            effect_description="Select an opponent's space to copy its rewards",
             eligible_targets=targets,
             on_select=on_select,
             on_cancel=on_cancel,

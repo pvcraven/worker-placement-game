@@ -174,6 +174,7 @@ class GameState(BaseModel):
     pending_showcase_bonus: dict | None = None
     pending_building_quest: dict | None = None
     pending_placement: dict | None = None
+    pending_copy_source: dict | None = None
 
     def get_player(self, player_id: str) -> Player | None:
         for p in self.players:

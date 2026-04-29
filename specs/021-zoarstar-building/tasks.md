@@ -17,10 +17,10 @@
 
 **Purpose**: Add config entries, message types, and model fields needed by all user stories
 
-- [ ] T001 [P] Add Shadow Studio building entry (building_023) to config/buildings.json with cost_coins: 8, visitor_reward_special: "copy_occupied_space", owner_bonus_vp: 2, zero base resources
-- [ ] T002 [P] Add two Bootleg Recording intrigue card entries (intrigue_053, intrigue_054) to config/intrigue.json with effect_type: "copy_occupied_space", effect_value: {"cost_coins": 2}
-- [ ] T003 [P] Add SelectCopySpaceRequest (action: "select_copy_space", field: space_id: str), CancelCopySpaceRequest (action: "cancel_copy_space"), and CopySpacePromptResponse (action: "copy_space_prompt", fields: eligible_spaces: list[dict], source_type: str) to shared/messages.py; add both request types to the ClientMessage union
-- [ ] T004 [P] Add pending_copy_source: dict | None = None field to GameState in server/models/game.py (after pending_placement)
+- [X] T001 [P] Add Shadow Studio building entry (building_023) to config/buildings.json with cost_coins: 8, visitor_reward_special: "copy_occupied_space", owner_bonus_vp: 2, zero base resources
+- [X] T002 [P] Add two Bootleg Recording intrigue card entries (intrigue_053, intrigue_054) to config/intrigue.json with effect_type: "copy_occupied_space", effect_value: {"cost_coins": 2}
+- [X] T003 [P] Add SelectCopySpaceRequest (action: "select_copy_space", field: space_id: str), CancelCopySpaceRequest (action: "cancel_copy_space"), and CopySpacePromptResponse (action: "copy_space_prompt", fields: eligible_spaces: list[dict], source_type: str) to shared/messages.py; add both request types to the ClientMessage union
+- [X] T004 [P] Add pending_copy_source: dict | None = None field to GameState in server/models/game.py (after pending_placement)
 
 ---
 
@@ -30,9 +30,9 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T005 Implement _get_copy_eligible_spaces(state, player) -> list[dict] helper in server/game_engine.py that filters state.board.action_spaces to spaces where occupied_by is not None, occupied_by != player.player_id, and space_type != "backstage"; returns list of dicts with space_id, name, space_type, and reward_preview (reward.model_dump())
-- [ ] T006 [P] Add _handle_select_copy_space and _handle_cancel_copy_space handler methods in server/network.py that import and delegate to handle_select_copy_space and handle_cancel_copy_space from server.game_engine
-- [ ] T007 [P] Register "copy_space_prompt" message handler in client/views/game_view.py _register_message_handlers() method, mapping to a new _on_copy_space_prompt stub method
+- [X] T005 Implement _get_copy_eligible_spaces(state, player) -> list[dict] helper in server/game_engine.py that filters state.board.action_spaces to spaces where occupied_by is not None, occupied_by != player.player_id, and space_type != "backstage"; returns list of dicts with space_id, name, space_type, and reward_preview (reward.model_dump())
+- [X] T006 [P] Add _handle_select_copy_space and _handle_cancel_copy_space handler methods in server/network.py that import and delegate to handle_select_copy_space and handle_cancel_copy_space from server.game_engine
+- [X] T007 [P] Register "copy_space_prompt" message handler in client/views/game_view.py _register_message_handlers() method, mapping to a new _on_copy_space_prompt stub method
 
 **Checkpoint**: Foundation ready — user story implementation can now begin
 
@@ -46,12 +46,12 @@
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] Implement _resolve_copied_space_rewards() in server/game_engine.py — initial version handling basic resource grants: accept (server, state, player, target_space, source_space_id, pending) parameters; grant target_space.reward via player.resources.add(); build reward_dict; grant visitor_reward_vp if building with visitor_reward_vp > 0; call _evaluate_resource_triggers() on the copied reward; update pending_placement with copied_from_space_id and granted_resources; broadcast WorkerPlacedResponse with reward details; clear pending_copy_source; call _check_quest_completion()
-- [ ] T009 [US1] Add copy_occupied_space handling in handle_place_worker() building visitor_reward_special block (~line 1244) in server/game_engine.py: call _get_copy_eligible_spaces(); if no eligible spaces, fall through to _check_quest_completion (FR-010); otherwise set state.pending_placement = _pending, set state.pending_copy_source with player_id/source_space_id/source_type="building"/eligible_spaces, send CopySpacePromptResponse to player, return early
-- [ ] T010 [US1] Implement handle_select_copy_space(server, conn, msg) in server/game_engine.py: validate pending_copy_source exists and player_id matches; validate msg.space_id is in eligible_spaces list; look up target_space from state.board.action_spaces; call _resolve_copied_space_rewards() with the target space
-- [ ] T011 [US1] Implement handle_cancel_copy_space(server, conn, msg) in server/game_engine.py: validate pending_copy_source exists; if source_type == "intrigue" and cost_deducted > 0, return coins to player; call _unwind_placement(state, player, state.pending_placement) to free source space and reverse any already-granted rewards; clear pending_copy_source and pending_placement; broadcast PlacementCancelledResponse
-- [ ] T012 [US1] Implement _on_copy_space_prompt(msg) handler in client/views/game_view.py: display a selection dialog listing eligible spaces with names and reward previews (reuse existing dialog patterns from _on_intrigue_target_prompt); on_select sends {"action": "select_copy_space", "space_id": selected_id}; on_cancel sends {"action": "cancel_copy_space"}
-- [ ] T013 [US1] Write tests for basic copy mechanic in tests/test_copy_occupied_space.py: test_copy_basic_permanent_space (opponent on Motown, copy grants 2 bass players); test_copy_no_valid_targets (no opponents placed, no prompt shown); test_copy_excludes_own_spaces (player's own occupied spaces not in eligible list); test_copy_excludes_empty_spaces; test_cancel_copy_selection_unwinds (worker returns, Shadow Studio freed)
+- [X] T008 [US1] Implement _resolve_copied_space_rewards() in server/game_engine.py — initial version handling basic resource grants: accept (server, state, player, target_space, source_space_id, pending) parameters; grant target_space.reward via player.resources.add(); build reward_dict; grant visitor_reward_vp if building with visitor_reward_vp > 0; call _evaluate_resource_triggers() on the copied reward; update pending_placement with copied_from_space_id and granted_resources; broadcast WorkerPlacedResponse with reward details; clear pending_copy_source; call _check_quest_completion()
+- [X] T009 [US1] Add copy_occupied_space handling in handle_place_worker() building visitor_reward_special block (~line 1244) in server/game_engine.py: call _get_copy_eligible_spaces(); if no eligible spaces, fall through to _check_quest_completion (FR-010); otherwise set state.pending_placement = _pending, set state.pending_copy_source with player_id/source_space_id/source_type="building"/eligible_spaces, send CopySpacePromptResponse to player, return early
+- [X] T010 [US1] Implement handle_select_copy_space(server, conn, msg) in server/game_engine.py: validate pending_copy_source exists and player_id matches; validate msg.space_id is in eligible_spaces list; look up target_space from state.board.action_spaces; call _resolve_copied_space_rewards() with the target space
+- [X] T011 [US1] Implement handle_cancel_copy_space(server, conn, msg) in server/game_engine.py: validate pending_copy_source exists; if source_type == "intrigue" and cost_deducted > 0, return coins to player; call _unwind_placement(state, player, state.pending_placement) to free source space and reverse any already-granted rewards; clear pending_copy_source and pending_placement; broadcast PlacementCancelledResponse
+- [X] T012 [US1] Implement _on_copy_space_prompt(msg) handler in client/views/game_view.py: display a selection dialog listing eligible spaces with names and reward previews (reuse existing dialog patterns from _on_intrigue_target_prompt); on_select sends {"action": "select_copy_space", "space_id": selected_id}; on_cancel sends {"action": "cancel_copy_space"}
+- [X] T013 [US1] Write tests for basic copy mechanic in tests/test_copy_occupied_space.py: test_copy_basic_permanent_space (opponent on Motown, copy grants 2 bass players); test_copy_no_valid_targets (no opponents placed, no prompt shown); test_copy_excludes_own_spaces (player's own occupied spaces not in eligible list); test_copy_excludes_empty_spaces; test_cancel_copy_selection_unwinds (worker returns, Shadow Studio freed)
 
 **Checkpoint**: At this point, User Story 1 should be fully functional — basic copy mechanic works for simple resource spaces
 
@@ -65,8 +65,8 @@
 
 ### Implementation for User Story 2
 
-- [ ] T014 [US2] Verify Shadow Studio owner bonus works by confirming building_023 config has owner_bonus_vp: 2 and the existing owner bonus block in handle_place_worker() (lines 1252-1286) handles it — no new code needed, this is config-driven per Constitution Principle VII
-- [ ] T015 [US2] Write tests for owner bonus in tests/test_copy_occupied_space.py: test_shadow_studio_owner_bonus (non-owner visits, owner gains 2 VP); test_shadow_studio_owner_no_self_bonus (owner visits own building, no VP bonus)
+- [X] T014 [US2] Verify Shadow Studio owner bonus works by confirming building_023 config has owner_bonus_vp: 2 and the existing owner bonus block in handle_place_worker() (lines 1252-1286) handles it — no new code needed, this is config-driven per Constitution Principle VII
+- [X] T015 [US2] Write tests for owner bonus in tests/test_copy_occupied_space.py: test_shadow_studio_owner_bonus (non-owner visits, owner gains 2 VP); test_shadow_studio_owner_no_self_bonus (owner visits own building, no VP bonus)
 
 **Checkpoint**: Owner bonus verified working
 
@@ -80,14 +80,14 @@
 
 ### Implementation for User Story 3
 
-- [ ] T016 [US3] Extend _resolve_copied_space_rewards() in server/game_engine.py to handle accumulated stock: if target_space has building_tile with accumulation_type, drain accumulated_stock and add to reward; track in pending for cancel/unwind
-- [ ] T017 [US3] Extend _resolve_copied_space_rewards() in server/game_engine.py to handle building visitor_reward_special values: "draw_intrigue" (draw card to hand), "coins_per_building" (grant coins equal to len(state.board.constructed_buildings)), "draw_contract" (set pending_building_quest and return early for quest selection), "draw_contract_and_complete" (set pending_showcase_bonus + pending_building_quest and return early)
-- [ ] T018 [US3] Extend _resolve_copied_space_rewards() in server/game_engine.py to handle resource choice buildings: if target_space has building_tile.visitor_reward_choice, set pending_resource_choice and send ResourceChoicePromptResponse to player, return early (deferred)
-- [ ] T019 [US3] Extend _resolve_copied_space_rewards() in server/game_engine.py to handle garage spaces: if target_space.space_type == "garage", enter quest selection flow (draw coins + optionally intrigue per garage reward, send quest highlight, set pending state), return early
-- [ ] T020 [US3] Extend _resolve_copied_space_rewards() in server/game_engine.py to handle castle space: if target_space.space_type == "castle", grant first player marker and draw intrigue card
-- [ ] T021 [US3] Extend _resolve_copied_space_rewards() in server/game_engine.py to handle realtor space: if target_space.space_type == "realtor", enter building purchase flow (send building market data, set pending state), return early
-- [ ] T022 [US3] Implement owner bonus cascading for copied buildings in _resolve_copied_space_rewards() in server/game_engine.py: if target_space.space_type == "building" and target_space.owner_id exists and != player.player_id, grant the copied building's owner their owner_bonus resources, owner_bonus_vp, and owner_bonus_special; track in pending for unwind; add game_log entry
-- [ ] T023 [US3] Write tests for special space copying in tests/test_copy_occupied_space.py: test_copy_accumulated_stock_building (stock drained); test_copy_resource_choice_building (choice prompt appears); test_copy_garage_space (quest selection flow); test_copy_castle_space (first player + intrigue); test_copy_owner_bonus_cascading (copied building owner gets bonus); test_copy_owner_bonus_no_self (copying own building, no owner bonus)
+- [X] T016 [US3] Extend _resolve_copied_space_rewards() in server/game_engine.py to handle accumulated stock: if target_space has building_tile with accumulation_type, drain accumulated_stock and add to reward; track in pending for cancel/unwind
+- [X] T017 [US3] Extend _resolve_copied_space_rewards() in server/game_engine.py to handle building visitor_reward_special values: "draw_intrigue" (draw card to hand), "coins_per_building" (grant coins equal to len(state.board.constructed_buildings)), "draw_contract" (set pending_building_quest and return early for quest selection), "draw_contract_and_complete" (set pending_showcase_bonus + pending_building_quest and return early)
+- [X] T018 [US3] Extend _resolve_copied_space_rewards() in server/game_engine.py to handle resource choice buildings: if target_space has building_tile.visitor_reward_choice, set pending_resource_choice and send ResourceChoicePromptResponse to player, return early (deferred)
+- [X] T019 [US3] Extend _resolve_copied_space_rewards() in server/game_engine.py to handle garage spaces: if target_space.space_type == "garage", enter quest selection flow (draw coins + optionally intrigue per garage reward, send quest highlight, set pending state), return early
+- [X] T020 [US3] Extend _resolve_copied_space_rewards() in server/game_engine.py to handle castle space: if target_space.space_type == "castle", grant first player marker and draw intrigue card
+- [X] T021 [US3] Extend _resolve_copied_space_rewards() in server/game_engine.py to handle realtor space: if target_space.space_type == "realtor", enter building purchase flow (send building market data, set pending state), return early
+- [X] T022 [US3] Implement owner bonus cascading for copied buildings in _resolve_copied_space_rewards() in server/game_engine.py: if target_space.space_type == "building" and target_space.owner_id exists and != player.player_id, grant the copied building's owner their owner_bonus resources, owner_bonus_vp, and owner_bonus_special; track in pending for unwind; add game_log entry
+- [X] T023 [US3] Write tests for special space copying in tests/test_copy_occupied_space.py: test_copy_accumulated_stock_building (stock drained); test_copy_resource_choice_building (choice prompt appears); test_copy_garage_space (quest selection flow); test_copy_castle_space (first player + intrigue); test_copy_owner_bonus_cascading (copied building owner gets bonus); test_copy_owner_bonus_no_self (copying own building, no owner bonus)
 
 **Checkpoint**: All action space types can be copied without errors
 
@@ -101,10 +101,10 @@
 
 ### Implementation for User Story 5
 
-- [ ] T024 [US5] Add copy_occupied_space handling in _resolve_intrigue_effect() in server/game_engine.py (~line 1991): check player.resources.coins >= cost_coins from effect_value; if insufficient, set effect["insufficient_coins"] = True and return; call _get_copy_eligible_spaces(); if empty, set effect["no_valid_targets"] = True and return; deduct coins, set effect["pending"] = True, effect["cost_deducted"] = cost_coins, effect["eligible_spaces"] = eligible list
-- [ ] T025 [US5] Add copy_occupied_space flow handling in handle_place_worker_backstage() in server/game_engine.py: after _resolve_intrigue_effect() call, check for insufficient_coins flag → return card to hand, free backstage slot, return worker, send error "You need 2 coins to play this card"; check for no_valid_targets flag → same unwind, send error "No valid target spaces available"; check for pending flag → set state.pending_placement (backstage source), set state.pending_copy_source with source_type="intrigue" and cost_deducted, send CopySpacePromptResponse, return early
-- [ ] T026 [US5] Update handle_cancel_copy_space() in server/game_engine.py to handle intrigue source: when source_type == "intrigue", return 2 coins to player, return intrigue card to player.intrigue_hand, unwind backstage slot (clear occupied_by, return worker)
-- [ ] T027 [US5] Write tests for intrigue card copy in tests/test_copy_occupied_space.py: test_bootleg_basic_copy (pay 2 coins, copy space, get rewards); test_bootleg_insufficient_coins (1 coin, error, unwind backstage); test_bootleg_no_valid_targets (has coins but no opponents placed, error, unwind); test_bootleg_cancel_returns_coins (cancel selection, 2 coins returned, card returned to hand, backstage slot freed); test_bootleg_owner_bonus_cascade (copied building owner gets bonus)
+- [X] T024 [US5] Add copy_occupied_space handling in _resolve_intrigue_effect() in server/game_engine.py (~line 1991): check player.resources.coins >= cost_coins from effect_value; if insufficient, set effect["insufficient_coins"] = True and return; call _get_copy_eligible_spaces(); if empty, set effect["no_valid_targets"] = True and return; deduct coins, set effect["pending"] = True, effect["cost_deducted"] = cost_coins, effect["eligible_spaces"] = eligible list
+- [X] T025 [US5] Add copy_occupied_space flow handling in handle_place_worker_backstage() in server/game_engine.py: after _resolve_intrigue_effect() call, check for insufficient_coins flag → return card to hand, free backstage slot, return worker, send error "You need 2 coins to play this card"; check for no_valid_targets flag → same unwind, send error "No valid target spaces available"; check for pending flag → set state.pending_placement (backstage source), set state.pending_copy_source with source_type="intrigue" and cost_deducted, send CopySpacePromptResponse, return early
+- [X] T026 [US5] Update handle_cancel_copy_space() in server/game_engine.py to handle intrigue source: when source_type == "intrigue", return 2 coins to player, return intrigue card to player.intrigue_hand, unwind backstage slot (clear occupied_by, return worker)
+- [X] T027 [US5] Write tests for intrigue card copy in tests/test_copy_occupied_space.py: test_bootleg_basic_copy (pay 2 coins, copy space, get rewards); test_bootleg_insufficient_coins (1 coin, error, unwind backstage); test_bootleg_no_valid_targets (has coins but no opponents placed, error, unwind); test_bootleg_cancel_returns_coins (cancel selection, 2 coins returned, card returned to hand, backstage slot freed); test_bootleg_owner_bonus_cascade (copied building owner gets bonus)
 
 **Checkpoint**: Intrigue card path works independently with full cancel/unwind support
 
@@ -118,8 +118,8 @@
 
 ### Implementation for User Story 4
 
-- [ ] T028 [US4] Verify _resolve_copied_space_rewards() calls _check_quest_completion(server, state) after immediate resolution (non-deferred paths) in server/game_engine.py — this should already be implemented in T008; for deferred paths (resource choice, quest selection), verify the existing deferred handlers call _check_quest_completion on completion
-- [ ] T029 [US4] Write test for quest completion after copy in tests/test_copy_occupied_space.py: test_quest_completion_prompt_after_copy (copy space that grants enough resources to complete a quest, verify QuestCompletionPromptResponse is sent)
+- [X] T028 [US4] Verify _resolve_copied_space_rewards() calls _check_quest_completion(server, state) after immediate resolution (non-deferred paths) in server/game_engine.py — this should already be implemented in T008; for deferred paths (resource choice, quest selection), verify the existing deferred handlers call _check_quest_completion on completion
+- [X] T029 [US4] Write test for quest completion after copy in tests/test_copy_occupied_space.py: test_quest_completion_prompt_after_copy (copy space that grants enough resources to complete a quest, verify QuestCompletionPromptResponse is sent)
 
 **Checkpoint**: All user stories functional and independently testable
 
@@ -129,9 +129,9 @@
 
 **Purpose**: Documentation updates, validation, and final checks
 
-- [ ] T030 Update specs/waterdeep-card-mapping.md to mark The Zoarstar as DONE with music-themed equivalents (Shadow Studio building + Bootleg Recording intrigue card)
-- [ ] T031 Run full test suite: cd src && pytest && ruff check . — fix any failures or lint issues
-- [ ] T032 Validate quickstart.md scenarios by reviewing test coverage against all 11 scenarios; add any missing test cases to tests/test_copy_occupied_space.py
+- [X] T030 Update specs/waterdeep-card-mapping.md to mark The Zoarstar as DONE with music-themed equivalents (Shadow Studio building + Bootleg Recording intrigue card)
+- [X] T031 Run full test suite: cd src && pytest && ruff check . — fix any failures or lint issues
+- [X] T032 Validate quickstart.md scenarios by reviewing test coverage against all 11 scenarios; add any missing test cases to tests/test_copy_occupied_space.py
 
 ---
 
