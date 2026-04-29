@@ -330,9 +330,7 @@ def test_copy_includes_garage_spaces():
         game_code="TEST",
         board=BoardState(
             action_spaces={
-                "garage_1": _make_space(
-                    "garage_1", "Garage Spot 1", "garage", "p2"
-                ),
+                "garage_1": _make_space("garage_1", "Garage Spot 1", "garage", "p2"),
             }
         ),
     )

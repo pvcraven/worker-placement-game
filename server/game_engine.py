@@ -1092,11 +1092,7 @@ async def _resolve_copied_space_rewards(
     owner_bonus_info = {}
     if target_space.space_type == "building" and target_space.owner_id:
         owner = state.get_player(target_space.owner_id)
-        if (
-            owner
-            and owner.player_id != player.player_id
-            and target_space.building_tile
-        ):
+        if owner and owner.player_id != player.player_id and target_space.building_tile:
             tile = target_space.building_tile
             owner.resources.add(tile.owner_bonus)
             bonus_dict = tile.owner_bonus.model_dump()
@@ -1159,9 +1155,7 @@ async def _resolve_copied_space_rewards(
             await server.broadcast_to_game(
                 state.game_code,
                 FaceUpQuestsUpdatedResponse(
-                    face_up_quests=[
-                        q.model_dump() for q in state.board.face_up_quests
-                    ]
+                    face_up_quests=[q.model_dump() for q in state.board.face_up_quests]
                 ),
             )
         return
@@ -1215,9 +1209,7 @@ async def _resolve_copied_space_rewards(
             "space_id": source_space_id,
             "granted_vp": pending["granted_vp"],
             "granted_resources": dict(pending["granted_resources"]),
-            "accumulated_stock_consumed": pending.get(
-                "accumulated_stock_consumed", 0
-            ),
+            "accumulated_stock_consumed": pending.get("accumulated_stock_consumed", 0),
             "accumulation_type": pending.get("accumulation_type"),
             "owner_bonus_info": owner_bonus_info,
             "trigger_bonuses": trigger_bonuses,
@@ -1522,9 +1514,7 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
                 pass
             else:
                 _pending["granted_resources"] = {
-                    k: v
-                    for k, v in reward_dict.items()
-                    if k != "victory_points" and v
+                    k: v for k, v in reward_dict.items() if k != "victory_points" and v
                 }
                 _pending["granted_vp"] = reward_dict.get("victory_points", 0)
                 state.pending_placement = _pending
@@ -4081,9 +4071,7 @@ async def handle_cancel_copy_space(
         PlacementCancelledResponse(
             player_id=player.player_id,
             space_id=result["space_id"],
-            next_player_id=(
-                next_player.player_id if next_player else None
-            ),
+            next_player_id=(next_player.player_id if next_player else None),
             returned_card=returned_card,
             reversed_rewards=result.get("reversed_resources", {}),
             accumulated_stock_restored=result.get("stock_restored", 0),
