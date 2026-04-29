@@ -235,6 +235,7 @@ class WorkerPlacedResponse(BaseModel):
     owner_bonus: dict = Field(default_factory=dict)
     trigger_bonuses: list[dict] = Field(default_factory=list)
     next_player_id: str | None
+    copied_space: dict = Field(default_factory=dict)
 
 
 class WorkerPlacedBackstageResponse(BaseModel):

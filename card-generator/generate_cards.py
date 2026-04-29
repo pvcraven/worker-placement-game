@@ -444,6 +444,12 @@ def _draw_special_icon(
             width=card_width,
         )
         return y + 28
+    elif special == "copy_occupied_space":
+        label = "Use an opponent's occupied space"
+        draw_text_centered(
+            draw, label, y, B_FONT_BODY_SMALL, (20, 60, 20), width=card_width
+        )
+        return y + 28
     else:
         label = special.replace("_", " ").title()
         draw_text_centered(
@@ -1495,7 +1501,10 @@ def generate_producer_cards() -> int:
             (130, 80, 130),
         )
         y += 24
-        genres = ", ".join(g.value.title() for g in card.bonus_genres)
+        if len(card.bonus_genres) >= 5:
+            genres = "All"
+        else:
+            genres = ", ".join(g.value.title() for g in card.bonus_genres)
         draw_text_centered(
             draw,
             f"Genres: {genres}",

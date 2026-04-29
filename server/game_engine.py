@@ -278,6 +278,11 @@ async def _check_quest_completion(
     """Check if current player can complete quests."""
     player = state.current_player()
     if player is None or player.completed_quest_this_turn:
+        logger.info(
+            "Quest completion skip: player=%s completed_this_turn=%s",
+            player.display_name if player else None,
+            player.completed_quest_this_turn if player else None,
+        )
         state.pending_showcase_bonus = None
         await _advance_turn(server, state)
         await _notify_turn_if_needed(
@@ -290,6 +295,13 @@ async def _check_quest_completion(
     completable = [
         c for c in player.contract_hand if player.resources.can_afford(c.cost)
     ]
+    logger.info(
+        "Quest completion check: player=%s resources=%s hand=%s completable=%s",
+        player.display_name,
+        player.resources,
+        [(c.name, c.cost) for c in player.contract_hand],
+        [c.name for c in completable],
+    )
     if not completable:
         state.pending_showcase_bonus = None
         await _advance_turn(server, state)
@@ -950,10 +962,8 @@ async def handle_resource_choice(
 
 
 def _can_use_occupied(player, space, state) -> bool:
-    """Check if player can place on an occupied building via special quest ability."""
+    """Check if player can place on an occupied space via special quest ability."""
     if player.use_occupied_used_this_round:
-        return False
-    if space.space_type != "building":
         return False
     if space.occupied_by == player.player_id:
         return False
@@ -1123,6 +1133,36 @@ async def _resolve_copied_space_rewards(
                 )
             )
 
+    copied_space_info = {
+        "space_type": target_space.space_type,
+        "reward_special": target_space.reward_special,
+    }
+    if target_space.building_tile:
+        copied_space_info["building_tile"] = {
+            "visitor_reward_special": target_space.building_tile.visitor_reward_special,
+        }
+
+    state.pending_copy_source = None
+
+    # Garage reset_quests must happen before WorkerPlacedResponse so client
+    # has updated quest IDs when entering quest selection highlight mode
+    if (
+        target_space.space_type == "garage"
+        and target_space.reward_special == "reset_quests"
+    ):
+        state.board.quest_discard.extend(state.board.face_up_quests)
+        state.board.face_up_quests.clear()
+        for _ in range(FACE_UP_QUEST_COUNT):
+            card = _draw_from_quest_deck(state)
+            if card:
+                state.board.face_up_quests.append(card)
+        await server.broadcast_to_game(
+            state.game_code,
+            FaceUpQuestsUpdatedResponse(
+                face_up_quests=[q.model_dump() for q in state.board.face_up_quests]
+            ),
+        )
+
     await server.broadcast_to_game(
         state.game_code,
         WorkerPlacedResponse(
@@ -1132,10 +1172,9 @@ async def _resolve_copied_space_rewards(
             owner_bonus=owner_bonus_info,
             trigger_bonuses=trigger_bonuses,
             next_player_id=None,
+            copied_space=copied_space_info,
         ),
     )
-
-    state.pending_copy_source = None
 
     # T021: Realtor space — enter building purchase flow
     if target_space.reward_special == "purchase_building":
@@ -1145,19 +1184,6 @@ async def _resolve_copied_space_rewards(
     # T019: Garage spaces — enter quest selection flow
     if target_space.space_type == "garage":
         state.pending_placement = pending
-        if target_space.reward_special == "reset_quests":
-            state.board.quest_discard.extend(state.board.face_up_quests)
-            state.board.face_up_quests.clear()
-            for _ in range(FACE_UP_QUEST_COUNT):
-                card = _draw_from_quest_deck(state)
-                if card:
-                    state.board.face_up_quests.append(card)
-            await server.broadcast_to_game(
-                state.game_code,
-                FaceUpQuestsUpdatedResponse(
-                    face_up_quests=[q.model_dump() for q in state.board.face_up_quests]
-                ),
-            )
         return
 
     # T018: Resource choice buildings
@@ -1310,17 +1336,12 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
             if has_ability and player.use_occupied_used_this_round:
                 await conn.send_error(
                     "SPACE_OCCUPIED",
-                    "Already used your occupied-building ability this round.",
-                )
-            elif has_ability and space.space_type != "building":
-                await conn.send_error(
-                    "SPACE_OCCUPIED",
-                    "Occupied-building ability only works on constructed buildings.",
+                    "Already used your occupied-space ability this round.",
                 )
             elif has_ability and space.occupied_by == player.player_id:
                 await conn.send_error(
                     "SPACE_OCCUPIED",
-                    "Cannot use occupied-building ability on your own worker.",
+                    "Cannot use occupied-space ability on your own worker.",
                 )
             else:
                 await conn.send_error(
@@ -1338,6 +1359,11 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
         future_resources = player.resources.model_copy()
         future_resources.add(space.reward)
         if choice.cost.total() > 0 and not future_resources.can_afford(choice.cost):
+            logger.warning(
+                "Pre-validate fail: player %s coins=%d, cost=%s, future=%s, space=%s",
+                player.display_name, player.resources.coins,
+                choice.cost, future_resources, space.name,
+            )
             await conn.send_error(
                 "INSUFFICIENT_RESOURCES",
                 "Cannot afford this building's cost.",
