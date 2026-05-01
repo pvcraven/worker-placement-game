@@ -468,6 +468,7 @@ class ResourceChoicePromptResponse(BaseModel):
     bundles: list[dict] = Field(default_factory=list)
     is_spend: bool = False
     can_skip: bool = False
+    cost_deducted: dict = Field(default_factory=dict)
 
 
 class ResourceChoiceResolvedResponse(BaseModel):

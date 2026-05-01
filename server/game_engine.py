@@ -295,13 +295,6 @@ async def _check_quest_completion(
     completable = [
         c for c in player.contract_hand if player.resources.can_afford(c.cost)
     ]
-    logger.info(
-        "Quest completion check: player=%s resources=%s hand=%s completable=%s",
-        player.display_name,
-        player.resources,
-        [(c.name, c.cost) for c in player.contract_hand],
-        [c.name for c in completable],
-    )
     if not completable:
         state.pending_showcase_bonus = None
         await _advance_turn(server, state)
@@ -688,6 +681,7 @@ async def _send_resource_choice_prompt(
     pick_count_override: int | None = None,
     phase: str = "gain",
     can_skip: bool = False,
+    cost_deducted: dict | None = None,
 ) -> None:
     """Send a resource choice prompt to a player."""
     import uuid
@@ -749,6 +743,7 @@ async def _send_resource_choice_prompt(
             bundles=bundles_data,
             is_spend=is_spend,
             can_skip=can_skip,
+            cost_deducted=cost_deducted or {},
         ),
     )
 
@@ -1190,12 +1185,14 @@ async def _resolve_copied_space_rewards(
     if target_space.building_tile and target_space.building_tile.visitor_reward_choice:
         state.pending_placement = pending
         choice = target_space.building_tile.visitor_reward_choice
+        cost_info = None
         if choice.cost.total() > 0:
             if not player.resources.can_afford(choice.cost):
                 state.pending_placement = None
                 await _check_quest_completion(server, state)
                 return
             player.resources.deduct(choice.cost)
+            cost_info = choice.cost.model_dump()
         if choice.choice_type == "exchange":
             if _player_non_coin_total(player) < choice.pick_count:
                 state.pending_placement = None
@@ -1210,6 +1207,7 @@ async def _resolve_copied_space_rewards(
                 target_space.name,
                 is_spend=True,
                 phase="spend",
+                cost_deducted=cost_info,
             )
             return
         await _send_resource_choice_prompt(
@@ -1219,6 +1217,7 @@ async def _resolve_copied_space_rewards(
             choice,
             "building",
             target_space.name,
+            cost_deducted=cost_info,
         )
         return
 
@@ -1359,14 +1358,6 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
         future_resources = player.resources.model_copy()
         future_resources.add(space.reward)
         if choice.cost.total() > 0 and not future_resources.can_afford(choice.cost):
-            logger.warning(
-                "Pre-validate fail: player %s coins=%d, cost=%s, future=%s, space=%s",
-                player.display_name,
-                player.resources.coins,
-                choice.cost,
-                future_resources,
-                space.name,
-            )
             await conn.send_error(
                 "INSUFFICIENT_RESOURCES",
                 "Cannot afford this building's cost.",
@@ -1698,6 +1689,7 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
         state.pending_placement = _pending
         choice = space.building_tile.visitor_reward_choice
         # Check cost affordability
+        cost_info = None
         if choice.cost.total() > 0:
             if not player.resources.can_afford(choice.cost):
                 await conn.send_error(
@@ -1706,6 +1698,7 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
                 )
                 return
             player.resources.deduct(choice.cost)
+            cost_info = choice.cost.model_dump()
         # Check exchange affordability
         if choice.choice_type == "exchange":
             if _player_non_coin_total(player) < choice.pick_count:
@@ -1723,6 +1716,7 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
                 space.name,
                 is_spend=True,
                 phase="spend",
+                cost_deducted=cost_info,
             )
             if pending_owner_choice:
                 state.pending_resource_choice["pending_owner_choice"] = (
@@ -1737,6 +1731,7 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
             choice,
             "building",
             space.name,
+            cost_deducted=cost_info,
         )
         if pending_owner_choice:
             state.pending_resource_choice["pending_owner_choice"] = pending_owner_choice
@@ -2131,7 +2126,9 @@ async def handle_place_worker_backstage(
                 },
                 intrigue_effect={
                     "type": card.effect_type,
-                    "details": {},
+                    "details": {
+                        "cost_deducted": effect_details.get("cost_deducted", 0),
+                    },
                     "pending": True,
                 },
                 plot_quest_bonus_vp=plot_bonus_vp,
@@ -3656,11 +3653,13 @@ async def handle_reassign_worker(
     if target.building_tile and target.building_tile.visitor_reward_choice:
         state.pending_placement = _pending_reassign
         choice = target.building_tile.visitor_reward_choice
+        cost_info = None
         if choice.cost.total() > 0:
             if not player.resources.can_afford(choice.cost):
                 await _finish_reassignment(server, state)
                 return
             player.resources.deduct(choice.cost)
+            cost_info = choice.cost.model_dump()
         if choice.choice_type == "exchange":
             if _player_non_coin_total(player) < choice.pick_count:
                 await _finish_reassignment(server, state)
@@ -3674,6 +3673,7 @@ async def handle_reassign_worker(
                 target.name,
                 is_spend=True,
                 phase="spend",
+                cost_deducted=cost_info,
             )
             if pending_owner_choice:
                 state.pending_resource_choice["pending_owner_choice"] = (
@@ -3687,6 +3687,7 @@ async def handle_reassign_worker(
             choice,
             "building",
             target.name,
+            cost_deducted=cost_info,
         )
         if pending_owner_choice:
             state.pending_resource_choice["pending_owner_choice"] = pending_owner_choice
@@ -4068,6 +4069,7 @@ async def handle_cancel_copy_space(
 
     # Return coins for intrigue source
     returned_card = {}
+    cost = 0
     if pending_copy.get("source_type") == "intrigue":
         cost = pending_copy.get("cost_deducted", 0)
         if cost > 0:
@@ -4083,6 +4085,10 @@ async def handle_cancel_copy_space(
     result = _unwind_placement(state, player, pending)
     state.pending_copy_source = None
     state.pending_placement = None
+
+    reversed_resources = dict(result.get("reversed_resources", {}))
+    if cost > 0:
+        reversed_resources["coins"] = reversed_resources.get("coins", 0) - cost
 
     state.game_log.append(
         GameLog(
@@ -4102,7 +4108,7 @@ async def handle_cancel_copy_space(
             space_id=result["space_id"],
             next_player_id=(next_player.player_id if next_player else None),
             returned_card=returned_card,
-            reversed_rewards=result.get("reversed_resources", {}),
+            reversed_rewards=reversed_resources,
             accumulated_stock_restored=result.get("stock_restored", 0),
         ),
     )
