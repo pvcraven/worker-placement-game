@@ -87,6 +87,8 @@ class NetworkClient:
         asyncio.set_event_loop(self._loop)
         try:
             self._loop.run_until_complete(self._connection_loop())
+        except RuntimeError:
+            pass
         except Exception:
             logger.exception("Network thread error")
         finally:

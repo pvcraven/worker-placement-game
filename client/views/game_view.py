@@ -455,9 +455,23 @@ class GameView(arcade.View):
                 p["intrigue_hand"] = [c for c in hand if c.get("id") != card_id]
                 break
 
-        # Apply intrigue effect rewards to player resources
+        # Apply intrigue effect cost deduction (e.g. copy_occupied_space costs 2 coins)
         effect = msg.get("intrigue_effect", {})
         details = effect.get("details", {})
+        cost_coins = details.get("cost_deducted", 0)
+        if cost_coins and pid:
+            for p in self.game_state.get("players", []):
+                if p.get("player_id") == pid:
+                    res = p.get("resources", {})
+                    res["coins"] = max(0, res.get("coins", 0) - cost_coins)
+                    break
+            my_id = getattr(self.window, "player_id", None)
+            if pid == my_id and self.resource_bar:
+                my_player = self._get_my_player()
+                if my_player:
+                    self.resource_bar.update_resources(my_player.get("resources", {}))
+
+        # Apply intrigue effect rewards to player resources
         if details:
             reward = {
                 k: details.get(k, 0)
@@ -1020,6 +1034,18 @@ class GameView(arcade.View):
     ) -> None:
         pid = msg.get("player_id", "")
         my_id = getattr(self.window, "player_id", None)
+
+        cost = msg.get("cost_deducted", {})
+        if cost and pid == my_id:
+            my_player = self._get_my_player()
+            if my_player:
+                res = my_player.get("resources", {})
+                for key, val in cost.items():
+                    if key in res and val:
+                        res[key] = max(0, res.get(key, 0) - val)
+                if self.resource_bar:
+                    self.resource_bar.update_resources(res)
+
         if pid != my_id:
             name = self._player_name(pid)
             title = msg.get("title", "choosing resources")
