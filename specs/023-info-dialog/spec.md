@@ -5,6 +5,13 @@
 **Status**: Draft  
 **Input**: User description: "Create a routine where we can have an informational dialog in the middle of the screen. The dialog will be centered and it will auto-dismiss. When we switch rounds, the dialog will pop in the middle of the screen saying 'ROUND 2' and go away 1.5 seconds. When we are waiting on another player to make a choice during our round (like, if the other player is selecting a resource. This would happen with some buildings where owner gets a choice. Or intrigue cards) the window stays open until the user is done. If Player A plays an intrigue card that steals from Player B, then have a 1.5 second dialog pop up that says 'Player A stole 2 drummers'"
 
+## Clarifications
+
+### Session 2026-05-05
+
+- Q: Should round transition dialog play a sound effect? → A: Yes, play `client/assets/sounds/sound2.mp3` when the round transition dialog appears
+- Q: Which waiting states trigger the "Waiting on [Player]" dialog? → A: All waiting states — owner bonus choices, intrigue target selection, round-start resource choices, and any other deferred player choice
+
 ## User Scenarios & Testing
 
 ### User Story 1 - Round Transition Dialog (Priority: P1)
@@ -17,7 +24,7 @@ When a round ends and a new round begins, a large centered dialog appears on scr
 
 **Acceptance Scenarios**:
 
-1. **Given** all players have placed their workers and the round ends, **When** the new round begins, **Then** a centered dialog displays "ROUND [N]" (where N is the new round number) and automatically dismisses after 1.5 seconds
+1. **Given** all players have placed their workers and the round ends, **When** the new round begins, **Then** a centered dialog displays "ROUND [N]" (where N is the new round number), plays `sound2.mp3`, and automatically dismisses after 1.5 seconds
 2. **Given** the round transition dialog is displayed, **When** 1.5 seconds elapse, **Then** the dialog disappears and the game continues with the first player's turn
 3. **Given** the game is in round 7 and the round ends, **When** round 8 (final round) begins, **Then** the dialog displays "ROUND 8" following the same pattern
 
@@ -25,7 +32,7 @@ When a round ends and a new round begins, a large centered dialog appears on scr
 
 ### User Story 2 - Waiting on Another Player Dialog (Priority: P1)
 
-When a player must wait for another player to make a choice (e.g., building owner selecting a resource bonus, or a player choosing an intrigue target), a centered dialog appears informing the waiting player who they are waiting on. This dialog stays open until the other player completes their action.
+When a player must wait for another player to make a choice, a centered dialog appears informing the waiting player who they are waiting on. This applies to all waiting states: building owner bonus choices, intrigue target selection, round-start resource choices (trigger swap plots), and any other deferred player choice. The dialog stays open until the other player completes their action.
 
 **Why this priority**: Equally critical to round transitions — without this, players see a frozen screen with no explanation when another player is making a choice. This replaces the current status-text-only approach with a prominent centered dialog.
 
@@ -68,8 +75,8 @@ When a player plays an intrigue card that steals resources from another player, 
 - **FR-001**: System MUST provide a reusable centered dialog component that can display text messages over the game view
 - **FR-002**: System MUST support auto-dismiss dialogs with a configurable duration (default 1.5 seconds)
 - **FR-003**: System MUST support persistent dialogs that remain visible until explicitly dismissed by a game event
-- **FR-004**: System MUST display a "ROUND [N]" dialog when a new round begins, auto-dismissing after 1.5 seconds
-- **FR-005**: System MUST display a "Waiting on [Player Name]" dialog when the current player is waiting for another player to make a choice
+- **FR-004**: System MUST display a "ROUND [N]" dialog when a new round begins, play `sound2.mp3`, and auto-dismiss after 1.5 seconds
+- **FR-005**: System MUST display a "Waiting on [Player Name]" dialog whenever any player is waiting for another player to make a choice, including owner bonus choices, intrigue target selection, round-start resource choices, and any other deferred player choice
 - **FR-006**: System MUST dismiss the waiting dialog when the other player's action resolves
 - **FR-007**: System MUST display a steal notification dialog (e.g., "[Player] stole [amount] [resource] from [Target]") when an intrigue card steal effect resolves, auto-dismissing after 1.5 seconds
 - **FR-008**: System MUST queue multiple dialogs if they overlap, displaying them sequentially
