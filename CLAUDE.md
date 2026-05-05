@@ -26,6 +26,8 @@ Auto-generated from all feature plans. Last updated: 2026-05-05
 - In-memory game state; JSON configuration in `config/` (019-remaining-special-quests)
 - Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), websockets, Pydantic v2 (021-zoarstar-building)
 - Python 3.12+ + Arcade (local source), websockets, Pydantic v2, Pillow (card generation) (022-resource-choice-building)
+- Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), Pydantic v2 (023-info-dialog)
+- N/A (client-side UI only) (023-info-dialog)
 
 - Python 3.12+ + Arcade (graphics/client UI), websockets (async networking), Pydantic (data validation/serialization) (001-worker-placement-game)
 
@@ -45,9 +47,9 @@ cd src && pytest && ruff check .
 Python 3.12+: Follow standard conventions
 
 ## Recent Changes
+- 023-info-dialog: Added Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), Pydantic v2
 - 022-resource-choice-building: Added Python 3.12+ + Arcade (local source), websockets, Pydantic v2, Pillow (card generation)
 - 021-zoarstar-building: Added Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), websockets, Pydantic v2
-- 020-new-special-buildings: Added Python 3.12+ + Arcade (local source), websockets, Pydantic v2
 
 
 <!-- MANUAL ADDITIONS START -->
