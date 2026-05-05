@@ -9,6 +9,7 @@ from shared.card_models import (
     ContractCard,
     IntrigueCard,
     ProducerCard,
+    ResourceChoiceReward,
     ResourceCost,
 )
 from shared.constants import TOTAL_ROUNDS, GamePhase
@@ -98,6 +99,7 @@ class ActionSpace(BaseModel):
     building_tile: BuildingTile | None = None
     reward: ResourceCost = Field(default_factory=ResourceCost)
     reward_special: str | None = None  # Non-resource effects
+    reward_choice: ResourceChoiceReward | None = None
     also_occupied_by: str | None = None
 
 

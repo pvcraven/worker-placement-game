@@ -1654,6 +1654,65 @@ def generate_space_cards() -> int:
                 card_width=cw,
                 card_height=ch,
             )
+        elif space.get("reward_choice"):
+            from shared.card_models import ResourceChoiceReward
+
+            rc = ResourceChoiceReward(**space["reward_choice"])
+            if rc.choice_type == "bundle":
+                y = band_h + 10
+                draw_text_centered(
+                    draw, "Choose one:", y, Q_FONT_LABEL, TEXT_COLOR, width=cw
+                )
+                y += 34
+                sz = _SYMBOL_SIZE
+                gap = _SYMBOL_GAP
+                font = Q_FONT_LABEL
+                slash_bbox = draw.textbbox((0, 0), "/", font=font)
+                slash_w = slash_bbox[2] - slash_bbox[0]
+                bundle_icons = [_resource_icon_list(b.resources) for b in rc.bundles]
+                group_widths = [
+                    len(icons) * sz + max(0, len(icons) - 1) * gap
+                    for icons in bundle_icons
+                ]
+                slash_space = gap + slash_w + gap
+                avail_w = cw - 40
+                rows_list: list[list[int]] = []
+                current_row_i: list[int] = []
+                current_w = 0
+                for i, gw in enumerate(group_widths):
+                    needed = gw + (slash_space if current_row_i else 0)
+                    if current_row_i and current_w + needed > avail_w:
+                        rows_list.append(current_row_i)
+                        current_row_i = [i]
+                        current_w = gw
+                    else:
+                        current_row_i.append(i)
+                        current_w += needed
+                if current_row_i:
+                    rows_list.append(current_row_i)
+                for row_indices in rows_list:
+                    row_w = sum(group_widths[i] for i in row_indices)
+                    row_w += (len(row_indices) - 1) * slash_space
+                    start_x = (cw - row_w) // 2
+                    cy = y + sz // 2
+                    cur_x = start_x
+                    for j, gi in enumerate(row_indices):
+                        icons = bundle_icons[gi]
+                        for res_type in icons:
+                            cx = cur_x + sz // 2
+                            _draw_single_symbol(draw, res_type, cx, cy)
+                            cur_x += sz + gap
+                        cur_x -= gap
+                        if j < len(row_indices) - 1:
+                            cur_x += gap
+                            draw.text(
+                                (cur_x, cy - (slash_bbox[3] - slash_bbox[1]) // 2),
+                                "/",
+                                fill=TEXT_COLOR,
+                                font=font,
+                            )
+                            cur_x += slash_w + gap
+                    y += sz + gap
         elif reward:
             from shared.card_models import ResourceCost
 

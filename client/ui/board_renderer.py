@@ -22,12 +22,13 @@ _log = logging.getLogger(__name__)
 
 
 _SPACE_LAYOUT: dict[str, tuple[float, float]] = {
-    "merch_store": (0.08, 0.91),
-    "motown": (0.08, 0.78),
-    "guitar_center": (0.08, 0.65),
-    "talent_show": (0.08, 0.52),
-    "rhythm_pit": (0.08, 0.39),
-    "fastpass": (0.08, 0.26),
+    "merch_store": (0.08, 0.93),
+    "motown": (0.08, 0.82),
+    "guitar_center": (0.08, 0.71),
+    "talent_show": (0.08, 0.60),
+    "rhythm_pit": (0.08, 0.49),
+    "jam_session": (0.08, 0.38),
+    "fastpass": (0.08, 0.27),
     "sunset_records": (0.57, 0.92),
     "the_back_room": (0.71, 0.92),
     "the_garage": (0.85, 0.92),

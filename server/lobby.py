@@ -246,6 +246,7 @@ def _initialize_game(state, config) -> None:
             space_type=space_cfg.space_type,
             reward=space_cfg.reward,
             reward_special=space_cfg.reward_special,
+            reward_choice=space_cfg.reward_choice,
         )
 
     # Backstage slots

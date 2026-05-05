@@ -1221,6 +1221,19 @@ async def _resolve_copied_space_rewards(
         )
         return
 
+    # Resource choice reward on permanent spaces (e.g. The Jam Session)
+    if target_space.reward_choice:
+        state.pending_placement = pending
+        await _send_resource_choice_prompt(
+            server,
+            state,
+            player,
+            target_space.reward_choice,
+            "permanent",
+            target_space.name,
+        )
+        return
+
     # T017: draw_contract / draw_contract_and_complete — quest selection
     if (
         target_space.space_type == "building"
@@ -1735,6 +1748,19 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
         )
         if pending_owner_choice:
             state.pending_resource_choice["pending_owner_choice"] = pending_owner_choice
+        return
+
+    # Resource choice reward on permanent spaces (e.g. The Jam Session)
+    if space.reward_choice:
+        state.pending_placement = _pending
+        await _send_resource_choice_prompt(
+            server,
+            state,
+            player,
+            space.reward_choice,
+            "permanent",
+            space.name,
+        )
         return
 
     # Owner bonus choice (no visitor choice to resolve first)
@@ -3691,6 +3717,19 @@ async def handle_reassign_worker(
         )
         if pending_owner_choice:
             state.pending_resource_choice["pending_owner_choice"] = pending_owner_choice
+        return
+
+    # Resource choice reward on permanent spaces (e.g. The Jam Session)
+    if target.reward_choice:
+        state.pending_placement = _pending_reassign
+        await _send_resource_choice_prompt(
+            server,
+            state,
+            player,
+            target.reward_choice,
+            "permanent",
+            target.name,
+        )
         return
 
     # Owner bonus choice (no visitor choice to resolve first)

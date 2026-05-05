@@ -36,6 +36,21 @@
       "slots": 1
     },
     {
+      "space_id": "jam_session",
+      "name": "The Jam Session",
+      "space_type": "permanent",
+      "reward": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
+      "reward_choice": {
+        "choice_type": "bundle",
+        "bundles": [
+          {"label": "1 Drummer", "resources": {"drummers": 1}},
+          {"label": "1 Singer", "resources": {"singers": 1}},
+          {"label": "1 Guitarist + 1 Bassist", "resources": {"guitarists": 1, "bass_players": 1}}
+        ]
+      },
+      "slots": 1
+    },
+    {
       "space_id": "sunset_records",
       "name": "Sunset Records",
       "space_type": "garage",
