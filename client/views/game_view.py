@@ -8,6 +8,7 @@ import arcade
 import arcade.gui
 
 from client.ui.board_renderer import BoardRenderer
+from client.ui.info_dialog import InfoDialog
 from client.ui.dialogs import (
     CardSelectionDialog,
     CardSpriteSelectionDialog,
@@ -56,6 +57,10 @@ class GameView(arcade.View):
         self._turn_sound = arcade.load_sound(
             "client/assets/sounds/sound1.mp3",
         )
+        self._round_sound = arcade.load_sound(
+            "client/assets/sounds/sound2.mp3",
+        )
+        self._info_dialog = InfoDialog()
 
     def on_show_view(self) -> None:
         self.ui.enable()
@@ -196,6 +201,7 @@ class GameView(arcade.View):
 
     def on_update(self, delta_time: float) -> None:
         """Poll network and process messages."""
+        self._info_dialog.update(delta_time)
         network = self.window.network
         for msg in network.poll():
             self._handle_message(msg)
@@ -547,6 +553,10 @@ class GameView(arcade.View):
                 self.tabbed_panel.add_entry(f"  Effect: {effect_str}")
 
         next_pid = msg.get("next_player_id")
+        my_id = getattr(self.window, "player_id", None)
+        if next_pid is None and pid != my_id:
+            name = self._player_name(pid)
+            self._info_dialog.show(f"Waiting on {name}", duration=None)
         self._update_current_player(next_pid)
 
     def _on_intrigue_target_prompt(self, msg: dict) -> None:
@@ -678,19 +688,25 @@ class GameView(arcade.View):
                     )
                     break
 
+        name = self._player_name(pid)
+        tname = self._player_name(target_pid)
+        parts = []
+        for k, sym in RESOURCE_SYMBOLS:
+            v = affected.get(k, 0)
+            if v:
+                parts.append(f"{v}{sym}")
+        res_str = " ".join(parts)
+
         if self.tabbed_panel:
-            name = self._player_name(pid)
-            tname = self._player_name(target_pid)
-            parts = []
-            for k, sym in RESOURCE_SYMBOLS:
-                v = affected.get(k, 0)
-                if v:
-                    parts.append(f"{v}{sym}")
-            res_str = " ".join(parts)
             if effect_type == "steal_resources":
                 self.tabbed_panel.add_entry(f"{name} stole {res_str} from {tname}")
             else:
                 self.tabbed_panel.add_entry(f"{tname} lost {res_str}")
+
+        if effect_type == "steal_resources" and res_str:
+            self._info_dialog.show(
+                f"{name} stole {res_str} from {tname}", duration=1.5
+            )
 
     def _on_quest_card_selected(self, msg: dict) -> None:
         pid = msg.get("player_id", "")
@@ -1050,6 +1066,7 @@ class GameView(arcade.View):
             name = self._player_name(pid)
             title = msg.get("title", "choosing resources")
             self._status_text = f"Waiting on {name}: {title}"
+            self._info_dialog.show(f"Waiting on {name}", duration=None)
             if self.tabbed_panel:
                 self.tabbed_panel.add_entry(f"Waiting on {name}: {title}")
             return
@@ -1230,6 +1247,7 @@ class GameView(arcade.View):
         if player_id != my_id:
             name = self._player_name(player_id)
             self._status_text = f"Waiting on {name}: round-start resource choice"
+            self._info_dialog.show(f"Waiting on {name}", duration=None)
             return
 
         options = [
@@ -1692,6 +1710,7 @@ class GameView(arcade.View):
                 self.tabbed_panel.add_entry("Click a quest card to select it")
 
     def _on_round_end(self, msg: dict) -> None:
+        self._info_dialog.dismiss()
         next_round = msg.get("next_round", 0)
         bonus = msg.get("bonus_worker_granted", False)
         turn_order = msg.get("turn_order", [])
@@ -1746,6 +1765,9 @@ class GameView(arcade.View):
                 self._status_text = f"Round {next_round} — {name}'s turn"
         else:
             self._status_text = f"Round {next_round}"
+
+        self._info_dialog.show(f"ROUND {next_round}", duration=1.5)
+        arcade.play_sound(self._round_sound)
 
         if self.tabbed_panel:
             self.tabbed_panel.add_entry(f"--- Round {next_round} ---")
@@ -2276,6 +2298,8 @@ class GameView(arcade.View):
         ).draw()
 
         self._draw_player_list(ch, status_h, s)
+
+        self._info_dialog.draw(cw, ch, s)
 
         self.ui.draw()
 
@@ -2880,6 +2904,7 @@ class GameView(arcade.View):
     def _update_current_player(self, next_pid: str | None) -> None:
         if next_pid is None:
             return
+        self._info_dialog.dismiss()
         turn_order = self.game_state.get("turn_order", [])
         if next_pid in turn_order:
             idx = turn_order.index(next_pid)

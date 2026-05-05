@@ -29,10 +29,10 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T001 Create `InfoDialog` class in `client/ui/info_dialog.py` — implements show/dismiss/update/draw methods with queue support, `ShapeElementList` background overlay, cached `arcade.Text`, and delta-time auto-dismiss timer per plan.md design
-- [ ] T002 Add `InfoDialog` instance to `GameView.__init__` in `client/views/game_view.py` — create `self._info_dialog = InfoDialog()` and load `self._round_sound = arcade.load_sound("client/assets/sounds/sound2.mp3")`
-- [ ] T003 Wire `InfoDialog.update()` into `GameView.on_update()` in `client/views/game_view.py` — add `self._info_dialog.update(delta_time)` call
-- [ ] T004 Wire `InfoDialog.draw()` into `GameView.on_draw()` in `client/views/game_view.py` — add draw call after status bar rendering, before `self.ui.draw()` (between line ~2276 and line ~2280)
+- [X] T001 Create `InfoDialog` class in `client/ui/info_dialog.py` — implements show/dismiss/update/draw methods with queue support, `ShapeElementList` background overlay, cached `arcade.Text`, and delta-time auto-dismiss timer per plan.md design
+- [X] T002 Add `InfoDialog` instance to `GameView.__init__` in `client/views/game_view.py` — create `self._info_dialog = InfoDialog()` and load `self._round_sound = arcade.load_sound("client/assets/sounds/sound2.mp3")`
+- [X] T003 Wire `InfoDialog.update()` into `GameView.on_update()` in `client/views/game_view.py` — add `self._info_dialog.update(delta_time)` call
+- [X] T004 Wire `InfoDialog.draw()` into `GameView.on_draw()` in `client/views/game_view.py` — add draw call after status bar rendering, before `self.ui.draw()` (between line ~2276 and line ~2280)
 
 **Checkpoint**: InfoDialog component exists and is wired into the game loop. No dialogs are triggered yet, but the infrastructure is ready.
 
@@ -46,7 +46,7 @@
 
 ### Implementation for User Story 1
 
-- [ ] T005 [US1] Add round transition dialog trigger in `_on_round_end()` in `client/views/game_view.py` — after game state updates (line ~1748), call `self._info_dialog.show(f"ROUND {next_round}", duration=1.5)` and `arcade.play_sound(self._round_sound)`
+- [X] T005 [US1] Add round transition dialog trigger in `_on_round_end()` in `client/views/game_view.py` — after game state updates (line ~1748), call `self._info_dialog.show(f"ROUND {next_round}", duration=1.5)` and `arcade.play_sound(self._round_sound)`
 
 **Checkpoint**: Round transition dialog is fully functional — "ROUND N" appears centered, plays sound, and auto-dismisses after 1.5 seconds.
 
@@ -60,11 +60,11 @@
 
 ### Implementation for User Story 2
 
-- [ ] T006 [US2] Add waiting dialog trigger in `_on_resource_choice_prompt()` in `client/views/game_view.py` — in the `pid != my_id` branch (line ~1052), call `self._info_dialog.show(f"Waiting on {name}", duration=None)`
-- [ ] T007 [US2] Add waiting dialog trigger in `_on_round_start_resource_choice_prompt()` in `client/views/game_view.py` — in the `player_id != my_id` branch (line ~1232), call `self._info_dialog.show(f"Waiting on {name}", duration=None)`
-- [ ] T008 [US2] Add waiting dialog trigger in `_on_intrigue_target_prompt()` handler or the backstage handler in `client/views/game_view.py` — when intrigue target prompt is for another player, show "Waiting on [name]" persistent dialog
-- [ ] T009 [US2] Add waiting dialog dismiss in `_update_current_player()` in `client/views/game_view.py` — call `self._info_dialog.dismiss()` at the start of the method as a catch-all for all waiting state resolutions
-- [ ] T010 [US2] Add waiting dialog dismiss in `_on_round_end()` in `client/views/game_view.py` — call `self._info_dialog.dismiss()` at the start of the handler before showing the round transition dialog
+- [X] T006 [US2] Add waiting dialog trigger in `_on_resource_choice_prompt()` in `client/views/game_view.py` — in the `pid != my_id` branch (line ~1052), call `self._info_dialog.show(f"Waiting on {name}", duration=None)`
+- [X] T007 [US2] Add waiting dialog trigger in `_on_round_start_resource_choice_prompt()` in `client/views/game_view.py` — in the `player_id != my_id` branch (line ~1232), call `self._info_dialog.show(f"Waiting on {name}", duration=None)`
+- [X] T008 [US2] Add waiting dialog trigger in `_on_worker_placed_backstage()` handler or the backstage handler in `client/views/game_view.py` — when intrigue target prompt is for another player, show "Waiting on [name]" persistent dialog
+- [X] T009 [US2] Add waiting dialog dismiss in `_update_current_player()` in `client/views/game_view.py` — call `self._info_dialog.dismiss()` at the start of the method as a catch-all for all waiting state resolutions
+- [X] T010 [US2] Add waiting dialog dismiss in `_on_round_end()` in `client/views/game_view.py` — call `self._info_dialog.dismiss()` at the start of the handler before showing the round transition dialog
 
 **Checkpoint**: Waiting dialogs appear for all deferred player choices and dismiss when the waited-on player completes their action or the turn advances.
 
@@ -78,7 +78,7 @@
 
 ### Implementation for User Story 3
 
-- [ ] T011 [US3] Add steal notification dialog trigger in `_on_intrigue_effect_resolved()` in `client/views/game_view.py` — for `steal_resources` effect type, after updating resources (line ~694), call `self._info_dialog.show(f"{name} stole {res_str} from {tname}", duration=1.5)`
+- [X] T011 [US3] Add steal notification dialog trigger in `_on_intrigue_effect_resolved()` in `client/views/game_view.py` — for `steal_resources` effect type, after updating resources (line ~694), call `self._info_dialog.show(f"{name} stole {res_str} from {tname}", duration=1.5)`
 
 **Checkpoint**: Steal notifications appear as centered dialogs with auto-dismiss.
 
@@ -88,10 +88,10 @@
 
 **Purpose**: Verification and validation across all flows.
 
-- [ ] T012 Run linter (`ruff check .`) and fix any issues
-- [ ] T013 Verify round transition dialog — confirm "ROUND N" appears centered, plays sound, and auto-dismisses after 1.5 seconds
-- [ ] T014 Verify waiting dialog — confirm persistent dialogs appear for owner bonus, intrigue target, and round-start resource choices, and dismiss when action resolves
-- [ ] T015 Verify dialog queue — confirm that if a round ends and a steal notification is queued simultaneously, both display sequentially without lost messages
+- [X] T012 Run linter (`ruff check .`) and fix any issues
+- [X] T013 Verify round transition dialog — confirm "ROUND N" appears centered, plays sound, and auto-dismisses after 1.5 seconds
+- [X] T014 Verify waiting dialog — confirm persistent dialogs appear for owner bonus, intrigue target, and round-start resource choices, and dismiss when action resolves
+- [X] T015 Verify dialog queue — confirm that if a round ends and a steal notification is queued simultaneously, both display sequentially without lost messages
 
 ---
 
