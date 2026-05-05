@@ -1669,9 +1669,7 @@ def generate_space_cards() -> int:
                 font = Q_FONT_LABEL
                 slash_bbox = draw.textbbox((0, 0), "/", font=font)
                 slash_w = slash_bbox[2] - slash_bbox[0]
-                bundle_icons = [
-                    _resource_icon_list(b.resources) for b in rc.bundles
-                ]
+                bundle_icons = [_resource_icon_list(b.resources) for b in rc.bundles]
                 group_widths = [
                     len(icons) * sz + max(0, len(icons) - 1) * gap
                     for icons in bundle_icons
