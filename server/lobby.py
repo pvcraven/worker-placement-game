@@ -22,6 +22,7 @@ from shared.constants import (
     STARTING_COINS_BASE,
     STARTING_COINS_INCREMENT,
     STARTING_INTRIGUE_CARDS,
+    STARTING_QUEST_CARDS,
     STARTING_WORKERS,
     GamePhase,
 )
@@ -280,6 +281,9 @@ def _initialize_game(state, config) -> None:
         for _ in range(STARTING_INTRIGUE_CARDS):
             if board.intrigue_deck:
                 player.intrigue_hand.append(board.intrigue_deck.pop())
+        for _ in range(STARTING_QUEST_CARDS):
+            if board.quest_deck:
+                player.contract_hand.append(board.quest_deck.pop())
         player.resources.coins = STARTING_COINS_BASE + (i * STARTING_COINS_INCREMENT)
 
     # First player is slot 0 by default
