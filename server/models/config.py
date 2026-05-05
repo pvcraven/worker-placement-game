@@ -9,6 +9,7 @@ from shared.card_models import (
     ContractCard,
     IntrigueCard,
     ProducerCard,
+    ResourceChoiceReward,
     ResourceCost,
 )
 
@@ -83,6 +84,7 @@ class ActionSpaceConfig(BaseModel):
     space_type: str
     reward: ResourceCost = Field(default_factory=ResourceCost)
     reward_special: str | None = None
+    reward_choice: ResourceChoiceReward | None = None
     slots: int = 1
 
 
