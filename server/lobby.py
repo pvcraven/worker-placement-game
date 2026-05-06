@@ -315,7 +315,6 @@ def _filter_state_for_player(state, player_id: str) -> dict:
         if p_data["player_id"] != player_id:
             # Hide opponent's hand contents, show counts
             p_data["contract_hand_count"] = len(p_data["contract_hand"])
-            p_data["contract_hand"] = []
             p_data["intrigue_hand_count"] = len(p_data["intrigue_hand"])
             p_data["intrigue_hand"] = []
             p_data["producer_card"] = None
