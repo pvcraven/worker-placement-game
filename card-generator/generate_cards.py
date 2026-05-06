@@ -430,6 +430,15 @@ def _draw_special_icon(
     cy = y + icon_h // 2
     if special == "draw_intrigue":
         _draw_intrigue_card_icon(draw, card_width // 2, cy)
+    elif special == "draw_intrigue_2":
+        icon_gap = 16
+        total_w = _CARD_ICON_W * 2 + icon_gap
+        _draw_intrigue_card_icon(
+            draw, card_width // 2 - total_w // 2 + _CARD_ICON_W // 2, cy
+        )
+        _draw_intrigue_card_icon(
+            draw, card_width // 2 + total_w // 2 - _CARD_ICON_W // 2, cy
+        )
     elif special == "draw_contract":
         _draw_quest_card_icon(draw, card_width // 2, cy)
     elif special == "draw_contract_and_complete":
@@ -1621,6 +1630,16 @@ def generate_space_cards() -> int:
             total_w = _CARD_ICON_W * 2 + icon_gap
             icon_cy = light_mid
             _draw_quest_card_icon(
+                draw, cw // 2 - total_w // 2 + _CARD_ICON_W // 2, icon_cy
+            )
+            _draw_intrigue_card_icon(
+                draw, cw // 2 + total_w // 2 - _CARD_ICON_W // 2, icon_cy
+            )
+        elif reward_special == "draw_intrigue_2":
+            icon_gap = 16
+            total_w = _CARD_ICON_W * 2 + icon_gap
+            icon_cy = light_mid
+            _draw_intrigue_card_icon(
                 draw, cw // 2 - total_w // 2 + _CARD_ICON_W // 2, icon_cy
             )
             _draw_intrigue_card_icon(
