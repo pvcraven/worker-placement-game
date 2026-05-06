@@ -390,8 +390,7 @@ class GameView(arcade.View):
             for p in self.game_state.get("players", []):
                 if p.get("player_id") == pid:
                     p["intrigue_hand_count"] = (
-                        p.get("intrigue_hand_count", 0)
-                        + reward["intrigue_cards_drawn"]
+                        p.get("intrigue_hand_count", 0) + reward["intrigue_cards_drawn"]
                     )
                     break
             if self.tabbed_panel:
@@ -923,8 +922,7 @@ class GameView(arcade.View):
 
             if spent_str:
                 self.tabbed_panel.add_entry(
-                    f"{name} completed '{cname}'"
-                    f" (spent {spent_str} → {reward_str})"
+                    f"{name} completed '{cname}'" f" (spent {spent_str} → {reward_str})"
                 )
             else:
                 self.tabbed_panel.add_entry(
@@ -1634,8 +1632,7 @@ class GameView(arcade.View):
             for p in self.game_state.get("players", []):
                 if p.get("player_id") == pid:
                     p["intrigue_hand_count"] = (
-                        p.get("intrigue_hand_count", 0)
-                        + reward["intrigue_cards_drawn"]
+                        p.get("intrigue_hand_count", 0) + reward["intrigue_cards_drawn"]
                     )
                     break
             if self.tabbed_panel:
