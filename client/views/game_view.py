@@ -566,7 +566,7 @@ class GameView(arcade.View):
 
         next_pid = msg.get("next_player_id")
         my_id = getattr(self.window, "player_id", None)
-        if next_pid is None and pid != my_id:
+        if next_pid is None and pid != my_id and self._is_my_turn():
             name = self._player_name(pid)
             self._info_dialog.show(f"Waiting on {name}", duration=None)
         self._update_current_player(next_pid)
@@ -893,29 +893,43 @@ class GameView(arcade.View):
 
         if self.tabbed_panel:
             name = self._player_name(pid)
+            spent_parts = []
+            for k, sym in RESOURCE_SYMBOLS:
+                v = spent.get(k, 0)
+                if v:
+                    spent_parts.append(f"{v}{sym}")
+            spent_str = " ".join(spent_parts) if spent_parts else ""
+
             total_bonus = plot_bonus + showcase_bonus
             vp_str = f"{vp} VP" if not total_bonus else f"{vp}+{total_bonus} VP"
-            parts = [vp_str]
+            reward_parts = [vp_str]
             for k, sym in RESOURCE_SYMBOLS:
                 v = bonus.get(k, 0)
                 if v:
-                    parts.append(f"+{v}{sym}")
+                    reward_parts.append(f"+{v}{sym}")
             if drawn_intr:
-                parts.append(f"drew {len(drawn_intr)} intrigue")
+                reward_parts.append(f"drew {len(drawn_intr)} intrigue")
             if drawn_q:
-                parts.append(f"drew {len(drawn_q)} quest(s)")
+                reward_parts.append(f"drew {len(drawn_q)} quest(s)")
             if building:
                 bname = building.get("building_name", "?")
-                parts.append(f"building: {bname}")
+                reward_parts.append(f"building: {bname}")
             if extra_workers:
-                parts.append(f"+{extra_workers} worker(s)")
+                reward_parts.append(f"+{extra_workers} worker(s)")
             if opp_coins:
                 oname = opp_coins.get("player_name", "?")
-                parts.append(f"{oname} got {opp_coins.get('coins', 0)} coins")
-            reward_str = ", ".join(parts)
-            self.tabbed_panel.add_entry(
-                f"{name} completed '{cname}'" f" ({reward_str})"
-            )
+                reward_parts.append(f"{oname} got {opp_coins.get('coins', 0)} coins")
+            reward_str = ", ".join(reward_parts)
+
+            if spent_str:
+                self.tabbed_panel.add_entry(
+                    f"{name} completed '{cname}'"
+                    f" (spent {spent_str} → {reward_str})"
+                )
+            else:
+                self.tabbed_panel.add_entry(
+                    f"{name} completed '{cname}' ({reward_str})"
+                )
 
         next_pid = msg.get("next_player_id")
         if next_pid:
@@ -1076,7 +1090,8 @@ class GameView(arcade.View):
             name = self._player_name(pid)
             title = msg.get("title", "choosing resources")
             self._status_text = f"Waiting on {name}: {title}"
-            self._info_dialog.show(f"Waiting on {name}", duration=None)
+            if self._is_my_turn():
+                self._info_dialog.show(f"Waiting on {name}", duration=None)
             if self.tabbed_panel:
                 self.tabbed_panel.add_entry(f"Waiting on {name}: {title}")
             return
@@ -1258,7 +1273,8 @@ class GameView(arcade.View):
         if player_id != my_id:
             name = self._player_name(player_id)
             self._status_text = f"Waiting on {name}: round-start resource choice"
-            self._info_dialog.show(f"Waiting on {name}", duration=None)
+            if self._is_my_turn():
+                self._info_dialog.show(f"Waiting on {name}", duration=None)
             return
 
         options = [
@@ -2923,6 +2939,14 @@ class GameView(arcade.View):
                 if s.get("occupied_by") == my_id:
                     arcade.play_sound(self._turn_sound)
                 return
+
+    def _is_my_turn(self) -> bool:
+        my_id = getattr(self.window, "player_id", None)
+        turn_order = self.game_state.get("turn_order", [])
+        idx = self.game_state.get("current_player_index", 0)
+        if turn_order and idx < len(turn_order):
+            return turn_order[idx] == my_id
+        return False
 
     def _update_current_player(self, next_pid: str | None) -> None:
         if next_pid is None:
