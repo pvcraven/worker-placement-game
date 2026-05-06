@@ -1150,7 +1150,7 @@ class GameView(arcade.View):
             parts = []
             for k, v in chosen.items():
                 if v > 0:
-                    parts.append(f"{v} {k}")
+                    parts.append(f"{v} {k.replace('_', ' ')}")
             res_str = ", ".join(parts) if parts else "none"
             verb = "turned in" if is_spend else "gained"
             self.tabbed_panel.add_entry(f"{name} {verb} {res_str} from {source}")
