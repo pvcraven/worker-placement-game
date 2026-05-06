@@ -50,7 +50,8 @@ class GameLogPanel:
         return t
 
     def add_entry(self, text: str) -> None:
-        self.entries.append(text)
+        for line in text.split("\n"):
+            self.entries.append(line)
         if len(self.entries) > _MAX_ENTRIES:
             self.entries = self.entries[-_MAX_ENTRIES:]
         if self._auto_scroll:

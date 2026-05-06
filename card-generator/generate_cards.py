@@ -1904,6 +1904,26 @@ def generate_card_icon_pngs() -> int:
     return count
 
 
+def generate_star_icon() -> int:
+    import math
+
+    OUTPUT_ICONS.mkdir(parents=True, exist_ok=True)
+    sz = 48
+    img = Image.new("RGBA", (sz, sz), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    cx, cy = sz // 2, sz // 2
+    r_outer = sz // 2 - 2
+    r_inner = int(r_outer * 0.38)
+    points = []
+    for i in range(10):
+        angle = math.radians(90 + i * 36)
+        r = r_outer if i % 2 == 0 else r_inner
+        points.append((cx + r * math.cos(angle), cy - r * math.sin(angle)))
+    draw.polygon(points, fill=(255, 215, 0), outline=(180, 140, 0), width=2)
+    img.save(OUTPUT_ICONS / "genre_match_star.png")
+    return 1
+
+
 def generate_all() -> int:
     q = generate_quest_cards()
     b = generate_building_cards()
@@ -1913,7 +1933,8 @@ def generate_all() -> int:
     m = generate_worker_markers()
     ri = generate_resource_icons()
     ci = generate_card_icon_pngs()
-    return q + b + i + p + s + m + ri + ci
+    st = generate_star_icon()
+    return q + b + i + p + s + m + ri + ci + st
 
 
 def ensure_card_images() -> None:
@@ -1930,7 +1951,8 @@ def main() -> None:
     if "--icons-only" in sys.argv:
         ri = generate_resource_icons()
         ci = generate_card_icon_pngs()
-        total = ri + ci
+        st = generate_star_icon()
+        total = ri + ci + st
         print(f"Done. {total} icon images generated.")
     elif "--spaces-only" in sys.argv:
         total = generate_space_cards()

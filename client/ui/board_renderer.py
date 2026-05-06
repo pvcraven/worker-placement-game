@@ -102,6 +102,8 @@ class BoardRenderer:
         self._worker_sprites: dict[str, arcade.Sprite] = {}
         self._worker_textures: dict[str, arcade.Texture] = {}
         self._workers_dirty = True
+        self._star_overlay_list: arcade.SpriteList | None = None
+        self._star_overlay_key: tuple = ()
 
     def update_board(
         self,
@@ -119,6 +121,7 @@ class BoardRenderer:
         self._shapes_dirty = True
         self._building_owner_dirty = True
         self._workers_dirty = True
+        self._star_overlay_list = None
 
     def update_building_market(
         self,
@@ -138,6 +141,7 @@ class BoardRenderer:
         h: float,
         highlighted_ids: list[str] | None = None,
         scale: float = 1.0,
+        bonus_genres: list[str] | None = None,
     ) -> None:
         """Draw the board in the given rectangle."""
         s = max(0.3, min(scale, 2.0))
@@ -154,6 +158,7 @@ class BoardRenderer:
             self._building_vp_dirty = True
             self._building_owner_dirty = True
             self._workers_dirty = True
+            self._star_overlay_list = None
 
         card_w = CARD_WIDTH * s
         card_h = CARD_HEIGHT * s
@@ -188,6 +193,37 @@ class BoardRenderer:
                         arcade.color.YELLOW,
                         border_width=2,
                     )
+
+        # Star overlay for genre-matching face-up quests
+        star_png = Path("client/assets/card_images/icons/genre_match_star.png")
+        if bonus_genres and face_up_quests and self._quest_positions and star_png.exists():
+            star_key = (
+                tuple(q.get("id", "") for q in face_up_quests),
+                tuple(bonus_genres),
+            )
+            if self._star_overlay_list is None or self._star_overlay_key != star_key:
+                self._star_overlay_key = star_key
+                self._star_overlay_list = arcade.SpriteList()
+                star_size = card_w * 0.15
+                for i, quest in enumerate(face_up_quests):
+                    if i >= len(self._quest_positions):
+                        break
+                    genre = quest.get("genre", "")
+                    if genre not in bonus_genres:
+                        continue
+                    star = arcade.Sprite(str(star_png))
+                    star.scale = star_size / star.texture.width
+                    qx, qy = self._quest_positions[i]
+                    star.position = (
+                        qx - card_w / 2 + star_size / 2 + 2 * s,
+                        qy + card_h / 2 - star_size / 2 + 1 * s,
+                    )
+                    self._star_overlay_list.append(star)
+            if self._star_overlay_list:
+                self._star_overlay_list.draw()
+        else:
+            self._star_overlay_list = None
+            self._star_overlay_key = ()
 
         # Realtor space
         if self._realtor_sprite_list:

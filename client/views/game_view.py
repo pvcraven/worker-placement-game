@@ -347,8 +347,6 @@ class GameView(arcade.View):
                 "quest_selection",
                 quest_ids,
             )
-            if self.tabbed_panel:
-                self.tabbed_panel.add_entry("Click a quest card to select it")
             return
 
         # Building with draw_contract: player picks a face-up quest
@@ -365,8 +363,6 @@ class GameView(arcade.View):
                 "quest_selection",
                 quest_ids,
             )
-            if self.tabbed_panel:
-                self.tabbed_panel.add_entry("Click a quest card to select it")
             return
 
         if (
@@ -384,14 +380,25 @@ class GameView(arcade.View):
         if self.tabbed_panel:
             name = self._player_name(pid)
             space_name = space_data.get("name", space_id)
-            self.tabbed_panel.add_entry(f"{name} placed worker on {space_name}")
+            reward_str = self._resource_str(reward)
+            if reward_str:
+                self.tabbed_panel.add_entry(
+                    f"{name} placed worker on {space_name} (+{reward_str})"
+                )
+            else:
+                self.tabbed_panel.add_entry(f"{name} placed worker on {space_name}")
 
         if reward.get("intrigue_cards_drawn"):
+            my_id = getattr(self.window, "player_id", None)
             for p in self.game_state.get("players", []):
                 if p.get("player_id") == pid:
                     p["intrigue_hand_count"] = (
                         p.get("intrigue_hand_count", 0) + reward["intrigue_cards_drawn"]
                     )
+                    if pid == my_id and reward.get("drawn_intrigue_card"):
+                        p.setdefault("intrigue_hand", []).append(
+                            reward["drawn_intrigue_card"]
+                        )
                     break
             if self.tabbed_panel:
                 name = self._player_name(pid)
@@ -922,7 +929,7 @@ class GameView(arcade.View):
 
             if spent_str:
                 self.tabbed_panel.add_entry(
-                    f"{name} completed '{cname}'" f" (spent {spent_str} → {reward_str})"
+                    f"{name} completed '{cname}'\n  (spent {spent_str} → {reward_str})"
                 )
             else:
                 self.tabbed_panel.add_entry(
@@ -1629,11 +1636,16 @@ class GameView(arcade.View):
             )
 
         if reward.get("intrigue_cards_drawn"):
+            my_id = getattr(self.window, "player_id", None)
             for p in self.game_state.get("players", []):
                 if p.get("player_id") == pid:
                     p["intrigue_hand_count"] = (
                         p.get("intrigue_hand_count", 0) + reward["intrigue_cards_drawn"]
                     )
+                    if pid == my_id and reward.get("drawn_intrigue_card"):
+                        p.setdefault("intrigue_hand", []).append(
+                            reward["drawn_intrigue_card"]
+                        )
                     break
             if self.tabbed_panel:
                 name = self._player_name(pid)
@@ -1723,8 +1735,6 @@ class GameView(arcade.View):
                 "quest_selection",
                 quest_ids,
             )
-            if self.tabbed_panel:
-                self.tabbed_panel.add_entry("Click a quest card to select it")
             return
 
         # Building with draw_contract during reassignment
@@ -1742,8 +1752,6 @@ class GameView(arcade.View):
                 "quest_selection",
                 quest_ids,
             )
-            if self.tabbed_panel:
-                self.tabbed_panel.add_entry("Click a quest card to select it")
 
     def _on_round_end(self, msg: dict) -> None:
         self._info_dialog.dismiss()
@@ -1842,6 +1850,10 @@ class GameView(arcade.View):
         if log_x <= x <= log_x + log_w and log_y <= y <= log_y + log_h:
             if self.tabbed_panel.active_tab == "game_log":
                 self.tabbed_panel.scroll(-int(scroll_y))
+            elif self.tabbed_panel.active_tab in (
+                "my_quests", "my_intrigue", "completed_quests",
+            ):
+                self.tabbed_panel.scroll_cards(-int(scroll_y))
 
     def on_mouse_press(
         self,
@@ -2240,6 +2252,12 @@ class GameView(arcade.View):
             self._btn_anchor._children[0].data["align_y"] = bar_h + 5
 
         if self.board_renderer:
+            my_bonus_genres: list[str] = []
+            my_p = self._get_my_player()
+            if my_p:
+                pc = my_p.get("producer_card")
+                if pc:
+                    my_bonus_genres = pc.get("bonus_genres", [])
             self.board_renderer.draw(
                 0,
                 bar_h,
@@ -2247,6 +2265,7 @@ class GameView(arcade.View):
                 board_h,
                 highlighted_ids=self._highlighted_ids,
                 scale=s,
+                bonus_genres=my_bonus_genres,
             )
 
         if self.resource_bar:
@@ -2289,6 +2308,7 @@ class GameView(arcade.View):
                 board_h,
                 player_data=self._get_my_player(),
                 scale=s,
+                game_state=self.game_state,
             )
 
         if self._show_player_overview:

@@ -1071,6 +1071,8 @@ async def _resolve_copied_space_rewards(
         if state.board.intrigue_deck:
             card = state.board.intrigue_deck.pop(0)
             player.intrigue_hand.append(card)
+            reward_dict["intrigue_cards_drawn"] = 1
+            reward_dict["drawn_intrigue_card"] = card.model_dump()
 
     # Update pending before potential early returns
     pending["copied_from_space_id"] = target_space.space_id
@@ -1524,6 +1526,7 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
             card = state.board.intrigue_deck.pop(0)
             player.intrigue_hand.append(card)
             reward_dict["intrigue_cards_drawn"] = 1
+            reward_dict["drawn_intrigue_card"] = card.model_dump()
 
     # Building visitor_reward_special: draw_contract, draw_intrigue, coins_per_building
     if (
@@ -3572,6 +3575,7 @@ async def handle_reassign_worker(
             card = state.board.intrigue_deck.pop(0)
             player.intrigue_hand.append(card)
             reward_dict["intrigue_cards_drawn"] = 1
+            reward_dict["drawn_intrigue_card"] = card.model_dump()
 
     state.reassignment_queue.pop(0)
 
