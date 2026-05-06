@@ -85,7 +85,7 @@ class CardSelectionDialog:
             self._widget = None
 
 
-_CARD_SPACING = 205
+_CARD_SPACING = 215
 
 
 class CardSpriteSelectionDialog:

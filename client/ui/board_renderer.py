@@ -451,7 +451,7 @@ class BoardRenderer:
         if face_up_quests:
             total_w = len(face_up_quests) * q_spacing
             q_start_x = garage_cx - total_w / 2 + card_w / 2
-            self._quest_card_y = y + 0.68 * h
+            self._quest_card_y = y + 0.72 * h
             self._quest_positions = [
                 (q_start_x + i * q_spacing, self._quest_card_y)
                 for i in range(len(face_up_quests))
