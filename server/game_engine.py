@@ -1516,16 +1516,14 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
 
     # Handle special spaces
     if space.space_type == "castle":
-        # Castle Waterdeep: first-player marker + 1 intrigue card
-        # Transfer first-player marker
         for p in state.players:
             p.has_first_player_marker = False
         player.has_first_player_marker = True
         state.board.first_player_id = player.player_id
-        # Draw intrigue card
         if state.board.intrigue_deck:
             card = state.board.intrigue_deck.pop(0)
             player.intrigue_hand.append(card)
+            reward_dict["intrigue_cards_drawn"] = 1
 
     # Building visitor_reward_special: draw_contract, draw_intrigue, coins_per_building
     if (
@@ -3565,7 +3563,6 @@ async def handle_reassign_worker(
             )
         )
 
-    # Handle Castle Waterdeep special
     if target.space_type == "castle":
         for p in state.players:
             p.has_first_player_marker = False
@@ -3574,6 +3571,7 @@ async def handle_reassign_worker(
         if state.board.intrigue_deck:
             card = state.board.intrigue_deck.pop(0)
             player.intrigue_hand.append(card)
+            reward_dict["intrigue_cards_drawn"] = 1
 
     state.reassignment_queue.pop(0)
 

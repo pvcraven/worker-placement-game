@@ -386,6 +386,18 @@ class GameView(arcade.View):
             space_name = space_data.get("name", space_id)
             self.tabbed_panel.add_entry(f"{name} placed worker on {space_name}")
 
+        if reward.get("intrigue_cards_drawn"):
+            for p in self.game_state.get("players", []):
+                if p.get("player_id") == pid:
+                    p["intrigue_hand_count"] = (
+                        p.get("intrigue_hand_count", 0)
+                        + reward["intrigue_cards_drawn"]
+                    )
+                    break
+            if self.tabbed_panel:
+                name = self._player_name(pid)
+                self.tabbed_panel.add_entry(f"{name} drew 1 intrigue card")
+
         # Owner bonus notification
         owner_bonus = msg.get("owner_bonus", {})
         if owner_bonus:
@@ -1601,6 +1613,18 @@ class GameView(arcade.View):
             self.tabbed_panel.add_entry(
                 f"{name} reassigned from Backstage" f" {from_slot} to {space_name}"
             )
+
+        if reward.get("intrigue_cards_drawn"):
+            for p in self.game_state.get("players", []):
+                if p.get("player_id") == pid:
+                    p["intrigue_hand_count"] = (
+                        p.get("intrigue_hand_count", 0)
+                        + reward["intrigue_cards_drawn"]
+                    )
+                    break
+            if self.tabbed_panel:
+                name = self._player_name(pid)
+                self.tabbed_panel.add_entry(f"{name} drew 1 intrigue card")
 
         # Owner bonus notification
         owner_bonus = msg.get("owner_bonus", {})
