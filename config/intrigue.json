@@ -447,6 +447,118 @@
       "effect_type": "copy_occupied_space",
       "effect_target": "self",
       "effect_value": {"cost_coins": 2}
+    },
+    {
+      "id": "intrigue_055",
+      "name": "Mom's Surprise Visit",
+      "description": "Your mom showed up at the studio unannounced. Everyone is on their best behavior. Nothing gets done.",
+      "effect_type": "no_effect",
+      "effect_target": "self",
+      "effect_value": {}
+    },
+    {
+      "id": "intrigue_056",
+      "name": "Fire Drill",
+      "description": "The building's fire alarm goes off during a recording session. Everyone stands in the parking lot for 20 minutes. Nothing happens.",
+      "effect_type": "no_effect",
+      "effect_target": "self",
+      "effect_value": {}
+    },
+    {
+      "id": "intrigue_057",
+      "name": "Wrong Studio",
+      "description": "You walk into the wrong recording studio and sit through an entire meeting before realizing your mistake. A complete waste of time.",
+      "effect_type": "no_effect",
+      "effect_target": "self",
+      "effect_value": {}
+    },
+    {
+      "id": "intrigue_058",
+      "name": "Power Nap",
+      "description": "You dozed off on the studio couch and dreamed you were productive. You weren't.",
+      "effect_type": "no_effect",
+      "effect_target": "self",
+      "effect_value": {}
+    },
+    {
+      "id": "intrigue_059",
+      "name": "Water Cooler Gossip",
+      "description": "Hang around the studio water cooler and pick up a juicy piece of industry intel.",
+      "effect_type": "draw_intrigue",
+      "effect_target": "self",
+      "effect_value": {"count": 1}
+    },
+    {
+      "id": "intrigue_060",
+      "name": "Overheard Phone Call",
+      "description": "You accidentally overhear a phone conversation in the next booth. Interesting...",
+      "effect_type": "draw_intrigue",
+      "effect_target": "self",
+      "effect_value": {"count": 1}
+    },
+    {
+      "id": "intrigue_061",
+      "name": "Coffee Run Tip-Off",
+      "description": "The barista at the corner cafe slips you a note with a hot tip.",
+      "effect_type": "draw_intrigue",
+      "effect_target": "self",
+      "effect_value": {"count": 1}
+    },
+    {
+      "id": "intrigue_062",
+      "name": "Parking Lot Encounter",
+      "description": "You bump into an old contact in the parking lot who shares some inside info.",
+      "effect_type": "draw_intrigue",
+      "effect_target": "self",
+      "effect_value": {"count": 1}
+    },
+    {
+      "id": "intrigue_063",
+      "name": "New Wave Movement",
+      "description": "A fresh wave of musical talent shakes up the industry. All the old contracts are out — new opportunities are in.",
+      "effect_type": "reset_quests",
+      "effect_target": "self",
+      "effect_value": {}
+    },
+    {
+      "id": "intrigue_064",
+      "name": "Genre Revolution",
+      "description": "An underground movement explodes into the mainstream, reshuffling every deal on the table.",
+      "effect_type": "reset_quests",
+      "effect_target": "self",
+      "effect_value": {}
+    },
+    {
+      "id": "intrigue_065",
+      "name": "Zoning Shakeup",
+      "description": "City hall announces a major rezoning. The old properties are swept off the market and new ones take their place.",
+      "effect_type": "reset_buildings",
+      "effect_target": "self",
+      "effect_value": {}
+    },
+    {
+      "id": "intrigue_066",
+      "name": "Real Estate Crash",
+      "description": "A sudden market downturn clears the board. Developers scramble to offer fresh properties.",
+      "effect_type": "reset_buildings",
+      "effect_target": "self",
+      "effect_value": {}
+    },
+    {
+      "id": "intrigue_067",
+      "name": "Early Bird Special",
+      "description": "You set your alarm for 4 AM and beat everyone to the studio. First come, first served.",
+      "effect_type": "first_player_marker",
+      "effect_target": "self",
+      "effect_value": {}
+    },
+    {
+      "id": "intrigue_068",
+      "name": "Red-Eye Flight",
+      "description": "You took the overnight flight to get here before anyone else. Exhausted but first in line.",
+      "effect_type": "first_player_marker",
+      "effect_target": "self",
+      "effect_value": {}
     }
   ]
 }

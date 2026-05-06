@@ -1177,6 +1177,14 @@ def _intrigue_effect_summary(effect_type: str, effect_value: dict) -> str:
             if v:
                 parts.append(f"{v}{sym}")
         return f"Opponent loses {' '.join(parts)}"
+    if effect_type == "no_effect":
+        return "No Effect"
+    if effect_type == "reset_quests":
+        return "Refresh Quests"
+    if effect_type == "reset_buildings":
+        return "Refresh Buildings"
+    if effect_type == "first_player_marker":
+        return "Go First"
     return ""
 
 
@@ -1304,6 +1312,33 @@ def _draw_intrigue_effect_icons(
             )
             y += 40
         return y
+
+    if effect_type == "no_effect":
+        draw_text_centered(
+            draw, "No Effect", y, I_FONT_LABEL, (160, 160, 160), width=card_width
+        )
+        return y + 40
+
+    if effect_type == "reset_quests":
+        icon_h = _CARD_ICON_H
+        cy = y + icon_h // 2
+        _draw_quest_card_icon(draw, card_width // 2, cy)
+        draw_text_centered(
+            draw, "Refresh", y + icon_h + 4, I_FONT_BODY_SMALL, (120, 80, 0), width=card_width
+        )
+        return y + icon_h + 36
+
+    if effect_type == "reset_buildings":
+        draw_text_centered(
+            draw, "Refresh Buildings", y, I_FONT_LABEL, (120, 80, 0), width=card_width
+        )
+        return y + 40
+
+    if effect_type == "first_player_marker":
+        draw_text_centered(
+            draw, "Go First", y, I_FONT_LABEL, (180, 140, 0), width=card_width
+        )
+        return y + 40
 
     effect = _intrigue_effect_summary(effect_type, effect_value)
     if effect:

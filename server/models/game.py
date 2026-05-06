@@ -126,6 +126,7 @@ class BoardState(BaseModel):
     intrigue_deck: list[IntrigueCard] = Field(default_factory=list)
     building_deck: list[BuildingTile] = Field(default_factory=list)
     face_up_buildings: list[BuildingTile] = Field(default_factory=list)
+    building_discard: list[BuildingTile] = Field(default_factory=list)
     first_player_id: str | None = None
 
 

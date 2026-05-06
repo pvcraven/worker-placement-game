@@ -11,7 +11,7 @@ import random
 
 from shared.card_models import ContractCard, ResourceCost
 from shared.constants import BONUS_WORKER_ROUND, GamePhase
-from shared.constants import FACE_UP_QUEST_COUNT
+from shared.constants import FACE_UP_BUILDING_COUNT, FACE_UP_QUEST_COUNT
 from shared.messages import (
     BonusWorkersGrantedResponse,
     BuildingMarketUpdateResponse,
@@ -73,11 +73,28 @@ def _validate_turn(server, conn, state):
 def _draw_from_quest_deck(state) -> ContractCard | None:
     """Draw a card from the quest deck, reshuffling discard if needed."""
     if not state.board.quest_deck and state.board.quest_discard:
-        state.board.quest_deck = list(state.board.quest_discard)
+        completed_ids: set[str] = set()
+        for p in state.players:
+            for c in p.completed_contracts:
+                completed_ids.add(c.id)
+        state.board.quest_deck = [
+            c for c in state.board.quest_discard if c.id not in completed_ids
+        ]
         state.board.quest_discard.clear()
         random.shuffle(state.board.quest_deck)
     if state.board.quest_deck:
         return state.board.quest_deck.pop(0)
+    return None
+
+
+def _draw_from_building_deck(state):
+    """Draw a card from the building deck, reshuffling discard if needed."""
+    if not state.board.building_deck and state.board.building_discard:
+        state.board.building_deck = list(state.board.building_discard)
+        state.board.building_discard.clear()
+        random.shuffle(state.board.building_deck)
+    if state.board.building_deck:
+        return state.board.building_deck.pop(0)
     return None
 
 
@@ -181,9 +198,9 @@ def _extract_intrigue_reward(effect_details: dict) -> ResourceCost | None:
 
 
 def _grant_random_building(state, player) -> dict | None:
-    if not state.board.building_deck:
+    tile = _draw_from_building_deck(state)
+    if tile is None:
         return None
-    tile = state.board.building_deck.pop(0)
     return _assign_building_to_player(state, player, tile)
 
 
@@ -208,8 +225,8 @@ def _assign_building_to_player(
     state.board.constructed_buildings.append(space_id)
     if tile in state.board.face_up_buildings:
         state.board.face_up_buildings.remove(tile)
-        if state.board.building_deck:
-            new_b = state.board.building_deck.pop(0)
+        new_b = _draw_from_building_deck(state)
+        if new_b:
             state.board.face_up_buildings.append(new_b)
     player.victory_points += tile.accumulated_vp
     return {
@@ -2277,6 +2294,20 @@ async def handle_place_worker_backstage(
         ),
     )
 
+    if effect_details.get("type") == "reset_quests":
+        await server.broadcast_to_game(
+            state.game_code,
+            FaceUpQuestsUpdatedResponse(
+                action="face_up_quests_updated",
+                face_up_quests=[
+                    q.model_dump() for q in state.board.face_up_quests
+                ],
+            ),
+        )
+
+    if effect_details.get("type") == "reset_buildings":
+        await _broadcast_building_market(server, state)
+
     if effect_details.get("pending_resource_choice"):
         choice = card.choice_reward
         if card.effect_type == "resource_choice_multi":
@@ -2464,6 +2495,37 @@ def _resolve_intrigue_effect(state, player, card) -> dict:
                 effect["pending"] = True
                 effect["cost_deducted"] = cost_coins
                 effect["eligible_spaces"] = eligible
+
+    elif card.effect_type == "no_effect":
+        effect["details"] = "No effect"
+
+    elif card.effect_type == "reset_quests":
+        state.board.quest_discard.extend(state.board.face_up_quests)
+        state.board.face_up_quests.clear()
+        for _ in range(FACE_UP_QUEST_COUNT):
+            q = _draw_from_quest_deck(state)
+            if q:
+                state.board.face_up_quests.append(q)
+        effect["details"] = "Quests refreshed"
+        effect["face_up_quests"] = [
+            q.model_dump() for q in state.board.face_up_quests
+        ]
+
+    elif card.effect_type == "reset_buildings":
+        state.board.building_discard.extend(state.board.face_up_buildings)
+        state.board.face_up_buildings.clear()
+        for _ in range(FACE_UP_BUILDING_COUNT):
+            b = _draw_from_building_deck(state)
+            if b:
+                state.board.face_up_buildings.append(b)
+        effect["details"] = "Buildings refreshed"
+
+    elif card.effect_type == "first_player_marker":
+        for p in state.players:
+            p.has_first_player_marker = False
+        player.has_first_player_marker = True
+        state.board.first_player_id = player.player_id
+        effect["details"] = f"{player.name} will go first next round"
 
     return effect
 
@@ -3117,8 +3179,8 @@ async def handle_purchase_building(
     state.board.building_lots.remove(lot_id)
 
     # Draw replacement from deck
-    if state.board.building_deck:
-        replacement = state.board.building_deck.pop(0)
+    replacement = _draw_from_building_deck(state)
+    if replacement:
         state.board.face_up_buildings.append(replacement)
 
     # Set initial accumulated stock for accumulating buildings

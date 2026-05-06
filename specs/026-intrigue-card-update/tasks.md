@@ -19,7 +19,7 @@
 
 **Purpose**: Add all 14 new intrigue card entries to configuration
 
-- [ ] T001 Add 14 new intrigue card entries to config/intrigue.json (IDs intrigue_055 through intrigue_068). Use exact names, descriptions, effect_types, and effect_values from data-model.md: 4 no_effect cards (intrigue_055–058), 4 draw_intrigue cards with count:1 (intrigue_059–062), 2 reset_quests cards (intrigue_063–064), 2 reset_buildings cards (intrigue_065–066), 2 first_player_marker cards (intrigue_067–068). All have effect_target "self".
+- [X] T001 Add 14 new intrigue card entries to config/intrigue.json (IDs intrigue_055 through intrigue_068). Use exact names, descriptions, effect_types, and effect_values from data-model.md: 4 no_effect cards (intrigue_055–058), 4 draw_intrigue cards with count:1 (intrigue_059–062), 2 reset_quests cards (intrigue_063–064), 2 reset_buildings cards (intrigue_065–066), 2 first_player_marker cards (intrigue_067–068). All have effect_target "self".
 
 ---
 
@@ -27,13 +27,13 @@
 
 **Purpose**: Add building discard pile infrastructure and completed-quest safety filter. These are global mechanics that all user stories (and existing code) depend on.
 
-- [ ] T002 Add `building_discard: list[BuildingTile] = Field(default_factory=list)` field to BoardState in server/models/game.py (~line 121, near quest_discard)
+- [X] T002 Add `building_discard: list[BuildingTile] = Field(default_factory=list)` field to BoardState in server/models/game.py (~line 121, near quest_discard)
 
-- [ ] T003 Add `_draw_from_building_deck(state)` helper function in server/game_engine.py (~line 82, after existing `_draw_from_quest_deck()`). Mirror the quest helper pattern: if building_deck is empty but building_discard has cards, move discard to deck, clear discard, shuffle with `random.shuffle()`, then pop(0) from deck. Return the drawn BuildingTile or None.
+- [X] T003 Add `_draw_from_building_deck(state)` helper function in server/game_engine.py (~line 82, after existing `_draw_from_quest_deck()`). Mirror the quest helper pattern: if building_deck is empty but building_discard has cards, move discard to deck, clear discard, shuffle with `random.shuffle()`, then pop(0) from deck. Return the drawn BuildingTile or None.
 
-- [ ] T004 Add completed-quest exclusion filter to `_draw_from_quest_deck()` in server/game_engine.py (~line 75). Before reshuffling quest_discard into quest_deck, collect all completed quest IDs from all players' `completed_contracts` lists, then filter quest_discard to exclude any card whose id is in that set. Pass `state` (not just `state.board`) to the function so it can access players.
+- [X] T004 Add completed-quest exclusion filter to `_draw_from_quest_deck()` in server/game_engine.py (~line 75). Before reshuffling quest_discard into quest_deck, collect all completed quest IDs from all players' `completed_contracts` lists, then filter quest_discard to exclude any card whose id is in that set. Pass `state` (not just `state.board`) to the function so it can access players.
 
-- [ ] T005 Update existing building purchase/refill logic in server/game_engine.py to use `_draw_from_building_deck()` and `building_discard`. At ~line 3116 where buildings are removed from face_up after purchase: when a face-up building slot needs refilling, call `_draw_from_building_deck(state)` instead of directly popping from `state.board.building_deck`. Do NOT add discarding here (purchased buildings go to the player, not to discard).
+- [X] T005 Update existing building purchase/refill logic in server/game_engine.py to use `_draw_from_building_deck()` and `building_discard`. At ~line 3116 where buildings are removed from face_up after purchase: when a face-up building slot needs refilling, call `_draw_from_building_deck(state)` instead of directly popping from `state.board.building_deck`. Do NOT add discarding here (purchased buildings go to the player, not to discard).
 
 **Checkpoint**: Building discard infrastructure is ready. Quest reshuffle excludes completed quests. All existing building/quest draws support reshuffle from discard piles.
 
@@ -47,9 +47,9 @@
 
 ### Implementation for User Story 1
 
-- [ ] T006 [US1] Add "no_effect" elif branch in `_resolve_intrigue_effect()` in server/game_engine.py (~line 2466, before the final else). Return `{"type": "no_effect", "details": "No effect"}`. No state changes needed.
+- [X] T006 [US1] Add "no_effect" elif branch in `_resolve_intrigue_effect()` in server/game_engine.py (~line 2466, before the final else). Return `{"type": "no_effect", "details": "No effect"}`. No state changes needed.
 
-- [ ] T007 [P] [US1] Add "no_effect" handling in `_intrigue_effect_summary()` in card-generator/generate_cards.py (~line 1180). Return "No Effect" as the summary text. Add "no_effect" case in `_draw_intrigue_effect_icons()` (~line 1314) — draw a simple "—" or shrug text centered in the icon area.
+- [X] T007 [P] [US1] Add "no_effect" handling in `_intrigue_effect_summary()` in card-generator/generate_cards.py (~line 1180). Return "No Effect" as the summary text. Add "no_effect" case in `_draw_intrigue_effect_icons()` (~line 1314) — draw a simple "—" or shrug text centered in the icon area.
 
 **Checkpoint**: No-effect cards can be played. Card images show "No Effect" text.
 
@@ -77,11 +77,11 @@ No server implementation tasks needed — the existing `draw_intrigue` handler a
 
 ### Implementation for User Story 3
 
-- [ ] T008 [US3] Add "reset_quests" elif branch in `_resolve_intrigue_effect()` in server/game_engine.py (~line 2466). Logic: extend `state.board.quest_discard` with `state.board.face_up_quests`, clear `state.board.face_up_quests`, loop `FACE_UP_QUEST_COUNT` times calling `_draw_from_quest_deck(state)` and append non-None results to `state.board.face_up_quests`. Return `{"type": "reset_quests", "details": "Quests refreshed", "face_up_quests": [q.model_dump() for q in state.board.face_up_quests]}`.
+- [X] T008 [US3] Add "reset_quests" elif branch in `_resolve_intrigue_effect()` in server/game_engine.py (~line 2466). Logic: extend `state.board.quest_discard` with `state.board.face_up_quests`, clear `state.board.face_up_quests`, loop `FACE_UP_QUEST_COUNT` times calling `_draw_from_quest_deck(state)` and append non-None results to `state.board.face_up_quests`. Return `{"type": "reset_quests", "details": "Quests refreshed", "face_up_quests": [q.model_dump() for q in state.board.face_up_quests]}`.
 
-- [ ] T009 [US3] Add broadcast of `FaceUpQuestsUpdatedResponse` in `handle_place_worker_backstage()` in server/game_engine.py (~line 2278). After the effect is resolved and the main `WorkerPlacedBackstageResponse` is broadcast, check if `effect_details.get("type") == "reset_quests"` and if so, broadcast `FaceUpQuestsUpdatedResponse(action="face_up_quests_updated", face_up_quests=[q.model_dump() for q in state.board.face_up_quests])` to all players.
+- [X] T009 [US3] Add broadcast of `FaceUpQuestsUpdatedResponse` in `handle_place_worker_backstage()` in server/game_engine.py (~line 2278). After the effect is resolved and the main `WorkerPlacedBackstageResponse` is broadcast, check if `effect_details.get("type") == "reset_quests"` and if so, broadcast `FaceUpQuestsUpdatedResponse(action="face_up_quests_updated", face_up_quests=[q.model_dump() for q in state.board.face_up_quests])` to all players.
 
-- [ ] T010 [P] [US3] Add "reset_quests" handling in `_intrigue_effect_summary()` in card-generator/generate_cards.py (~line 1180). Return "Refresh Quests" as summary. Add "reset_quests" case in `_draw_intrigue_effect_icons()` (~line 1314) — draw a quest card icon with a circular refresh arrow overlay.
+- [X] T010 [P] [US3] Add "reset_quests" handling in `_intrigue_effect_summary()` in card-generator/generate_cards.py (~line 1180). Return "Refresh Quests" as summary. Add "reset_quests" case in `_draw_intrigue_effect_icons()` (~line 1314) — draw a quest card icon with a circular refresh arrow overlay.
 
 **Checkpoint**: Reset-quests cards discard face-up quests and draw new ones. All clients see the update.
 
@@ -95,11 +95,11 @@ No server implementation tasks needed — the existing `draw_intrigue` handler a
 
 ### Implementation for User Story 4
 
-- [ ] T011 [US4] Add "reset_buildings" elif branch in `_resolve_intrigue_effect()` in server/game_engine.py (~line 2466). Logic: extend `state.board.building_discard` with `state.board.face_up_buildings`, clear `state.board.face_up_buildings`, loop `FACE_UP_BUILDING_COUNT` times calling `_draw_from_building_deck(state)` and append non-None results to `state.board.face_up_buildings`. Return `{"type": "reset_buildings", "details": "Buildings refreshed"}`.
+- [X] T011 [US4] Add "reset_buildings" elif branch in `_resolve_intrigue_effect()` in server/game_engine.py (~line 2466). Logic: extend `state.board.building_discard` with `state.board.face_up_buildings`, clear `state.board.face_up_buildings`, loop `FACE_UP_BUILDING_COUNT` times calling `_draw_from_building_deck(state)` and append non-None results to `state.board.face_up_buildings`. Return `{"type": "reset_buildings", "details": "Buildings refreshed"}`.
 
-- [ ] T012 [US4] Add broadcast of `BuildingMarketUpdateResponse` in `handle_place_worker_backstage()` in server/game_engine.py (~line 2278, near the T009 reset_quests broadcast). Check if `effect_details.get("type") == "reset_buildings"` and if so, call `_broadcast_building_market(state, server)` to send the updated building display to all players.
+- [X] T012 [US4] Add broadcast of `BuildingMarketUpdateResponse` in `handle_place_worker_backstage()` in server/game_engine.py (~line 2278, near the T009 reset_quests broadcast). Check if `effect_details.get("type") == "reset_buildings"` and if so, call `_broadcast_building_market(state, server)` to send the updated building display to all players.
 
-- [ ] T013 [P] [US4] Add "reset_buildings" handling in `_intrigue_effect_summary()` in card-generator/generate_cards.py (~line 1180). Return "Refresh Buildings" as summary. Add "reset_buildings" case in `_draw_intrigue_effect_icons()` (~line 1314) — draw a building icon with a circular refresh arrow overlay.
+- [X] T013 [P] [US4] Add "reset_buildings" handling in `_intrigue_effect_summary()` in card-generator/generate_cards.py (~line 1180). Return "Refresh Buildings" as summary. Add "reset_buildings" case in `_draw_intrigue_effect_icons()` (~line 1314) — draw a building icon with a circular refresh arrow overlay.
 
 **Checkpoint**: Reset-buildings cards discard face-up buildings and draw new ones. All clients see the update.
 
@@ -113,9 +113,9 @@ No server implementation tasks needed — the existing `draw_intrigue` handler a
 
 ### Implementation for User Story 5
 
-- [ ] T014 [US5] Add "first_player_marker" elif branch in `_resolve_intrigue_effect()` in server/game_engine.py (~line 2466). Logic: loop all players setting `p.has_first_player_marker = False`, then set `player.has_first_player_marker = True` and `state.board.first_player_id = player.player_id`. Return `{"type": "first_player_marker", "details": f"{player.name} will go first next round"}`.
+- [X] T014 [US5] Add "first_player_marker" elif branch in `_resolve_intrigue_effect()` in server/game_engine.py (~line 2466). Logic: loop all players setting `p.has_first_player_marker = False`, then set `player.has_first_player_marker = True` and `state.board.first_player_id = player.player_id`. Return `{"type": "first_player_marker", "details": f"{player.name} will go first next round"}`.
 
-- [ ] T015 [P] [US5] Add "first_player_marker" handling in `_intrigue_effect_summary()` in card-generator/generate_cards.py (~line 1180). Return "Go First" as summary. Add "first_player_marker" case in `_draw_intrigue_effect_icons()` (~line 1314) — draw a "1st" badge or star icon.
+- [X] T015 [P] [US5] Add "first_player_marker" handling in `_intrigue_effect_summary()` in card-generator/generate_cards.py (~line 1180). Return "Go First" as summary. Add "first_player_marker" case in `_draw_intrigue_effect_icons()` (~line 1314) — draw a "1st" badge or star icon.
 
 **Checkpoint**: First-player-marker cards set turn order for next round.
 
@@ -123,9 +123,9 @@ No server implementation tasks needed — the existing `draw_intrigue` handler a
 
 ## Phase 8: Polish & Cross-Cutting Concerns
 
-- [ ] T016 Regenerate intrigue card images by running `cd card-generator && python generate_cards.py`. Verify all 14 new card PNGs are created in client/assets/card_images/intrigue/ with appropriate effect icons.
-- [ ] T017 Run existing test suite: `cd src && pytest` to verify no regressions
-- [ ] T018 Run linting: `cd src && ruff check .` to verify code quality
+- [X] T016 Regenerate intrigue card images by running `cd card-generator && python generate_cards.py`. Verify all 14 new card PNGs are created in client/assets/card_images/intrigue/ with appropriate effect icons.
+- [X] T017 Run existing test suite: `cd src && pytest` to verify no regressions
+- [X] T018 Run linting: `cd src && ruff check .` to verify code quality
 - [ ] T019 Manual test: start a 2-player game, draw intrigue cards, play each of the 5 new card types, verify effects and game log per quickstart.md
 - [ ] T020 Manual test: verify deck reshuffle — play reset-quests when quest deck is low, verify discard pile reshuffles (excluding completed quests)
 
