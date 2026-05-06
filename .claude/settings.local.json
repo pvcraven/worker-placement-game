@@ -19,7 +19,8 @@
       "Bash(bash .specify/scripts/bash/create-feature-branch.sh \"intrigue-draw-building\")",
       "Bash(bash .specify/extensions/git/scripts/bash/create-new-feature.sh \"intrigue-draw-building\")",
       "Bash(python -m pytest tests/)",
-      "Bash(uv run *)"
+      "Bash(uv run *)",
+      "Bash(bash .specify/scripts/bash/check-prerequisites.sh --json)"
     ]
   }
 }

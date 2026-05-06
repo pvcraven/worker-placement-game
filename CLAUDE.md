@@ -29,6 +29,7 @@ Auto-generated from all feature plans. Last updated: 2026-05-06
 - Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), Pydantic v2 (023-info-dialog)
 - N/A (client-side UI only) (023-info-dialog)
 - Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), websockets, Pydantic v2, Pillow (card generation) (025-intrigue-draw-building)
+- Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), websockets, Pydantic v2, Pillow (card generation) (026-intrigue-card-update)
 
 - Python 3.12+ + Arcade (graphics/client UI), websockets (async networking), Pydantic (data validation/serialization) (001-worker-placement-game)
 
@@ -48,9 +49,9 @@ cd src && pytest && ruff check .
 Python 3.12+: Follow standard conventions
 
 ## Recent Changes
+- 026-intrigue-card-update: Added Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), websockets, Pydantic v2, Pillow (card generation)
 - 025-intrigue-draw-building: Added Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), websockets, Pydantic v2, Pillow (card generation)
 - 023-info-dialog: Added Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), Pydantic v2
-- 022-resource-choice-building: Added Python 3.12+ + Arcade (local source), websockets, Pydantic v2, Pillow (card generation)
 
 
 <!-- MANUAL ADDITIONS START -->

@@ -580,7 +580,7 @@ class GameView(arcade.View):
             bonus_str = f" (+{plot_bonus} VP plot bonus)" if plot_bonus else ""
             self.tabbed_panel.add_entry(
                 f"{name} placed worker on Backstage"
-                f" slot {slot_num}, played {card_name}{bonus_str}"
+                f" slot {slot_num},\n  played {card_name}{bonus_str}"
             )
             effect = msg.get("intrigue_effect", {})
             effect_type = effect.get("type", "")
