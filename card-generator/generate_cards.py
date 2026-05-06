@@ -1324,7 +1324,12 @@ def _draw_intrigue_effect_icons(
         cy = y + icon_h // 2
         _draw_quest_card_icon(draw, card_width // 2, cy)
         draw_text_centered(
-            draw, "Refresh", y + icon_h + 4, I_FONT_BODY_SMALL, (120, 80, 0), width=card_width
+            draw,
+            "Refresh",
+            y + icon_h + 4,
+            I_FONT_BODY_SMALL,
+            (120, 80, 0),
+            width=card_width,
         )
         return y + icon_h + 36
 

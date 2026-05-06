@@ -285,7 +285,7 @@ class BoardRenderer:
             first_bld_cy = merch_top_y - bld_ch / 2
             bld_row_step = (bld_ch + 8 * s) / h
             building_start_x = 0.22
-            building_col_step = 0.125   
+            building_col_step = 0.125
             if self._building_owner_dirty:
                 self._building_owner_texts = []
             for i, space_id in enumerate(

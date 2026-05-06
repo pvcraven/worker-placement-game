@@ -2299,9 +2299,7 @@ async def handle_place_worker_backstage(
             state.game_code,
             FaceUpQuestsUpdatedResponse(
                 action="face_up_quests_updated",
-                face_up_quests=[
-                    q.model_dump() for q in state.board.face_up_quests
-                ],
+                face_up_quests=[q.model_dump() for q in state.board.face_up_quests],
             ),
         )
 
@@ -2507,9 +2505,7 @@ def _resolve_intrigue_effect(state, player, card) -> dict:
             if q:
                 state.board.face_up_quests.append(q)
         effect["details"] = "Quests refreshed"
-        effect["face_up_quests"] = [
-            q.model_dump() for q in state.board.face_up_quests
-        ]
+        effect["face_up_quests"] = [q.model_dump() for q in state.board.face_up_quests]
 
     elif card.effect_type == "reset_buildings":
         state.board.building_discard.extend(state.board.face_up_buildings)
