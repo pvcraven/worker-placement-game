@@ -278,11 +278,14 @@ class BoardRenderer:
         spaces = self.board_data.get("action_spaces", {})
         if self._constructed_sprite_list:
             self._constructed_sprite_list.draw()
+            bld_scale = 0.42
+            bld_cw = CARD_WIDTH * s * bld_scale / 0.5
+            bld_ch = BUILDING_CARD_HEIGHT * s * bld_scale / 0.5
             merch_top_y = y + 0.91 * h + space_h / 2
-            first_bld_cy = merch_top_y - bld_h / 2
-            bld_row_step = (bld_h + 10 * s) / h
+            first_bld_cy = merch_top_y - bld_ch / 2
+            bld_row_step = (bld_ch + 8 * s) / h
             building_start_x = 0.22
-            building_col_step = 0.14
+            building_col_step = 0.125   
             if self._building_owner_dirty:
                 self._building_owner_texts = []
             for i, space_id in enumerate(
@@ -297,8 +300,8 @@ class BoardRenderer:
                     owner_id = space_data.get("owner_id", "")
                     if owner_id:
                         owner_name = self._player_name(owner_id)
-                        tx = cx - card_w / 2 + 8 * s
-                        ty = cy - bld_h / 2 + 6 * s
+                        tx = cx - bld_cw / 2 + 8 * s
+                        ty = cy - bld_ch / 2 + 6 * s
                         self._building_owner_texts.append(
                             arcade.Text(
                                 f"Owner: {owner_name}",
@@ -324,8 +327,8 @@ class BoardRenderer:
                         row = i // 2
                         cx = x + (building_start_x + col * building_col_step) * w
                         cy = first_bld_cy - row * bld_row_step * h
-                        tx = cx - card_w / 2 + 8 * s
-                        ty = cy - bld_h / 2 + 20 * s
+                        tx = cx - bld_cw / 2 + 8 * s
+                        ty = cy - bld_ch / 2 + 20 * s
                         atype = bt.get("accumulation_type", "")
                         sym = _RESOURCE_ABBREV.get(atype, "")
                         if atype == "victory_points":
@@ -457,11 +460,14 @@ class BoardRenderer:
         )
 
         # Constructed buildings — two-column grid
+        bld_scale = 0.42
+        bld_cw = CARD_WIDTH * s * bld_scale / 0.5
+        bld_ch = BUILDING_CARD_HEIGHT * s * bld_scale / 0.5
         merch_top_y = y + 0.91 * h + space_h / 2
-        first_building_cy = merch_top_y - bld_h / 2
+        first_building_cy = merch_top_y - bld_ch / 2
         building_start_x = 0.22
-        building_col_step = 0.14
-        building_row_step = (bld_h + 10 * s) / h
+        building_col_step = 0.125
+        building_row_step = (bld_ch + 8 * s) / h
         constructed_cards = []
         constructed_positions = []
         for i, space_id in enumerate(self.board_data.get("constructed_buildings", [])):
@@ -471,10 +477,10 @@ class BoardRenderer:
             cx = x + (building_start_x + col * building_col_step) * w
             cy = first_building_cy - row * building_row_step * h
             self._space_rects[space_id] = (
-                cx - card_w / 2,
-                cy - bld_h / 2,
-                card_w,
-                bld_h,
+                cx - bld_cw / 2,
+                cy - bld_ch / 2,
+                bld_cw,
+                bld_ch,
             )
             tile = data.get("building_tile", {})
             tile_id = tile.get("id", "") if tile else ""
@@ -485,7 +491,7 @@ class BoardRenderer:
             constructed_cards,
             "buildings",
             constructed_positions,
-            scale=s * 0.5,
+            scale=s * bld_scale,
         )
 
         # Face-up quests
@@ -629,11 +635,14 @@ class BoardRenderer:
                     r_cy,
                 )
 
+        bld_scale = 0.42
+        bld_cw = CARD_WIDTH * s * bld_scale / 0.5
+        bld_ch = BUILDING_CARD_HEIGHT * s * bld_scale / 0.5
         merch_top_y = y + 0.91 * h + space_h / 2
-        first_bld_cy = merch_top_y - bld_h / 2
-        bld_row_step = (bld_h + 10 * s) / h
+        first_bld_cy = merch_top_y - bld_ch / 2
+        bld_row_step = (bld_ch + 8 * s) / h
         building_start_x = 0.22
-        building_col_step = 0.14
+        building_col_step = 0.125
         for i, space_id in enumerate(self.board_data.get("constructed_buildings", [])):
             occupied = spaces.get(space_id, {}).get("occupied_by")
             if occupied:
@@ -644,7 +653,7 @@ class BoardRenderer:
                 color_name = self._player_color_name(occupied)
                 wanted[f"bld_{space_id}"] = (
                     color_name,
-                    cx + card_w / 2 - 14 * s,
+                    cx + bld_cw / 2 - 14 * s,
                     cy,
                 )
 
