@@ -5,6 +5,13 @@
 **Status**: Draft  
 **Input**: User description: "Add 14 new intrigue cards across 5 categories: 4 do-nothing cards, 4 draw-1-intrigue cards, 2 reset-quests cards, 2 reset-buildings cards, and 2 first-player-marker cards."
 
+## Clarifications
+
+### Session 2026-05-06
+
+- Q: When quest or building decks are depleted, what should happen? → A: Reshuffle the discard pile back into the deck and draw from that. For quests, exclude any quests completed by any player from the reshuffle. This applies globally to all quest/building draws (not just reset cards).
+- Q: Does the reshuffle mechanic apply only to reset card effects, or any time quests/buildings need to be drawn? → A: Globally — any time a draw is needed and the deck is empty (end-of-round refill, reset cards, etc.). This may already be implemented; verify and fix if not.
+
 ## User Scenarios & Testing
 
 ### User Story 1 - Play "Do Nothing" Intrigue Cards (Priority: P1)
@@ -50,8 +57,8 @@ A player plays one of two intrigue cards that resets the face-up quest display. 
 **Acceptance Scenarios**:
 
 1. **Given** a player has a reset-quests intrigue card, **When** they play it, **Then** all face-up quests are discarded and new quests are drawn from the quest deck to fill the display.
-2. **Given** the quest deck has fewer cards than face-up slots, **When** a player plays the reset card, **Then** as many quests as available are drawn (partial fill) without error.
-3. **Given** the quest deck is empty, **When** a player plays the reset card, **Then** the face-up quests are discarded but no new quests appear (empty display).
+2. **Given** the quest deck is empty, **When** a player plays the reset card, **Then** the discard pile (excluding quests completed by any player) is shuffled to form a new quest deck and quests are drawn from it.
+3. **Given** both the quest deck and discard pile are empty (all quests are either face-up or completed), **When** a player plays the reset card, **Then** the face-up quests are discarded, reshuffled into a new deck, and new quests are drawn from it.
 4. **Given** a player plays a reset-quests card, **When** the action resolves, **Then** all players see the updated quest display and the game log shows "[Player] played [Card Name] — quests refreshed".
 
 ---
@@ -67,8 +74,8 @@ A player plays one of two intrigue cards that resets the face-up purchasable bui
 **Acceptance Scenarios**:
 
 1. **Given** a player has a reset-buildings intrigue card, **When** they play it, **Then** all face-up purchasable buildings are discarded and new buildings are drawn from the building deck to fill the display.
-2. **Given** the building deck has fewer cards than face-up slots, **When** a player plays the reset card, **Then** as many buildings as available are drawn (partial fill) without error.
-3. **Given** the building deck is empty, **When** a player plays the reset card, **Then** the face-up buildings are discarded but no new buildings appear.
+2. **Given** the building deck is empty, **When** a player plays the reset card, **Then** the discard pile is shuffled to form a new building deck and buildings are drawn from it.
+3. **Given** both the building deck and discard pile are empty (all buildings are either face-up or purchased), **When** a player plays the reset card, **Then** the face-up buildings are discarded, reshuffled into a new deck, and new buildings are drawn from it.
 4. **Given** a player plays a reset-buildings card, **When** the action resolves, **Then** all players see the updated building display and the game log shows "[Player] played [Card Name] — buildings refreshed".
 
 ---
@@ -92,8 +99,8 @@ A player plays one of two intrigue cards that grants them the first-player marke
 
 ### Edge Cases
 
-- What happens when a player plays a reset-quests card but the quest deck is empty? The face-up quests are discarded and the display remains empty.
-- What happens when a player plays a reset-buildings card but the building deck is empty? The face-up buildings are discarded and the display remains empty.
+- What happens when a player plays a reset-quests card but the quest deck is empty? The discard pile (excluding completed quests) is reshuffled into a new deck and quests are drawn from it. If no discardable quests exist, the face-up quests are discarded, reshuffled, and redrawn.
+- What happens when a player plays a reset-buildings card but the building deck is empty? The discard pile is reshuffled into a new building deck and buildings are drawn from it. If no discardable buildings exist, the face-up buildings are discarded, reshuffled, and redrawn.
 - What happens when a player plays a draw-1-intrigue card but the intrigue deck is empty? The played card is still consumed but no new card is drawn.
 - What happens when two players both play first-player cards in the same round? The last one played takes effect (last-in-wins).
 - What happens when a player plays a first-player card and also visits Fastpass? The last action taken determines first player.
@@ -112,7 +119,8 @@ A player plays one of two intrigue cards that grants them the first-player marke
 - **FR-008**: The game log MUST display an appropriate message when each new card type is played.
 - **FR-009**: All new intrigue cards MUST generate card images via the card image generator with appropriate visual icons.
 - **FR-010**: When a reset-quests or reset-buildings card is played, all connected clients MUST see the updated display immediately.
-- **FR-011**: If the relevant deck (intrigue, quest, or building) is depleted, the system MUST handle gracefully with partial or no draws.
+- **FR-011**: If the quest or building deck is depleted when a draw is needed (from reset cards, end-of-round refill, or any other source), the system MUST reshuffle the discard pile into a new deck and draw from it. For quests, completed quests (held by any player) MUST be excluded from the reshuffle. This is a global mechanic applying to all quest/building draws.
+- **FR-012**: The system MUST verify that the existing quest/building draw logic already supports discard-pile reshuffling, and add it if not present.
 
 ### Key Entities
 
@@ -120,6 +128,8 @@ A player plays one of two intrigue cards that grants them the first-player marke
 - **Quest Display**: Existing entity — the face-up quests on the board, refreshed by reset-quests cards.
 - **Building Display**: Existing entity — the face-up purchasable buildings, refreshed by reset-buildings cards.
 - **First Player Marker**: Existing game concept — determines turn order for the next round.
+- **Quest Discard Pile**: Discard pile for quests removed from display — reshuffled into deck when deck is depleted (excluding completed quests).
+- **Building Discard Pile**: Discard pile for buildings removed from display — reshuffled into deck when deck is depleted.
 
 ## Success Criteria
 
