@@ -430,7 +430,7 @@ class BoardRenderer:
         )
 
         # Realtor — centered above face-up building cards
-        quest_right = garage_cx + n_q * q_spacing / 2
+        quest_right = garage_cx + n_q * q_spacing / 2 - 10 * s
         n_bld = max(len(self._face_up_buildings), 3)
         bld_spacing = (CARD_WIDTH + 15) * s
         rightmost_bld_cx = quest_right - card_w / 2

@@ -1916,21 +1916,20 @@ async def handle_select_quest_card(
     # Determine which spot the player is on (garage or building with draw_contract)
     spot_special = None
     is_building_draw = False
-    for sid, sp in state.board.action_spaces.items():
-        if sp.occupied_by != player.player_id:
-            continue
-        if sp.space_type == "garage":
-            spot_special = sp.reward_special
-            break
-        if (
-            sp.space_type == "building"
-            and sp.building_tile
-            and sp.building_tile.visitor_reward_special
+    pending = state.pending_placement or {}
+    pending_space_id = pending.get("space_id", "")
+    pending_sp = state.board.action_spaces.get(pending_space_id)
+    if pending_sp and pending_sp.occupied_by == player.player_id:
+        if pending_sp.space_type == "garage":
+            spot_special = pending_sp.reward_special
+        elif (
+            pending_sp.space_type == "building"
+            and pending_sp.building_tile
+            and pending_sp.building_tile.visitor_reward_special
             in ("draw_contract", "draw_contract_and_complete")
         ):
-            spot_special = sp.building_tile.visitor_reward_special
+            spot_special = pending_sp.building_tile.visitor_reward_special
             is_building_draw = True
-            break
 
     if spot_special is None:
         await conn.send_error(

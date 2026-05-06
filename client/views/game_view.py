@@ -332,7 +332,6 @@ class GameView(arcade.View):
         )
         if (
             effective_type == "garage"
-            and pid == my_id
             and effective_reward_special
             in (
                 "quest_and_coins",
@@ -340,13 +339,26 @@ class GameView(arcade.View):
                 "reset_quests",
             )
         ):
-            board = self.game_state.get("board", {})
-            quests = board.get("face_up_quests", [])
-            quest_ids = [q.get("id") for q in quests if q.get("id")]
-            self._enter_highlight_mode(
-                "quest_selection",
-                quest_ids,
-            )
+            if self.tabbed_panel:
+                name = self._player_name(pid)
+                space_name = space_data.get("name", space_id)
+                if effective_reward_special == "quest_and_coins":
+                    bonus = "+1 quest, +2 coins"
+                elif effective_reward_special == "quest_and_intrigue":
+                    bonus = "+1 quest, +1 intrigue"
+                else:
+                    bonus = "reset quests"
+                self.tabbed_panel.add_entry(
+                    f"{name} placed worker on {space_name} ({bonus})"
+                )
+            if pid == my_id:
+                board = self.game_state.get("board", {})
+                quests = board.get("face_up_quests", [])
+                quest_ids = [q.get("id") for q in quests if q.get("id")]
+                self._enter_highlight_mode(
+                    "quest_selection",
+                    quest_ids,
+                )
             return
 
         # Building with draw_contract: player picks a face-up quest
@@ -759,12 +771,7 @@ class GameView(arcade.View):
 
         if self.tabbed_panel:
             name = self._player_name(pid)
-            bonus_str = ""
-            if bonus.get("coins"):
-                bonus_str = f" (+{bonus['coins']} coins)"
-            elif bonus.get("intrigue_card"):
-                bonus_str = " (+1 intrigue card)"
-            self.tabbed_panel.add_entry(f"{name} selected a quest{bonus_str}")
+            self.tabbed_panel.add_entry(f"{name} selected a quest")
 
     def _on_quests_reset(self, msg: dict) -> None:
         pid = msg.get("player_id", "")

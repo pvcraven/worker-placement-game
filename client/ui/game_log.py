@@ -104,7 +104,7 @@ class GameLogPanel:
                 bold=True,
             ).draw()
 
-        top_margin = 50 * s if show_title else 10 * s
+        top_margin = 50 * s if show_title else 16 * s
 
         # Log entries
         max_lines = min(
