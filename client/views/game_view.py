@@ -330,14 +330,10 @@ class GameView(arcade.View):
         effective_bt = copied.get("building_tile") or space_data.get(
             "building_tile", {}
         )
-        if (
-            effective_type == "garage"
-            and effective_reward_special
-            in (
-                "quest_and_coins",
-                "quest_and_intrigue",
-                "reset_quests",
-            )
+        if effective_type == "garage" and effective_reward_special in (
+            "quest_and_coins",
+            "quest_and_intrigue",
+            "reset_quests",
         ):
             if self.tabbed_panel:
                 name = self._player_name(pid)
@@ -1858,7 +1854,9 @@ class GameView(arcade.View):
             if self.tabbed_panel.active_tab == "game_log":
                 self.tabbed_panel.scroll(-int(scroll_y))
             elif self.tabbed_panel.active_tab in (
-                "my_quests", "my_intrigue", "completed_quests",
+                "my_quests",
+                "my_intrigue",
+                "completed_quests",
             ):
                 self.tabbed_panel.scroll_cards(-int(scroll_y))
 

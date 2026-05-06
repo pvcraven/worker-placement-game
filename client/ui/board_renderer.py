@@ -196,7 +196,12 @@ class BoardRenderer:
 
         # Star overlay for genre-matching face-up quests
         star_png = Path("client/assets/card_images/icons/genre_match_star.png")
-        if bonus_genres and face_up_quests and self._quest_positions and star_png.exists():
+        if (
+            bonus_genres
+            and face_up_quests
+            and self._quest_positions
+            and star_png.exists()
+        ):
             star_key = (
                 tuple(q.get("id", "") for q in face_up_quests),
                 tuple(bonus_genres),

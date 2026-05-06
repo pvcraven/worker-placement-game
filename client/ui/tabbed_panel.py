@@ -88,7 +88,9 @@ class TabbedPanel:
             else:
                 opp = self._find_player(game_state, self._active_sub_tab)
                 if opp:
-                    cards = opp.get("contract_hand", []) + opp.get("completed_contracts", [])
+                    cards = opp.get("contract_hand", []) + opp.get(
+                        "completed_contracts", []
+                    )
                 else:
                     cards = []
         elif self.active_tab == "my_intrigue":
@@ -166,7 +168,9 @@ class TabbedPanel:
             self._rebuild_title(x, y + h - tab_bar_h, w, title_h, s)
             if self.active_tab == "my_quests" and game_state:
                 sub_tab_top = y + h - tab_bar_h - title_h
-                self._rebuild_sub_tabs(x, sub_tab_top, w, sub_tab_h, s, game_state, player_data)
+                self._rebuild_sub_tabs(
+                    x, sub_tab_top, w, sub_tab_h, s, game_state, player_data
+                )
             else:
                 self._sub_tab_shape_list = None
                 self._sub_tab_texts = []
@@ -205,7 +209,9 @@ class TabbedPanel:
         if self.active_tab == "game_log":
             self.game_log.draw(x, content_y, w, content_h, scale=s, show_title=False)
         elif self.active_tab == "my_quests":
-            self._draw_quests_tab(x, content_y, w, content_h, player_data, s, game_state)
+            self._draw_quests_tab(
+                x, content_y, w, content_h, player_data, s, game_state
+            )
         elif self.active_tab in ("my_intrigue", "completed_quests"):
             self._draw_card_tab(x, content_y, w, content_h, player_data, s)
         elif self.active_tab == "producer":
@@ -287,7 +293,9 @@ class TabbedPanel:
         )
         # Page indicator (shown for card tabs with multiple pages)
         if self._card_page_count > 1 and self.active_tab in (
-            "my_quests", "my_intrigue", "completed_quests",
+            "my_quests",
+            "my_intrigue",
+            "completed_quests",
         ):
             page_label = f"{self._card_page + 1}/{self._card_page_count}"
             page_font_sz = max(7, int(12 * scale))
@@ -407,8 +415,16 @@ class TabbedPanel:
         if not all_cards:
             self._draw_empty(x, y, w, h, scale, "No quests")
             return
-        self._draw_card_grid(x, y, w, h, all_cards, "quests", scale,
-                             separator_after=len(uncompleted) if completed else -1)
+        self._draw_card_grid(
+            x,
+            y,
+            w,
+            h,
+            all_cards,
+            "quests",
+            scale,
+            separator_after=len(uncompleted) if completed else -1,
+        )
 
     def _draw_card_tab(
         self,
@@ -442,16 +458,16 @@ class TabbedPanel:
 
         bonus_genres: list[str] = []
         show_stars = (
-            (self.active_tab == "my_quests" and self._active_sub_tab == "my_quests")
-            or self.active_tab == "completed_quests"
-        )
+            self.active_tab == "my_quests" and self._active_sub_tab == "my_quests"
+        ) or self.active_tab == "completed_quests"
         if show_stars and player_data:
             pc = player_data.get("producer_card")
             if pc:
                 bonus_genres = pc.get("bonus_genres", [])
 
-        self._draw_card_grid(x, y, w, h, cards, card_type, scale,
-                             bonus_genres=bonus_genres)
+        self._draw_card_grid(
+            x, y, w, h, cards, card_type, scale, bonus_genres=bonus_genres
+        )
 
     def _draw_card_grid(
         self,
@@ -521,7 +537,12 @@ class TabbedPanel:
                 sprite.position = (cx, cy)
                 self._content_sprite_list.append(sprite)
             if sep_row >= 0:
-                self._separator_y = top_y - (sep_row - 1) * (card_h + row_gap) - card_h / 2 - row_gap / 2
+                self._separator_y = (
+                    top_y
+                    - (sep_row - 1) * (card_h + row_gap)
+                    - card_h / 2
+                    - row_gap / 2
+                )
 
         self._content_sprite_list.draw()
 
@@ -530,10 +551,13 @@ class TabbedPanel:
             if y <= sep_y <= y + h:
                 margin = 8 * scale
                 font_sz = max(7, int(10 * scale))
-                arcade.draw_line(x + margin, sep_y, x + w - margin, sep_y, (120, 120, 140), 1)
+                arcade.draw_line(
+                    x + margin, sep_y, x + w - margin, sep_y, (120, 120, 140), 1
+                )
                 arcade.draw_text(
                     "— Completed —",
-                    x + w / 2, sep_y + 2,
+                    x + w / 2,
+                    sep_y + 2,
                     (160, 160, 180),
                     font_size=font_sz,
                     font_name="Tahoma",
@@ -569,8 +593,10 @@ class TabbedPanel:
                     cy = top_y2 - row * (card_h + row_gap) - extra
                     star = arcade.Sprite(str(_STAR_PNG))
                     star.scale = star_size / star.texture.width
-                    star.position = (cx - col_w / 2 + star_size / 2 + 2 * scale,
-                                     cy + card_h / 2 - star_size / 2 + 1 * scale)
+                    star.position = (
+                        cx - col_w / 2 + star_size / 2 + 2 * scale,
+                        cy + card_h / 2 - star_size / 2 + 1 * scale,
+                    )
                     self._star_sprite_list.append(star)
             self._star_sprite_list.draw()
         else:
