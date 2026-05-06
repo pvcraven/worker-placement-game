@@ -2590,7 +2590,7 @@ class GameView(arcade.View):
 
         max_vp = max(sc.get("total_vp", 0) for sc in scores)
         col_w = panel_w / max(n, 1)
-        card_h = int(230 * s)
+        card_h = int(260 * s)
         top_y = py + panel_h / 2 - 55 * s
         val_font = max(8, int(14 * s))
         small_font = max(7, int(11 * s))
