@@ -397,20 +397,31 @@ class GameView(arcade.View):
                 self.tabbed_panel.add_entry(f"{name} placed worker on {space_name}")
 
         if reward.get("intrigue_cards_drawn"):
+            drawn_count = reward["intrigue_cards_drawn"]
             my_id = getattr(self.window, "player_id", None)
             for p in self.game_state.get("players", []):
                 if p.get("player_id") == pid:
                     p["intrigue_hand_count"] = (
-                        p.get("intrigue_hand_count", 0) + reward["intrigue_cards_drawn"]
+                        p.get("intrigue_hand_count", 0) + drawn_count
                     )
-                    if pid == my_id and reward.get("drawn_intrigue_card"):
-                        p.setdefault("intrigue_hand", []).append(
-                            reward["drawn_intrigue_card"]
-                        )
+                    if pid == my_id:
+                        if reward.get("drawn_intrigue_cards"):
+                            p.setdefault("intrigue_hand", []).extend(
+                                reward["drawn_intrigue_cards"]
+                            )
+                        elif reward.get("drawn_intrigue_card"):
+                            p.setdefault("intrigue_hand", []).append(
+                                reward["drawn_intrigue_card"]
+                            )
                     break
             if self.tabbed_panel:
                 name = self._player_name(pid)
-                self.tabbed_panel.add_entry(f"{name} drew 1 intrigue card")
+                if drawn_count == 1:
+                    self.tabbed_panel.add_entry(f"{name} drew 1 intrigue card")
+                else:
+                    self.tabbed_panel.add_entry(
+                        f"{name} drew {drawn_count} intrigue cards"
+                    )
 
         # Owner bonus notification
         owner_bonus = msg.get("owner_bonus", {})
@@ -1639,20 +1650,31 @@ class GameView(arcade.View):
             )
 
         if reward.get("intrigue_cards_drawn"):
+            drawn_count = reward["intrigue_cards_drawn"]
             my_id = getattr(self.window, "player_id", None)
             for p in self.game_state.get("players", []):
                 if p.get("player_id") == pid:
                     p["intrigue_hand_count"] = (
-                        p.get("intrigue_hand_count", 0) + reward["intrigue_cards_drawn"]
+                        p.get("intrigue_hand_count", 0) + drawn_count
                     )
-                    if pid == my_id and reward.get("drawn_intrigue_card"):
-                        p.setdefault("intrigue_hand", []).append(
-                            reward["drawn_intrigue_card"]
-                        )
+                    if pid == my_id:
+                        if reward.get("drawn_intrigue_cards"):
+                            p.setdefault("intrigue_hand", []).extend(
+                                reward["drawn_intrigue_cards"]
+                            )
+                        elif reward.get("drawn_intrigue_card"):
+                            p.setdefault("intrigue_hand", []).append(
+                                reward["drawn_intrigue_card"]
+                            )
                     break
             if self.tabbed_panel:
                 name = self._player_name(pid)
-                self.tabbed_panel.add_entry(f"{name} drew 1 intrigue card")
+                if drawn_count == 1:
+                    self.tabbed_panel.add_entry(f"{name} drew 1 intrigue card")
+                else:
+                    self.tabbed_panel.add_entry(
+                        f"{name} drew {drawn_count} intrigue cards"
+                    )
 
         # Owner bonus notification
         owner_bonus = msg.get("owner_bonus", {})

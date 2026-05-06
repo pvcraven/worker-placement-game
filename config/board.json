@@ -79,6 +79,14 @@
       "slots": 1
     },
     {
+      "space_id": "whisper_room",
+      "name": "Whisper Room",
+      "space_type": "permanent",
+      "reward": {"guitarists": 0, "bass_players": 0, "drummers": 0, "singers": 0, "coins": 0},
+      "reward_special": "draw_intrigue_2",
+      "slots": 1
+    },
+    {
       "space_id": "fastpass",
       "name": "Fastpass",
       "space_type": "castle",

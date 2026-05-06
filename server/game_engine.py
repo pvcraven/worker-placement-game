@@ -1057,6 +1057,11 @@ async def _resolve_copied_space_rewards(
         if special == "draw_intrigue" and state.board.intrigue_deck:
             card = state.board.intrigue_deck.pop(0)
             player.intrigue_hand.append(card)
+        elif special == "draw_intrigue_2":
+            drawn = _draw_intrigue_cards(state, player, 2)
+            if drawn:
+                reward_dict["intrigue_cards_drawn"] = len(drawn)
+                reward_dict["drawn_intrigue_cards"] = drawn
         elif special == "coins_per_building":
             coin_count = len(state.board.constructed_buildings)
             player.resources.coins += coin_count
@@ -1073,6 +1078,12 @@ async def _resolve_copied_space_rewards(
             player.intrigue_hand.append(card)
             reward_dict["intrigue_cards_drawn"] = 1
             reward_dict["drawn_intrigue_card"] = card.model_dump()
+
+    if target_space.reward_special == "draw_intrigue_2":
+        drawn = _draw_intrigue_cards(state, player, 2)
+        if drawn:
+            reward_dict["intrigue_cards_drawn"] = len(drawn)
+            reward_dict["drawn_intrigue_cards"] = drawn
 
     # Update pending before potential early returns
     pending["copied_from_space_id"] = target_space.space_id
@@ -1528,6 +1539,12 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
             reward_dict["intrigue_cards_drawn"] = 1
             reward_dict["drawn_intrigue_card"] = card.model_dump()
 
+    if space.reward_special == "draw_intrigue_2":
+        drawn = _draw_intrigue_cards(state, player, 2)
+        if drawn:
+            reward_dict["intrigue_cards_drawn"] = len(drawn)
+            reward_dict["drawn_intrigue_cards"] = drawn
+
     # Building visitor_reward_special: draw_contract, draw_intrigue, coins_per_building
     if (
         space.space_type == "building"
@@ -1538,6 +1555,11 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
         if special == "draw_intrigue" and state.board.intrigue_deck:
             card = state.board.intrigue_deck.pop(0)
             player.intrigue_hand.append(card)
+        elif special == "draw_intrigue_2":
+            drawn = _draw_intrigue_cards(state, player, 2)
+            if drawn:
+                reward_dict["intrigue_cards_drawn"] = len(drawn)
+                reward_dict["drawn_intrigue_cards"] = drawn
         elif special == "coins_per_building":
             coin_count = len(state.board.constructed_buildings)
             player.resources.coins += coin_count
@@ -3491,6 +3513,17 @@ async def handle_reassign_worker(
         if special == "draw_intrigue" and state.board.intrigue_deck:
             card = state.board.intrigue_deck.pop(0)
             player.intrigue_hand.append(card)
+        elif special == "draw_intrigue_2":
+            drawn = _draw_intrigue_cards(state, player, 2)
+            if drawn:
+                reward_dict["intrigue_cards_drawn"] = len(drawn)
+                reward_dict["drawn_intrigue_cards"] = drawn
+
+    if target.reward_special == "draw_intrigue_2":
+        drawn = _draw_intrigue_cards(state, player, 2)
+        if drawn:
+            reward_dict["intrigue_cards_drawn"] = len(drawn)
+            reward_dict["drawn_intrigue_cards"] = drawn
 
     # Owner bonus for buildings
     owner_bonus_info = {}
