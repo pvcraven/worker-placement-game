@@ -588,7 +588,6 @@ class BoardRenderer:
         spaces = self.board_data.get("action_spaces", {})
         backstage_slots = self.board_data.get("backstage_slots", [])
         card_w = CARD_WIDTH * s
-        bld_h = BUILDING_CARD_HEIGHT * s
         space_h = SPACE_CARD_HEIGHT * s
         token_offset = card_w / 2 - 10 * s
         token_size = max(10, int(18 * s))
