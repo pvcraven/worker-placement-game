@@ -501,6 +501,8 @@ class GameView(arcade.View):
         # Apply intrigue effect cost deduction (e.g. copy_occupied_space costs 2 coins)
         effect = msg.get("intrigue_effect", {})
         details = effect.get("details", {})
+        if not isinstance(details, dict):
+            details = {}
         cost_coins = details.get("cost_deducted", 0)
         if cost_coins and pid:
             for p in self.game_state.get("players", []):
@@ -1868,7 +1870,7 @@ class GameView(arcade.View):
         ch = self.window.content_height
         bar_h = int(100 * s)
         status_h = int(50 * s)
-        log_w = int(450 * s)
+        log_w = int(2 * cw / 9)
         log_x = cw - log_w
         log_y = bar_h
         log_h = ch - bar_h - status_h
@@ -2269,7 +2271,7 @@ class GameView(arcade.View):
 
         bar_h = int(100 * s)
         status_h = int(50 * s)
-        log_w = int(450 * s)
+        log_w = int(2 * cw / 9)
         board_w = cw - log_w
         board_h = ch - bar_h - status_h
 
