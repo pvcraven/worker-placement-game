@@ -50,8 +50,8 @@ STARTING_COINS_INCREMENT = 2
 
 CARD_WIDTH = 200
 SPACE_CARD_HEIGHT = 100
-BUILDING_CARD_HEIGHT = 150  # 1.5x space height
-CARD_HEIGHT = 300  # 3x space height (quest/intrigue cards)
+BUILDING_CARD_HEIGHT = 200  # 2x space height
+CARD_HEIGHT = 250  # 2.5x space height (quest/intrigue cards)
 
 # Short labels for resource types, used in card rendering and UI
 RESOURCE_SYMBOLS: list[tuple[str, str]] = [

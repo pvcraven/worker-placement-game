@@ -33,10 +33,10 @@ _GRID_PLACEMENT: dict[str, tuple[float, float, float, float]] = {
     "sunset_records": (3.5, 0, 1, 1),
     "the_back_room": (4.5, 0, 1, 1),
     "the_garage": (5.5, 0, 1, 1),
-    "backstage_slot_1": (3, 0, 1, 1),
-    "backstage_slot_2": (3, 1, 1, 1),
-    "backstage_slot_3": (3, 2, 1, 1),
-    "realtor": (3, 4, 1, 1),
+    "backstage_slot_1": (3, 4, 1, 1),
+    "backstage_slot_2": (3, 5, 1, 1),
+    "backstage_slot_3": (3, 6, 1, 1),
+    "realtor": (5, 4, 1, 1),
 }
 
 _PLAYER_COLORS = [
@@ -178,8 +178,8 @@ class BoardRenderer:
         g = self._grid
         assert g is not None
         img_w = CARD_WIDTH * 2
-        bld_scale = g.card_scale(1.5, CARD_WIDTH, BUILDING_CARD_HEIGHT)
-        quest_scale = g.card_scale(3, CARD_WIDTH, CARD_HEIGHT)
+        bld_scale = g.card_scale(2, CARD_WIDTH, BUILDING_CARD_HEIGHT)
+        quest_scale = g.card_scale(2.5, CARD_WIDTH, CARD_HEIGHT)
         scaled_card_w = img_w * quest_scale
         scaled_card_h = CARD_HEIGHT * 2 * quest_scale
         scaled_bld_h = BUILDING_CARD_HEIGHT * 2 * bld_scale
@@ -300,7 +300,7 @@ class BoardRenderer:
         spaces = self.board_data.get("action_spaces", {})
         if self._constructed_sprite_list:
             self._constructed_sprite_list.draw()
-            con_scale = g.card_scale(1.5, CARD_WIDTH, BUILDING_CARD_HEIGHT)
+            con_scale = g.card_scale(2, CARD_WIDTH, BUILDING_CARD_HEIGHT)
             con_cw = img_w * con_scale
             con_ch = BUILDING_CARD_HEIGHT * 2 * con_scale
             if self._building_owner_dirty:
@@ -310,8 +310,8 @@ class BoardRenderer:
             ):
                 space_data = spaces.get(space_id, {})
                 col = 1 + (i % 2)
-                row = (i // 2) * 1.5
-                cx, cy, _, _ = g.cell_rect(col, row, 1, 1.5)
+                row = (i // 2) * 2
+                cx, cy, _, _ = g.cell_rect(col, row, 1, 2)
                 if self._building_owner_dirty:
                     owner_id = space_data.get("owner_id", "")
                     if owner_id:
@@ -340,8 +340,8 @@ class BoardRenderer:
                         stock = bt.get("accumulated_stock", 0)
                     if stock > 0:
                         col = 1 + (i % 2)
-                        row = (i // 2) * 1.5
-                        cx, cy, _, _ = g.cell_rect(col, row, 1, 1.5)
+                        row = (i // 2) * 2
+                        cx, cy, _, _ = g.cell_rect(col, row, 1, 2)
                         tx = cx - con_cw / 2 + 8 * s
                         ty = cy - con_ch / 2 + 20 * s
                         atype = bt.get("accumulation_type", "")
@@ -388,8 +388,8 @@ class BoardRenderer:
         self._grid = g
 
         space_scale = g.card_scale(1, CARD_WIDTH, SPACE_CARD_HEIGHT)
-        bld_scale = g.card_scale(1.5, CARD_WIDTH, BUILDING_CARD_HEIGHT)
-        quest_scale = g.card_scale(3, CARD_WIDTH, CARD_HEIGHT)
+        bld_scale = g.card_scale(2, CARD_WIDTH, BUILDING_CARD_HEIGHT)
+        quest_scale = g.card_scale(2.5, CARD_WIDTH, CARD_HEIGHT)
 
         spaces = self.board_data.get("action_spaces", {})
 
@@ -446,8 +446,8 @@ class BoardRenderer:
         for i, space_id in enumerate(self.board_data.get("constructed_buildings", [])):
             data = spaces.get(space_id, {})
             col = 1 + (i % 2)
-            row = (i // 2) * 1.5
-            cx, cy, _, _ = g.cell_rect(col, row, 1, 1.5)
+            row = (i // 2) * 2
+            cx, cy, _, _ = g.cell_rect(col, row, 1, 2)
             scaled_w = img_w * bld_scale
             scaled_h = BUILDING_CARD_HEIGHT * 2 * bld_scale
             self._space_rects[space_id] = self._click_rect(cx, cy, scaled_w, scaled_h)
@@ -463,11 +463,11 @@ class BoardRenderer:
         # Face-up quests — 2 columns (4, 5), 2 rows of 3-high cards
         face_up_quests = self.board_data.get("face_up_quests", [])
         if face_up_quests:
-            quest_grid = [(4, 2), (5, 2), (4, 5), (5, 5)]
+            quest_grid = [(3, 1), (4, 1), (5, 1), (6, 1)]
             self._quest_positions = []
             for i in range(min(len(face_up_quests), len(quest_grid))):
                 qc, qr = quest_grid[i]
-                cx, cy, _, _ = g.cell_rect(qc, qr, 1, 3)
+                cx, cy, _, _ = g.cell_rect(qc, qr, 1, 2.5)
                 self._quest_positions.append((cx, cy))
             self._quest_sprite_list = _build_card_sprite_list(
                 face_up_quests[:len(self._quest_positions)],
@@ -494,7 +494,7 @@ class BoardRenderer:
             self._bld_positions = []
             for i in range(len(self._face_up_buildings)):
                 bc = 4 + i
-                cx, cy, _, _ = g.cell_rect(bc, 5.5, 1, 1.5)
+                cx, cy, _, _ = g.cell_rect(bc, 5.5, 1, 2)
                 self._bld_positions.append((cx, cy))
             self._building_sprite_list = _build_card_sprite_list(
                 self._face_up_buildings,
@@ -586,14 +586,14 @@ class BoardRenderer:
             wanted["realtor_worker"] = (color_name, r_cx + token_offset, r_cy)
 
         # Constructed buildings
-        bld_scale = g.card_scale(1.5, CARD_WIDTH, BUILDING_CARD_HEIGHT)
+        bld_scale = g.card_scale(2, CARD_WIDTH, BUILDING_CARD_HEIGHT)
         bld_cw = CARD_WIDTH * 2 * bld_scale
         for i, space_id in enumerate(self.board_data.get("constructed_buildings", [])):
             occupied = spaces.get(space_id, {}).get("occupied_by")
             if occupied:
                 col = 1 + (i % 2)
-                row = (i // 2) * 1.5
-                cx, cy, _, _ = g.cell_rect(col, row, 1, 1.5)
+                row = (i // 2) * 2
+                cx, cy, _, _ = g.cell_rect(col, row, 1, 2)
                 color_name = self._player_color_name(occupied)
                 wanted[f"bld_{space_id}"] = (
                     color_name,

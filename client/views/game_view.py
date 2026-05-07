@@ -2997,7 +2997,6 @@ class GameView(arcade.View):
     def _update_current_player(self, next_pid: str | None) -> None:
         if next_pid is None:
             return
-        self._info_dialog.dismiss()
         turn_order = self.game_state.get("turn_order", [])
         if next_pid in turn_order:
             idx = turn_order.index(next_pid)
