@@ -52,6 +52,8 @@ class GameView(arcade.View):
         self._cancel_sprite: arcade.Sprite | None = None
         self._cancel_sprite_list: arcade.SpriteList | None = None
         self._card_sprite_dialog: CardSpriteSelectionDialog | None = None
+        self._reassignment_slot_owners: dict[int, str | None] = {}
+        self._fs_close_rect: tuple[float, float, float, float] | None = None
         self._btn_anchor: arcade.gui.UIAnchorLayout | None = None
         self._btn_scale: float = 0.0
         self._turn_sound = arcade.load_sound(
@@ -1643,7 +1645,7 @@ class GameView(arcade.View):
         my_id_for_header = getattr(self.window, "player_id", None)
         if queue:
             next_slot = queue[0]
-            slot_owners = getattr(self, "_reassignment_slot_owners", {})
+            slot_owners = self._reassignment_slot_owners
             next_pid = slot_owners.get(next_slot)
             if next_pid == my_id_for_header:
                 self._status_text = "Reassignment — YOUR TURN"
@@ -2022,7 +2024,7 @@ class GameView(arcade.View):
 
         intrigue_cards = my_player.get("intrigue_hand", [])
         if not intrigue_cards:
-            self._status_text = "You need an intrigue card" " to place here"
+            self._status_text = "You need an intrigue card to place here"
             return
 
         for s in backstage:
@@ -2071,7 +2073,7 @@ class GameView(arcade.View):
         if not affordable:
             self._status_text = "You can't afford any buildings"
             self._show_info_dialog(
-                "You don't have enough coins" " to buy any buildings.",
+                "You don't have enough coins to buy any buildings.",
             )
             self.window.network.send(
                 {
@@ -2148,7 +2150,7 @@ class GameView(arcade.View):
                 else:
                     self._status_text = "You can't afford that building"
                     self._show_info_dialog(
-                        "You don't have enough coins" " for that building.",
+                        "You don't have enough coins for that building.",
                     )
         elif self._highlight_mode == "building_reward":
             if clicked.startswith("building_card_"):
