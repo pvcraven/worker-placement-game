@@ -34,6 +34,7 @@ htmlcov/
 
 # Logs
 *.log
+game_logs/
 uv.lock
 
 # Generated card images

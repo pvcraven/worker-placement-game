@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import datetime
 import logging
 import time
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from server.models.game import ActionSpace, GameLog
@@ -597,6 +599,28 @@ async def _end_game(server: GameServer, state) -> None:
             timestamp=time.time(),
         )
     )
+
+    _write_game_log(state)
+
+
+def _write_game_log(state) -> None:
+    log_dir = Path("game_logs")
+    log_dir.mkdir(exist_ok=True)
+    path = log_dir / f"{state.game_code}.txt"
+    player_names = {p.player_id: p.display_name for p in state.players}
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(f"Game: {state.game_code}\n")
+        f.write(f"Players: {', '.join(player_names.values())}\n")
+        f.write(f"Rounds: {state.total_rounds}\n")
+        f.write("=" * 60 + "\n\n")
+        for entry in state.game_log:
+            ts = datetime.datetime.fromtimestamp(entry.timestamp).strftime(
+                "%H:%M:%S"
+            )
+            name = player_names.get(entry.player_id or "", "")
+            player_str = f" [{name}]" if name else ""
+            f.write(f"R{entry.round_number} {ts}{player_str} {entry.action}: {entry.details}\n")
+    logger.info("Game log written to %s", path)
 
 
 def _tiebreak_coins(state, player_id: str) -> int:
