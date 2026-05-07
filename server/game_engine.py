@@ -1074,6 +1074,8 @@ async def _resolve_copied_space_rewards(
         if special == "draw_intrigue" and state.board.intrigue_deck:
             card = state.board.intrigue_deck.pop(0)
             player.intrigue_hand.append(card)
+            reward_dict["intrigue_cards_drawn"] = 1
+            reward_dict["drawn_intrigue_card"] = card.model_dump()
         elif special == "draw_intrigue_2":
             drawn = _draw_intrigue_cards(state, player, 2)
             if drawn:
@@ -1572,6 +1574,8 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
         if special == "draw_intrigue" and state.board.intrigue_deck:
             card = state.board.intrigue_deck.pop(0)
             player.intrigue_hand.append(card)
+            reward_dict["intrigue_cards_drawn"] = 1
+            reward_dict["drawn_intrigue_card"] = card.model_dump()
         elif special == "draw_intrigue_2":
             drawn = _draw_intrigue_cards(state, player, 2)
             if drawn:
@@ -2074,6 +2078,13 @@ async def handle_place_worker_backstage(
             card = c
             break
     if card is None:
+        hand_ids = [c.id for c in player.intrigue_hand]
+        logger.warning(
+            "Intrigue card mismatch: requested=%s, hand=%s, player=%s",
+            msg.intrigue_card_id,
+            hand_ids,
+            player.player_id,
+        )
         await conn.send_error("NO_INTRIGUE_CARDS", "You don't have that intrigue card.")
         return
 
@@ -3571,6 +3582,8 @@ async def handle_reassign_worker(
         if special == "draw_intrigue" and state.board.intrigue_deck:
             card = state.board.intrigue_deck.pop(0)
             player.intrigue_hand.append(card)
+            reward_dict["intrigue_cards_drawn"] = 1
+            reward_dict["drawn_intrigue_card"] = card.model_dump()
         elif special == "draw_intrigue_2":
             drawn = _draw_intrigue_cards(state, player, 2)
             if drawn:
@@ -4332,6 +4345,13 @@ async def handle_play_intrigue_from_quest(
             card = c
             break
     if card is None:
+        hand_ids = [c.id for c in player.intrigue_hand]
+        logger.warning(
+            "Intrigue card mismatch (quest reward): requested=%s, hand=%s, player=%s",
+            msg.intrigue_card_id,
+            hand_ids,
+            player.player_id,
+        )
         await conn.send_error("INVALID_ACTION", "Intrigue card not in hand.")
         return
 
