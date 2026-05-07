@@ -55,6 +55,7 @@ class GameView(arcade.View):
         self._reassignment_slot_owners: dict[int, str | None] = {}
         self._fs_close_rect: tuple[float, float, float, float] | None = None
         self._btn_anchor: arcade.gui.UIAnchorLayout | None = None
+        self._btn_child_entry = None
         self._btn_scale: float = 0.0
         self._turn_sound = arcade.load_sound(
             "client/assets/sounds/sound1.mp3",
@@ -160,6 +161,7 @@ class GameView(arcade.View):
             align_x=btn_center_x - btn_row.width // 2,
             align_y=bar_h + 5,
         )
+        self._btn_child_entry = self._btn_anchor._children[0]  # noqa: SLF001
         self.ui.add(self._btn_anchor)
 
     def _sync_from_state(self) -> None:
@@ -2293,13 +2295,12 @@ class GameView(arcade.View):
 
         if s != self._btn_scale:
             self._rebuild_buttons()
-        elif self._btn_anchor and self._btn_anchor._children:
+        elif self._btn_anchor and self._btn_child_entry:
             cell_w = board_w / 7
             btn_center_x = int(6 * cell_w)
-            child_data = self._btn_anchor._children[0].data
-            child_data["align_y"] = bar_h + 5
-            child_data["align_x"] = (
-                btn_center_x - self._btn_anchor._children[0].child.width // 2
+            self._btn_child_entry.data["align_y"] = bar_h + 5
+            self._btn_child_entry.data["align_x"] = (
+                btn_center_x - self._btn_child_entry.child.width // 2
             )
 
         if self.board_renderer:
