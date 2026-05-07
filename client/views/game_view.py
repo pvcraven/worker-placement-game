@@ -143,13 +143,20 @@ class GameView(arcade.View):
             btn.on_click = lambda _ev, cb=callback: cb()
             btn_row.add(btn)
 
+        cw = self.window.content_width
+        log_w = int(2 * cw / 9)
+        board_w = cw - log_w
+        cell_w = board_w / 7
+        btn_center_x = int(6 * cell_w)
+        bar_h = int(100 * s)
+
         self._btn_anchor = arcade.gui.UIAnchorLayout()
         self._btn_anchor.add(
             child=btn_row,
             anchor_x="left",
             anchor_y="bottom",
-            align_x=int(10 * s),
-            align_y=int(100 * s) + 5,
+            align_x=btn_center_x - btn_row.width // 2,
+            align_y=bar_h + 5,
         )
         self.ui.add(self._btn_anchor)
 
@@ -2278,7 +2285,11 @@ class GameView(arcade.View):
         if s != self._btn_scale:
             self._rebuild_buttons()
         elif self._btn_anchor and self._btn_anchor._children:
-            self._btn_anchor._children[0].data["align_y"] = bar_h + 5
+            cell_w = board_w / 7
+            btn_center_x = int(6 * cell_w)
+            child_data = self._btn_anchor._children[0].data
+            child_data["align_y"] = bar_h + 5
+            child_data["align_x"] = btn_center_x - self._btn_anchor._children[0].child.width // 2
 
         if self.board_renderer:
             my_bonus_genres: list[str] = []
