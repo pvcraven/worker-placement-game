@@ -2618,7 +2618,7 @@ class GameView(arcade.View):
             return
 
         n = len(scores)
-        panel_w = min(w - 40 * s, (280 * n + 60) * s)
+        panel_w = min(w - 40 * s, max(450 * s, (280 * n + 60) * s))
         panel_h = min(h - 60 * s, 520 * s)
         px = w / 2
         py = h / 2
