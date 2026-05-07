@@ -2521,7 +2521,7 @@ def _resolve_intrigue_effect(state, player, card) -> dict:
             p.has_first_player_marker = False
         player.has_first_player_marker = True
         state.board.first_player_id = player.player_id
-        effect["details"] = f"{player.name} will go first next round"
+        effect["details"] = f"{player.display_name} will go first next round"
 
     return effect
 
