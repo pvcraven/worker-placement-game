@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import datetime
 import logging
 import time
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from server.models.game import ActionSpace, GameLog
@@ -598,6 +600,28 @@ async def _end_game(server: GameServer, state) -> None:
         )
     )
 
+    _write_game_log(state)
+
+
+def _write_game_log(state) -> None:
+    log_dir = Path("game_logs")
+    log_dir.mkdir(exist_ok=True)
+    path = log_dir / f"{state.game_code}.txt"
+    player_names = {p.player_id: p.display_name for p in state.players}
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(f"Game: {state.game_code}\n")
+        f.write(f"Players: {', '.join(player_names.values())}\n")
+        f.write(f"Rounds: {state.total_rounds}\n")
+        f.write("=" * 60 + "\n\n")
+        for entry in state.game_log:
+            ts = datetime.datetime.fromtimestamp(entry.timestamp).strftime("%H:%M:%S")
+            name = player_names.get(entry.player_id or "", "")
+            player_str = f" [{name}]" if name else ""
+            f.write(
+                f"R{entry.round_number} {ts}{player_str} {entry.action}: {entry.details}\n"
+            )
+    logger.info("Game log written to %s", path)
+
 
 def _tiebreak_coins(state, player_id: str) -> int:
     p = state.get_player(player_id)
@@ -1074,6 +1098,8 @@ async def _resolve_copied_space_rewards(
         if special == "draw_intrigue" and state.board.intrigue_deck:
             card = state.board.intrigue_deck.pop(0)
             player.intrigue_hand.append(card)
+            reward_dict["intrigue_cards_drawn"] = 1
+            reward_dict["drawn_intrigue_card"] = card.model_dump()
         elif special == "draw_intrigue_2":
             drawn = _draw_intrigue_cards(state, player, 2)
             if drawn:
@@ -1572,6 +1598,8 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
         if special == "draw_intrigue" and state.board.intrigue_deck:
             card = state.board.intrigue_deck.pop(0)
             player.intrigue_hand.append(card)
+            reward_dict["intrigue_cards_drawn"] = 1
+            reward_dict["drawn_intrigue_card"] = card.model_dump()
         elif special == "draw_intrigue_2":
             drawn = _draw_intrigue_cards(state, player, 2)
             if drawn:
@@ -2074,6 +2102,13 @@ async def handle_place_worker_backstage(
             card = c
             break
     if card is None:
+        hand_ids = [c.id for c in player.intrigue_hand]
+        logger.warning(
+            "Intrigue card mismatch: requested=%s, hand=%s, player=%s",
+            msg.intrigue_card_id,
+            hand_ids,
+            player.player_id,
+        )
         await conn.send_error("NO_INTRIGUE_CARDS", "You don't have that intrigue card.")
         return
 
@@ -2521,7 +2556,7 @@ def _resolve_intrigue_effect(state, player, card) -> dict:
             p.has_first_player_marker = False
         player.has_first_player_marker = True
         state.board.first_player_id = player.player_id
-        effect["details"] = f"{player.name} will go first next round"
+        effect["details"] = f"{player.display_name} will go first next round"
 
     return effect
 
@@ -3571,6 +3606,8 @@ async def handle_reassign_worker(
         if special == "draw_intrigue" and state.board.intrigue_deck:
             card = state.board.intrigue_deck.pop(0)
             player.intrigue_hand.append(card)
+            reward_dict["intrigue_cards_drawn"] = 1
+            reward_dict["drawn_intrigue_card"] = card.model_dump()
         elif special == "draw_intrigue_2":
             drawn = _draw_intrigue_cards(state, player, 2)
             if drawn:
@@ -4332,6 +4369,13 @@ async def handle_play_intrigue_from_quest(
             card = c
             break
     if card is None:
+        hand_ids = [c.id for c in player.intrigue_hand]
+        logger.warning(
+            "Intrigue card mismatch (quest reward): requested=%s, hand=%s, player=%s",
+            msg.intrigue_card_id,
+            hand_ids,
+            player.player_id,
+        )
         await conn.send_error("INVALID_ACTION", "Intrigue card not in hand.")
         return
 

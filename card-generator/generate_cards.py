@@ -1699,14 +1699,15 @@ def generate_space_cards() -> int:
                 reward_special,
                 reward_special.replace("_", " ").title(),
             )
-            bbox = draw.textbbox((0, 0), label, font=Q_FONT_LABEL)
+            big_font = _load_font(34, bold=True)
+            bbox = draw.textbbox((0, 0), label, font=big_font)
             text_h = bbox[3] - bbox[1]
-            y = light_mid - text_h // 2
+            y = light_mid - text_h // 2 - 15
             draw_text_wrapped(
                 draw,
                 label,
                 y,
-                Q_FONT_LABEL,
+                big_font,
                 TEXT_COLOR,
                 max_lines=2,
                 max_width=cw - 32,
@@ -1802,14 +1803,15 @@ def generate_space_cards() -> int:
             (255, 255, 255),
             width=cw,
         )
-        bbox = draw.textbbox((0, 0), "Play Intrigue", font=Q_FONT_LABEL)
+        big_font = _load_font(34, bold=True)
+        bbox = draw.textbbox((0, 0), "Play Intrigue", font=big_font)
         text_h = bbox[3] - bbox[1]
-        bs_y = (band_h + ch) // 2 - text_h // 2
+        mid_y = (band_h + ch) // 2 - text_h // 2 - 15
         draw_text_centered(
             draw,
             "Play Intrigue",
-            bs_y,
-            Q_FONT_LABEL,
+            mid_y,
+            big_font,
             TEXT_COLOR,
             width=cw,
         )

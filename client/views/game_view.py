@@ -52,6 +52,8 @@ class GameView(arcade.View):
         self._cancel_sprite: arcade.Sprite | None = None
         self._cancel_sprite_list: arcade.SpriteList | None = None
         self._card_sprite_dialog: CardSpriteSelectionDialog | None = None
+        self._reassignment_slot_owners: dict[int, str | None] = {}
+        self._fs_close_rect: tuple[float, float, float, float] | None = None
         self._btn_anchor: arcade.gui.UIAnchorLayout | None = None
         self._btn_scale: float = 0.0
         self._turn_sound = arcade.load_sound(
@@ -143,13 +145,20 @@ class GameView(arcade.View):
             btn.on_click = lambda _ev, cb=callback: cb()
             btn_row.add(btn)
 
+        cw = self.window.content_width
+        log_w = int(2 * cw / 9)
+        board_w = cw - log_w
+        cell_w = board_w / 7
+        btn_center_x = int(6 * cell_w)
+        bar_h = int(100 * s)
+
         self._btn_anchor = arcade.gui.UIAnchorLayout()
         self._btn_anchor.add(
             child=btn_row,
             anchor_x="left",
             anchor_y="bottom",
-            align_x=int(10 * s),
-            align_y=int(100 * s) + 5,
+            align_x=btn_center_x - btn_row.width // 2,
+            align_y=bar_h + 5,
         )
         self.ui.add(self._btn_anchor)
 
@@ -1392,12 +1401,19 @@ class GameView(arcade.View):
                 }
             )
 
+        my_bonus_genres: list[str] = []
+        my_p = self._get_my_player()
+        if my_p:
+            pc = my_p.get("producer_card")
+            if pc:
+                my_bonus_genres = pc.get("bonus_genres", [])
         self._quest_completion_dialog = QuestCompletionDialog(
             quests=quests,
             on_select=on_select,
             on_skip=on_skip,
             bonus_quest_id=msg.get("bonus_quest_id"),
             bonus_vp=msg.get("bonus_vp", 0),
+            bonus_genres=my_bonus_genres,
         )
         self._quest_completion_dialog.show(
             self.window.width,
@@ -1629,7 +1645,7 @@ class GameView(arcade.View):
         my_id_for_header = getattr(self.window, "player_id", None)
         if queue:
             next_slot = queue[0]
-            slot_owners = getattr(self, "_reassignment_slot_owners", {})
+            slot_owners = self._reassignment_slot_owners
             next_pid = slot_owners.get(next_slot)
             if next_pid == my_id_for_header:
                 self._status_text = "Reassignment — YOUR TURN"
@@ -2008,7 +2024,7 @@ class GameView(arcade.View):
 
         intrigue_cards = my_player.get("intrigue_hand", [])
         if not intrigue_cards:
-            self._status_text = "You need an intrigue card" " to place here"
+            self._status_text = "You need an intrigue card to place here"
             return
 
         for s in backstage:
@@ -2057,7 +2073,7 @@ class GameView(arcade.View):
         if not affordable:
             self._status_text = "You can't afford any buildings"
             self._show_info_dialog(
-                "You don't have enough coins" " to buy any buildings.",
+                "You don't have enough coins to buy any buildings.",
             )
             self.window.network.send(
                 {
@@ -2134,7 +2150,7 @@ class GameView(arcade.View):
                 else:
                     self._status_text = "You can't afford that building"
                     self._show_info_dialog(
-                        "You don't have enough coins" " for that building.",
+                        "You don't have enough coins for that building.",
                     )
         elif self._highlight_mode == "building_reward":
             if clicked.startswith("building_card_"):
@@ -2278,7 +2294,13 @@ class GameView(arcade.View):
         if s != self._btn_scale:
             self._rebuild_buttons()
         elif self._btn_anchor and self._btn_anchor._children:
-            self._btn_anchor._children[0].data["align_y"] = bar_h + 5
+            cell_w = board_w / 7
+            btn_center_x = int(6 * cell_w)
+            child_data = self._btn_anchor._children[0].data
+            child_data["align_y"] = bar_h + 5
+            child_data["align_x"] = (
+                btn_center_x - self._btn_anchor._children[0].child.width // 2
+            )
 
         if self.board_renderer:
             my_bonus_genres: list[str] = []
@@ -2600,7 +2622,7 @@ class GameView(arcade.View):
             return
 
         n = len(scores)
-        panel_w = min(w - 40 * s, (280 * n + 60) * s)
+        panel_w = min(w - 40 * s, max(450 * s, (280 * n + 60) * s))
         panel_h = min(h - 60 * s, 520 * s)
         px = w / 2
         py = h / 2

@@ -101,6 +101,7 @@ class CardSpriteSelectionDialog:
         cancel_label: str = "Cancel",
         highlight_card_id: str | None = None,
         highlight_text: str = "",
+        bonus_genres: list[str] | None = None,
     ) -> None:
         self.title = title
         self.cards = cards[:6]
@@ -110,6 +111,7 @@ class CardSpriteSelectionDialog:
         self.cancel_label = cancel_label
         self.highlight_card_id = highlight_card_id
         self.highlight_text = highlight_text
+        self.bonus_genres = bonus_genres or []
         self._sprite_list: arcade.SpriteList | None = None
         self._card_ids: list[str] = []
         self._panel_rect: tuple[float, float, float, float] = (0, 0, 0, 0)
@@ -191,6 +193,25 @@ class CardSpriteSelectionDialog:
                     sprite.position = (cx, cy)
                     self._sprite_list.append(sprite)
             self._sprite_list.draw()
+
+            star_png = Path("client/assets/card_images/icons/genre_match_star.png")
+            if self.bonus_genres and star_png.exists():
+                png_scale = 0.5 if self.card_type in ("quests", "intrigue") else 1.0
+                card_w_px = 400 * s * png_scale
+                card_h_px = 500 * s * png_scale
+                star_size = card_w_px * 0.15
+                star_list = arcade.SpriteList()
+                for card, (cx, cy) in zip(self.cards, positions):
+                    genre = card.get("genre", "")
+                    if genre in self.bonus_genres:
+                        star = arcade.Sprite(str(star_png))
+                        star.scale = star_size / star.texture.width
+                        star.position = (
+                            cx - card_w_px / 2 + star_size / 2 + 2 * s,
+                            cy + card_h_px / 2 - star_size * 0.5,
+                        )
+                        star_list.append(star)
+                star_list.draw()
 
             if self.highlight_card_id and self.highlight_text:
                 for card, (cx, cy) in zip(self.cards, positions):
@@ -385,6 +406,7 @@ class QuestCompletionDialog:
         on_skip: callable,
         bonus_quest_id: str | None = None,
         bonus_vp: int = 0,
+        bonus_genres: list[str] | None = None,
     ) -> None:
         self._visible = False
         highlight_id = None
@@ -401,6 +423,7 @@ class QuestCompletionDialog:
             cancel_label="Skip",
             highlight_card_id=highlight_id,
             highlight_text=highlight_text,
+            bonus_genres=bonus_genres,
         )
 
     def show(

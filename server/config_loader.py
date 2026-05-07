@@ -49,105 +49,6 @@ def _load_json(path: Path) -> dict:
         return json.load(f)
 
 
-def _warn_suspicious_contracts(contracts: list[ContractCard]) -> None:
-    for c in contracts:
-        cost = c.cost
-        total_cost = (
-            cost.guitarists
-            + cost.bass_players
-            + cost.drummers
-            + cost.singers
-            + cost.coins
-        )
-        if total_cost == 0:
-            logger.warning("Contract '%s' (%s) has zero cost", c.name, c.id)
-        if c.victory_points > 20:
-            logger.warning(
-                "Contract '%s' (%s) has unusually high VP: %d",
-                c.name,
-                c.id,
-                c.victory_points,
-            )
-        if not c.description:
-            logger.warning("Contract '%s' (%s) has empty description", c.name, c.id)
-
-
-def _warn_suspicious_intrigue(cards: list[IntrigueCard]) -> None:
-    for c in cards:
-        if not c.effect_value:
-            logger.warning("Intrigue card '%s' (%s) has no effect value", c.name, c.id)
-        if not c.description:
-            logger.warning(
-                "Intrigue card '%s' (%s) has empty description", c.name, c.id
-            )
-
-
-def _warn_suspicious_buildings(buildings: list[BuildingTile]) -> None:
-    for b in buildings:
-        reward_total = (
-            b.visitor_reward.guitarists
-            + b.visitor_reward.bass_players
-            + b.visitor_reward.drummers
-            + b.visitor_reward.singers
-            + b.visitor_reward.coins
-        )
-        bonus_total = (
-            b.owner_bonus.guitarists
-            + b.owner_bonus.bass_players
-            + b.owner_bonus.drummers
-            + b.owner_bonus.singers
-            + b.owner_bonus.coins
-        )
-        has_reward = (
-            reward_total > 0
-            or b.visitor_reward_special
-            or b.visitor_reward_choice
-            or b.accumulation_type
-            or b.visitor_reward_vp > 0
-        )
-        has_bonus = (
-            bonus_total > 0
-            or b.owner_bonus_special
-            or b.owner_bonus_choice
-            or b.owner_bonus_vp > 0
-        )
-        if not has_reward and not has_bonus:
-            logger.warning(
-                "Building '%s' (%s) has no visitor reward and no owner bonus",
-                b.name,
-                b.id,
-            )
-        if b.accumulation_type and b.accumulation_per_round <= 0:
-            logger.warning(
-                "Building '%s' (%s) has accumulation_type but "
-                "accumulation_per_round <= 0",
-                b.name,
-                b.id,
-            )
-        if not b.accumulation_type and (
-            b.accumulation_per_round > 0 or b.accumulation_initial > 0
-        ):
-            logger.warning(
-                "Building '%s' (%s) has accumulation values but no "
-                "accumulation_type",
-                b.name,
-                b.id,
-            )
-
-
-def _warn_card_counts(
-    contracts: list[ContractCard],
-    intrigue_cards: list[IntrigueCard],
-    buildings: list[BuildingTile],
-) -> None:
-    if len(contracts) < 60:
-        logger.warning("Expected ~60 contracts, found %d", len(contracts))
-    if len(intrigue_cards) < 50:
-        logger.warning("Expected ~50 intrigue cards, found %d", len(intrigue_cards))
-    if len(buildings) < 18:
-        logger.warning("Expected ~20 buildings, found %d", len(buildings))
-
-
 def load_config(config_dir: str | Path) -> GameConfig:
     """Load and validate all config files from the given directory.
 
@@ -191,16 +92,6 @@ def load_config(config_dir: str | Path) -> GameConfig:
         rules_cfg = GameRulesConfig.model_validate(rules_data)
     except (ValidationError, FileNotFoundError) as e:
         raise SystemExit(f"Failed to load game_rules.json: {e}") from e
-
-    # --- Suspicious value warnings ---
-    _warn_suspicious_contracts(contracts_cfg.contracts)
-    _warn_suspicious_intrigue(intrigue_cfg.intrigue_cards)
-    _warn_suspicious_buildings(buildings_cfg.buildings)
-    _warn_card_counts(
-        contracts_cfg.contracts,
-        intrigue_cfg.intrigue_cards,
-        buildings_cfg.buildings,
-    )
 
     logger.info(
         "Config loaded: %d contracts, %d intrigue, %d buildings, %d producers",
