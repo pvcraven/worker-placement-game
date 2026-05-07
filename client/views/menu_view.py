@@ -119,6 +119,7 @@ class MenuView(arcade.View):
             caret_color=arcade.color.BLACK,
             style=input_style,
         )
+        self.name_input.layout.content_valign = "center"
         v_box.add(self.name_input)
 
         spacer2 = arcade.gui.UISpace(height=15)
@@ -149,6 +150,7 @@ class MenuView(arcade.View):
             caret_color=arcade.color.BLACK,
             style=input_style,
         )
+        self.code_input.layout.content_valign = "center"
         v_box.add(self.code_input)
 
         join_btn = arcade.gui.UIFlatButton(
@@ -188,6 +190,7 @@ class MenuView(arcade.View):
             caret_color=arcade.color.BLACK,
             style=server_style,
         )
+        self.server_input.layout.content_valign = "center"
         v_box.add(self.server_input)
 
         self.status_label = arcade.gui.UILabel(
