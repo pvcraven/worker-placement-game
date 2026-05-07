@@ -595,7 +595,7 @@ class TabbedPanel:
                     star.scale = star_size / star.texture.width
                     star.position = (
                         cx - col_w / 2 + star_size / 2 + 2 * scale,
-                        cy + card_h / 2 - star_size / 2 + 1 * scale,
+                        cy + card_h / 2 - star_size * 0.7,
                     )
                     self._star_sprite_list.append(star)
             self._star_sprite_list.draw()

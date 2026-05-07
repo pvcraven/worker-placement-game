@@ -1399,12 +1399,19 @@ class GameView(arcade.View):
                 }
             )
 
+        my_bonus_genres: list[str] = []
+        my_p = self._get_my_player()
+        if my_p:
+            pc = my_p.get("producer_card")
+            if pc:
+                my_bonus_genres = pc.get("bonus_genres", [])
         self._quest_completion_dialog = QuestCompletionDialog(
             quests=quests,
             on_select=on_select,
             on_skip=on_skip,
             bonus_quest_id=msg.get("bonus_quest_id"),
             bonus_vp=msg.get("bonus_vp", 0),
+            bonus_genres=my_bonus_genres,
         )
         self._quest_completion_dialog.show(
             self.window.width,

@@ -241,7 +241,7 @@ class BoardRenderer:
                     qx, qy = self._quest_positions[i]
                     star.position = (
                         qx - scaled_card_w / 2 + star_size / 2 + 2 * s,
-                        qy + scaled_card_h / 2 - star_size / 2 + 1 * s,
+                        qy + scaled_card_h / 2 - star_size * 0.5,
                     )
                     self._star_overlay_list.append(star)
             if self._star_overlay_list:
