@@ -52,9 +52,7 @@ class BoardGrid:
         ch = row_span * self._cell_h - 2 * self._margin
         return cx, cy, cw, ch
 
-    def card_scale(
-        self, row_span: float, base_width: int, base_height: int
-    ) -> float:
+    def card_scale(self, row_span: float, base_width: int, base_height: int) -> float:
         """Uniform scale factor to fit a card into cell(s).
 
         Fits the card within 1-column × row_span cells (minus margins),

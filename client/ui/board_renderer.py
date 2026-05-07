@@ -427,17 +427,26 @@ class BoardRenderer:
                 space_positions.append((cx, cy))
 
         self._space_sprite_list = _build_card_sprite_list(
-            space_cards, "spaces", space_positions, scale=space_scale,
+            space_cards,
+            "spaces",
+            space_positions,
+            scale=space_scale,
         )
         self._backstage_sprite_list = _build_card_sprite_list(
-            backstage_cards, "spaces", backstage_positions, scale=space_scale,
+            backstage_cards,
+            "spaces",
+            backstage_positions,
+            scale=space_scale,
         )
 
         # Realtor sprite
         r_col, r_row, r_cs, r_rs = _GRID_PLACEMENT["realtor"]
         r_cx, r_cy, _, _ = g.cell_rect(r_col, r_row, r_cs, r_rs)
         self._realtor_sprite_list = _build_card_sprite_list(
-            [{"id": "realtor"}], "spaces", [(r_cx, r_cy)], scale=space_scale,
+            [{"id": "realtor"}],
+            "spaces",
+            [(r_cx, r_cy)],
+            scale=space_scale,
         )
 
         # Constructed buildings — columns 1-2, 1.5 rows each
@@ -457,7 +466,10 @@ class BoardRenderer:
                 constructed_cards.append({"id": tile_id})
                 constructed_positions.append((cx, cy))
         self._constructed_sprite_list = _build_card_sprite_list(
-            constructed_cards, "buildings", constructed_positions, scale=bld_scale,
+            constructed_cards,
+            "buildings",
+            constructed_positions,
+            scale=bld_scale,
         )
 
         # Face-up quests — 2 columns (4, 5), 2 rows of 3-high cards
@@ -470,7 +482,7 @@ class BoardRenderer:
                 cx, cy, _, _ = g.cell_rect(qc, qr, 1, 2.5)
                 self._quest_positions.append((cx, cy))
             self._quest_sprite_list = _build_card_sprite_list(
-                face_up_quests[:len(self._quest_positions)],
+                face_up_quests[: len(self._quest_positions)],
                 "quests",
                 self._quest_positions,
                 scale=quest_scale,
