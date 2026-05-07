@@ -614,12 +614,12 @@ def _write_game_log(state) -> None:
         f.write(f"Rounds: {state.total_rounds}\n")
         f.write("=" * 60 + "\n\n")
         for entry in state.game_log:
-            ts = datetime.datetime.fromtimestamp(entry.timestamp).strftime(
-                "%H:%M:%S"
-            )
+            ts = datetime.datetime.fromtimestamp(entry.timestamp).strftime("%H:%M:%S")
             name = player_names.get(entry.player_id or "", "")
             player_str = f" [{name}]" if name else ""
-            f.write(f"R{entry.round_number} {ts}{player_str} {entry.action}: {entry.details}\n")
+            f.write(
+                f"R{entry.round_number} {ts}{player_str} {entry.action}: {entry.details}\n"
+            )
     logger.info("Game log written to %s", path)
 
 

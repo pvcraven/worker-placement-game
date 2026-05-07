@@ -2298,7 +2298,9 @@ class GameView(arcade.View):
             btn_center_x = int(6 * cell_w)
             child_data = self._btn_anchor._children[0].data
             child_data["align_y"] = bar_h + 5
-            child_data["align_x"] = btn_center_x - self._btn_anchor._children[0].child.width // 2
+            child_data["align_x"] = (
+                btn_center_x - self._btn_anchor._children[0].child.width // 2
+            )
 
         if self.board_renderer:
             my_bonus_genres: list[str] = []

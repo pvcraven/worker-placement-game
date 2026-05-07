@@ -49,7 +49,6 @@ def _load_json(path: Path) -> dict:
         return json.load(f)
 
 
-
 def load_config(config_dir: str | Path) -> GameConfig:
     """Load and validate all config files from the given directory.
 
