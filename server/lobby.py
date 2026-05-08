@@ -96,7 +96,23 @@ async def join_game(server: GameServer, conn: ClientConnection, msg) -> None:
         return
 
     if state.phase != GamePhase.LOBBY:
-        await conn.send_error("INVALID_ACTION", "Game already in progress.")
+        # Game in progress — treat as reconnect if name matches a disconnected player
+        player = None
+        for p in state.players:
+            if p.display_name == msg.player_name and not p.is_connected:
+                player = p
+                break
+        if player is None:
+            await conn.send_error("INVALID_ACTION", "Game already in progress.")
+            return
+
+        # Delegate to existing reconnect handler via a lightweight shim
+        class _ReconnectShim:
+            game_code = msg.game_code
+            player_name = msg.player_name
+            slot_index = player.slot_index
+
+        await reconnect(server, conn, _ReconnectShim())
         return
 
     if len(state.players) >= state.max_players:

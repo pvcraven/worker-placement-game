@@ -83,6 +83,7 @@ class GameWindow(arcade.Window):
     def show_menu(self) -> None:
         from client.views.menu_view import MenuView
 
+        self.network.clear_reconnect_credentials()
         self.show_view(MenuView())
 
     def show_lobby(self) -> None:

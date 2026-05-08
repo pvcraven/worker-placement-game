@@ -82,6 +82,7 @@ class GameView(arcade.View):
             )
             self._setup_done = True
         self._sync_from_state()
+        self._store_reconnect_credentials()
 
     def on_hide_view(self) -> None:
         self.ui.disable()
@@ -266,10 +267,18 @@ class GameView(arcade.View):
             self._sync_from_state()
         elif action == "player_disconnected":
             name = msg.get("player_name", "???")
+            pid = msg.get("player_id")
+            for p in self.game_state.get("players", []):
+                if p.get("player_id") == pid:
+                    p["is_connected"] = False
             if self.tabbed_panel:
                 self.tabbed_panel.add_entry(f"{name} disconnected")
         elif action == "player_reconnected":
             name = msg.get("player_name", "???")
+            pid = msg.get("player_id")
+            for p in self.game_state.get("players", []):
+                if p.get("player_id") == pid:
+                    p["is_connected"] = True
             if self.tabbed_panel:
                 self.tabbed_panel.add_entry(f"{name} reconnected")
         elif action == "turn_timeout":
@@ -2880,18 +2889,21 @@ class GameView(arcade.View):
             name = p.get("display_name", "???")
             if is_current:
                 name = f"> {name}"
+            connected = p.get("is_connected", True)
+            name_color = arcade.color.WHITE if connected else arcade.color.RED
             txt = self._text(
                 f"plist_{i}",
                 name,
                 cx + circle_r + gap,
                 row_top,
-                arcade.color.WHITE,
+                name_color,
                 font_sz,
                 bold=is_current,
                 anchor_x="left",
                 anchor_y="center",
             )
             txt.bold = is_current
+            txt.color = name_color
             txt.draw()
             vp = p.get("victory_points", 0)
             vp_txt = self._text(
@@ -2955,6 +2967,22 @@ class GameView(arcade.View):
             if p.get("player_id") == player_id:
                 return p.get("display_name", "???")
         return "???"
+
+    def _store_reconnect_credentials(self) -> None:
+        my_id = getattr(self.window, "player_id", None)
+        if not my_id:
+            return
+        for p in self.game_state.get("players", []):
+            if p.get("player_id") == my_id:
+                self.window.slot_index = p.get("slot_index", 0)
+                break
+        game_code = getattr(self.window, "game_code", None)
+        player_name = getattr(self.window, "player_name", None)
+        slot_index = getattr(self.window, "slot_index", None)
+        if game_code and player_name and slot_index is not None:
+            self.window.network.set_reconnect_credentials(
+                game_code, player_name, slot_index
+            )
 
     @staticmethod
     def _format_intrigue_effect(
