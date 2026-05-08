@@ -30,6 +30,9 @@ class NetworkClient:
         self._thread: threading.Thread | None = None
         self._loop: asyncio.AbstractEventLoop | None = None
         self._running = False
+        self._reconnect_game_code: str | None = None
+        self._reconnect_player_name: str | None = None
+        self._reconnect_slot_index: int | None = None
 
     # ------------------------------------------------------------------
     # Public API (called from Arcade main thread)
@@ -74,6 +77,20 @@ class NetworkClient:
                 break
         return messages
 
+    def set_reconnect_credentials(
+        self, game_code: str, player_name: str, slot_index: int
+    ) -> None:
+        """Store credentials so auto-reconnect can identify this player."""
+        self._reconnect_game_code = game_code
+        self._reconnect_player_name = player_name
+        self._reconnect_slot_index = slot_index
+
+    def clear_reconnect_credentials(self) -> None:
+        """Clear stored credentials (e.g. when returning to menu)."""
+        self._reconnect_game_code = None
+        self._reconnect_player_name = None
+        self._reconnect_slot_index = None
+
     @property
     def connected(self) -> bool:
         return self._ws is not None and self._running
@@ -102,6 +119,19 @@ class NetworkClient:
                 async with websockets.connect(self.server_url) as ws:
                     self._ws = ws
                     logger.info("Connected to %s", self.server_url)
+
+                    if self._reconnect_game_code is not None:
+                        await ws.send(
+                            json.dumps(
+                                {
+                                    "action": "reconnect",
+                                    "game_code": self._reconnect_game_code,
+                                    "player_name": self._reconnect_player_name,
+                                    "slot_index": self._reconnect_slot_index,
+                                }
+                            )
+                        )
+                        logger.info("Sent auto-reconnect for game %s", self._reconnect_game_code)
 
                     recv_task = asyncio.create_task(self._recv_loop(ws))
                     send_task = asyncio.create_task(self._send_loop(ws))

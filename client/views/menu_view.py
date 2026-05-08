@@ -265,9 +265,20 @@ class MenuView(arcade.View):
             if action == "game_created":
                 self.window.player_id = msg["player_id"]
                 self.window.game_code = msg["game_code"]
+                self.window.slot_index = msg.get("slot_index", 0)
                 self.window.show_lobby()
             elif action == "player_joined":
                 self.window.show_lobby()
+            elif action == "state_sync":
+                game_state = msg.get("game_state", {})
+                my_name = getattr(self.window, "player_name", None)
+                for p in game_state.get("players", []):
+                    if p.get("display_name") == my_name:
+                        self.window.player_id = p["player_id"]
+                        self.window.slot_index = p.get("slot_index", 0)
+                        break
+                self.window.game_state = game_state
+                self.window.show_game()
             elif action == "error":
                 self.status_label.text = msg.get("message", "Error")
 

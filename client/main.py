@@ -54,6 +54,7 @@ def main() -> None:
     window.player_name = name  # type: ignore[attr-defined]
     window.player_id = None  # type: ignore[attr-defined]
     window.game_code = None  # type: ignore[attr-defined]
+    window.slot_index = None  # type: ignore[attr-defined]
 
     # Start on the main menu
     window.show_menu()

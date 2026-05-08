@@ -14,8 +14,8 @@
 
 **Purpose**: Add reconnect credential infrastructure to NetworkClient that all user stories depend on
 
-- [ ] T001 Add reconnect credential attributes (`reconnect_game_code`, `reconnect_player_name`, `reconnect_slot_index`) and `set_reconnect_credentials()` / `clear_reconnect_credentials()` methods to `client/network_client.py`
-- [ ] T002 Add `window.slot_index = None` initialization alongside existing `window.game_code = None` in `client/main.py`
+- [x] T001 Add reconnect credential attributes (`reconnect_game_code`, `reconnect_player_name`, `reconnect_slot_index`) and `set_reconnect_credentials()` / `clear_reconnect_credentials()` methods to `client/network_client.py`
+- [x] T002 Add `window.slot_index = None` initialization alongside existing `window.game_code = None` in `client/main.py`
 
 **Checkpoint**: Reconnect credential storage available — user story implementation can begin
 
@@ -29,23 +29,23 @@
 
 ### Server: Join-as-Reconnect
 
-- [ ] T003 [US1] In the `join_game` handler in `server/lobby.py`, detect when the target game is past LOBBY phase. If `player_name` matches a disconnected player, delegate to the existing `reconnect()` function with the matched player's `slot_index`. If no match, return an error ("Game already in progress").
-- [ ] T004 [US1] Add test for join-as-reconnect: join request for active game with matching disconnected player name succeeds and triggers reconnect flow in `tests/test_lobby.py`
-- [ ] T005 [P] [US1] Add test for join-as-reconnect rejection: join request for active game with non-matching name returns error in `tests/test_lobby.py`
+- [x] T003 [US1] In the `join_game` handler in `server/lobby.py`, detect when the target game is past LOBBY phase. If `player_name` matches a disconnected player, delegate to the existing `reconnect()` function with the matched player's `slot_index`. If no match, return an error ("Game already in progress").
+- [x] T004 [US1] Add test for join-as-reconnect: join request for active game with matching disconnected player name succeeds and triggers reconnect flow in `tests/test_lobby.py`
+- [x] T005 [P] [US1] Add test for join-as-reconnect rejection: join request for active game with non-matching name returns error in `tests/test_lobby.py`
 
 ### Client: Auto-Reconnect on Network Loss
 
-- [ ] T006 [US1] In `_connection_loop` in `client/network_client.py`, after WebSocket connects, check if reconnect credentials exist. If so, automatically enqueue a `ReconnectRequest` message (action: "reconnect", game_code, player_name, slot_index) to the outgoing queue.
+- [x] T006 [US1] In `_connection_loop` in `client/network_client.py`, after WebSocket connects, check if reconnect credentials exist. If so, automatically enqueue a `ReconnectRequest` message (action: "reconnect", game_code, player_name, slot_index) to the outgoing queue.
 
 ### Client: Store Credentials for Reconnect
 
-- [ ] T007 [US1] In `client/views/menu_view.py`, when `game_created` response arrives, extract and store `slot_index` on `window.slot_index` from the response message. Also store it when `player_joined` response is processed.
-- [ ] T008 [US1] In `client/views/game_view.py`, when `game_started` is received and game state is set, extract own `slot_index` from the player entry matching `window.player_id` in the players list and store on `window.slot_index`. Then call `window.network.set_reconnect_credentials(window.game_code, window.player_name, window.slot_index)` to enable auto-reconnect.
-- [ ] T009 [US1] When returning to menu (e.g., game ends or player leaves), call `window.network.clear_reconnect_credentials()` to prevent stale reconnect attempts.
+- [x] T007 [US1] In `client/views/menu_view.py`, when `game_created` response arrives, extract and store `slot_index` on `window.slot_index` from the response message. Also store it when `player_joined` response is processed.
+- [x] T008 [US1] In `client/views/game_view.py`, when `game_started` is received and game state is set, extract own `slot_index` from the player entry matching `window.player_id` in the players list and store on `window.slot_index`. Then call `window.network.set_reconnect_credentials(window.game_code, window.player_name, window.slot_index)` to enable auto-reconnect.
+- [x] T009 [US1] When returning to menu (e.g., game ends or player leaves), call `window.network.clear_reconnect_credentials()` to prevent stale reconnect attempts.
 
 ### Client: Handle Reconnect Response
 
-- [ ] T010 [US1] In `client/views/menu_view.py`, handle `state_sync` response in `on_update()`. When received, this means a join-as-reconnect succeeded — store the game state and transition to game view (similar to `game_started` flow), setting `window.player_id` from the matched player in the state.
+- [x] T010 [US1] In `client/views/menu_view.py`, handle `state_sync` response in `on_update()`. When received, this means a join-as-reconnect succeeded — store the game state and transition to game view (similar to `game_started` flow), setting `window.player_id` from the matched player in the state.
 
 **Checkpoint**: Disconnected players can reconnect via auto-reconnect (network loss) or manual rejoin (client restart). Full state is restored.
 
@@ -57,9 +57,9 @@
 
 **Independent Test**: With 2 clients in a game, disconnect one. Verify the other client shows the disconnected player's name in red. Reconnect and verify it returns to white.
 
-- [ ] T011 [US2] In `_draw_player_list()` in `client/views/game_view.py`, read `p.get("is_connected", True)` for each player. Use `arcade.color.RED` when False, `arcade.color.WHITE` when True. Update the cached text object's `color` property each frame to handle transitions.
-- [ ] T012 [US2] In the `player_disconnected` message handler in `client/views/game_view.py`, update the matching player's `is_connected` field to `False` in the local `self.game_state["players"]` dict so the red text appears immediately without waiting for a full state sync.
-- [ ] T013 [US2] In the `player_reconnected` message handler in `client/views/game_view.py`, update the matching player's `is_connected` field to `True` in the local `self.game_state["players"]` dict so the white text restores immediately.
+- [x] T011 [US2] In `_draw_player_list()` in `client/views/game_view.py`, read `p.get("is_connected", True)` for each player. Use `arcade.color.RED` when False, `arcade.color.WHITE` when True. Update the cached text object's `color` property each frame to handle transitions.
+- [x] T012 [US2] In the `player_disconnected` message handler in `client/views/game_view.py`, update the matching player's `is_connected` field to `False` in the local `self.game_state["players"]` dict so the red text appears immediately without waiting for a full state sync.
+- [x] T013 [US2] In the `player_reconnected` message handler in `client/views/game_view.py`, update the matching player's `is_connected` field to `True` in the local `self.game_state["players"]` dict so the white text restores immediately.
 
 **Checkpoint**: Connected players see real-time red/white color changes in the player list based on connection status.
 
@@ -71,7 +71,7 @@
 
 **Independent Test**: With an active game, open a new client, enter a wrong name but correct game code, click Join. Verify a clear error message is displayed.
 
-- [ ] T014 [US3] In `client/views/menu_view.py`, ensure the existing `error` action handler in `on_update()` displays the error message from the server (e.g., "No game with that code." or "Game already in progress") in the status label so the player understands why reconnection failed.
+- [x] T014 [US3] In `client/views/menu_view.py`, ensure the existing `error` action handler in `on_update()` displays the error message from the server (e.g., "No game with that code." or "Game already in progress") in the status label so the player understands why reconnection failed.
 
 **Checkpoint**: Invalid reconnection attempts show clear, user-readable error messages.
 
@@ -79,8 +79,8 @@
 
 ## Phase 5: Polish & Cross-Cutting Concerns
 
-- [ ] T015 Run `uv run pytest` and `ruff check .` — fix any failures or lint issues
-- [ ] T016 Manual end-to-end validation per `quickstart.md`: start server + 2 clients, play a game, disconnect one, verify red text, reconnect (both auto and manual restart), verify white text and full state restore
+- [x] T015 Run `uv run pytest` and `ruff check .` — fix any failures or lint issues
+- [x] T016 Manual end-to-end validation per `quickstart.md`: start server + 2 clients, play a game, disconnect one, verify red text, reconnect (both auto and manual restart), verify white text and full state restore
 
 ---
 
