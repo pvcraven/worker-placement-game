@@ -322,6 +322,10 @@ def _initialize_game(state, config) -> None:
         )
     )
 
+    from server.game_engine import _write_game_log
+
+    _write_game_log(state)
+
 
 def _filter_state_for_player(state, player_id: str) -> dict:
     """Return a JSON-serializable dict of game state visible to this player."""
