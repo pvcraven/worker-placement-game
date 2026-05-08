@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import math
 from pathlib import Path
 
 import arcade
@@ -48,6 +49,8 @@ _PLAYER_COLORS = [
 ]
 
 _COLOR_NAMES = ["red", "blue", "green", "orange", "purple"]
+
+_BUILDINGS_PER_PAGE = 8
 
 
 def _build_card_sprite_list(
@@ -106,6 +109,9 @@ class BoardRenderer:
         self._workers_dirty = True
         self._star_overlay_list: arcade.SpriteList | None = None
         self._star_overlay_key: tuple = ()
+        self._building_page: int = 0
+        self._building_page_count: int = 1
+        self._building_page_text: arcade.Text | None = None
 
     def update_board(
         self,
@@ -134,6 +140,14 @@ class BoardRenderer:
         self._deck_remaining = deck_remaining
         self._building_vp_dirty = True
         self._shapes_dirty = True
+
+    def scroll_buildings(self, direction: int) -> None:
+        new_page = self._building_page + direction
+        if 0 <= new_page < self._building_page_count:
+            self._building_page = new_page
+            self._shapes_dirty = True
+            self._building_owner_dirty = True
+            self._workers_dirty = True
 
     def _grid_rect(
         self, col: float, row: float, col_span: float, row_span: float
@@ -303,14 +317,20 @@ class BoardRenderer:
             con_scale = g.card_scale(2, CARD_WIDTH, BUILDING_CARD_HEIGHT)
             con_cw = img_w * con_scale
             con_ch = BUILDING_CARD_HEIGHT * 2 * con_scale
+
+            all_constructed = self.board_data.get("constructed_buildings", [])
+            bld_start = self._building_page * _BUILDINGS_PER_PAGE
+            bld_end = min(
+                bld_start + _BUILDINGS_PER_PAGE, len(all_constructed)
+            )
+            page_buildings = all_constructed[bld_start:bld_end]
+
             if self._building_owner_dirty:
                 self._building_owner_texts = []
-            for i, space_id in enumerate(
-                self.board_data.get("constructed_buildings", [])
-            ):
+            for j, space_id in enumerate(page_buildings):
                 space_data = spaces.get(space_id, {})
-                col = 1 + (i % 2)
-                row = (i // 2) * 2
+                col = 1 + (j % 2)
+                row = (j // 2) * 2
                 cx, cy, _, _ = g.cell_rect(col, row, 1, 2)
                 if self._building_owner_dirty:
                     owner_id = space_data.get("owner_id", "")
@@ -330,17 +350,15 @@ class BoardRenderer:
                         )
             if self._building_owner_dirty:
                 self._building_accum_texts = []
-                for i, space_id in enumerate(
-                    self.board_data.get("constructed_buildings", [])
-                ):
+                for j, space_id in enumerate(page_buildings):
                     space_data = spaces.get(space_id, {})
                     bt = space_data.get("building_tile", {})
                     stock = 0
                     if bt:
                         stock = bt.get("accumulated_stock", 0)
                     if stock > 0:
-                        col = 1 + (i % 2)
-                        row = (i // 2) * 2
+                        col = 1 + (j % 2)
+                        row = (j // 2) * 2
                         cx, cy, _, _ = g.cell_rect(col, row, 1, 2)
                         tx = cx - con_cw / 2 + 8 * s
                         ty = cy - con_ch / 2 + 20 * s
@@ -363,10 +381,32 @@ class BoardRenderer:
                             ),
                         )
                 self._building_owner_dirty = False
+
+                # Page indicator
+                if self._building_page_count > 1:
+                    pg_label = (
+                        f"{self._building_page + 1}/{self._building_page_count}"
+                    )
+                    pg_cx, pg_cy, _, _ = g.cell_rect(1, 7, 2, 1)
+                    self._building_page_text = arcade.Text(
+                        pg_label,
+                        pg_cx,
+                        pg_cy,
+                        color=arcade.color.LIGHT_GRAY,
+                        font_size=font_sm,
+                        bold=True,
+                        anchor_x="center",
+                        anchor_y="center",
+                    )
+                else:
+                    self._building_page_text = None
+
             for ot in self._building_owner_texts:
                 ot.draw()
             for at in self._building_accum_texts:
                 at.draw()
+            if self._building_page_text:
+                self._building_page_text.draw()
 
         if self._workers_dirty:
             self._update_workers(s)
@@ -449,13 +489,23 @@ class BoardRenderer:
             scale=space_scale,
         )
 
-        # Constructed buildings — columns 1-2, 1.5 rows each
+        # Constructed buildings — columns 1-2, paginated
+        all_constructed = self.board_data.get("constructed_buildings", [])
+        self._building_page_count = max(
+            1, math.ceil(len(all_constructed) / _BUILDINGS_PER_PAGE)
+        )
+        if self._building_page >= self._building_page_count:
+            self._building_page = self._building_page_count - 1
+        start = self._building_page * _BUILDINGS_PER_PAGE
+        end = min(start + _BUILDINGS_PER_PAGE, len(all_constructed))
+        page_buildings = all_constructed[start:end]
+
         constructed_cards = []
         constructed_positions = []
-        for i, space_id in enumerate(self.board_data.get("constructed_buildings", [])):
+        for j, space_id in enumerate(page_buildings):
             data = spaces.get(space_id, {})
-            col = 1 + (i % 2)
-            row = (i // 2) * 2
+            col = 1 + (j % 2)
+            row = (j // 2) * 2
             cx, cy, _, _ = g.cell_rect(col, row, 1, 2)
             scaled_w = img_w * bld_scale
             scaled_h = BUILDING_CARD_HEIGHT * 2 * bld_scale
@@ -597,14 +647,17 @@ class BoardRenderer:
             color_name = self._player_color_name(pid)
             wanted["realtor_worker"] = (color_name, r_cx + token_offset, r_cy)
 
-        # Constructed buildings
+        # Constructed buildings (current page only)
         bld_scale = g.card_scale(2, CARD_WIDTH, BUILDING_CARD_HEIGHT)
         bld_cw = CARD_WIDTH * 2 * bld_scale
-        for i, space_id in enumerate(self.board_data.get("constructed_buildings", [])):
+        all_constructed = self.board_data.get("constructed_buildings", [])
+        bld_start = self._building_page * _BUILDINGS_PER_PAGE
+        bld_end = min(bld_start + _BUILDINGS_PER_PAGE, len(all_constructed))
+        for j, space_id in enumerate(all_constructed[bld_start:bld_end]):
             occupied = spaces.get(space_id, {}).get("occupied_by")
             if occupied:
-                col = 1 + (i % 2)
-                row = (i // 2) * 2
+                col = 1 + (j % 2)
+                row = (j // 2) * 2
                 cx, cy, _, _ = g.cell_rect(col, row, 1, 2)
                 color_name = self._player_color_name(occupied)
                 wanted[f"bld_{space_id}"] = (

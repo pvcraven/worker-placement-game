@@ -1881,14 +1881,26 @@ class GameView(arcade.View):
         scroll_x: int,
         scroll_y: int,
     ) -> None:
-        if not self.tabbed_panel:
-            return
         s = self.window.ui_scale
         cw = self.window.content_width
         ch = self.window.content_height
         bar_h = int(100 * s)
         status_h = int(50 * s)
         log_w = int(2 * cw / 9)
+        board_w = cw - log_w
+
+        # Buildings area: grid columns 1-2, full board height
+        if self.board_renderer and self.board_renderer._building_page_count > 1:
+            bld_x0 = board_w / 7
+            bld_x1 = 3 * board_w / 7
+            bld_y0 = bar_h
+            bld_y1 = bar_h + (ch - bar_h - status_h)
+            if bld_x0 <= x <= bld_x1 and bld_y0 <= y <= bld_y1:
+                self.board_renderer.scroll_buildings(-int(scroll_y))
+                return
+
+        if not self.tabbed_panel:
+            return
         log_x = cw - log_w
         log_y = bar_h
         log_h = ch - bar_h - status_h

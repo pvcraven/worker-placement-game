@@ -320,6 +320,254 @@ This shows each quest type has a primary resource affinity:
 
 ---
 
+## Expansion Quest Cards
+
+Both expansions add 30 quest cards each (6 per quest type), for a total of 120 quests across base + both expansions.
+
+### Undermountain Expansion (30 quests)
+
+Priority: **First expansion to implement.**
+
+#### Undermountain New Mechanics
+
+**One-Time Completion Rewards (new)**
+
+| Mechanic ID                | Description                                                                                     |
+|----------------------------|-------------------------------------------------------------------------------------------------|
+| optional_cost              | Card has a base cost/reward and an optional enhanced tier — player chooses at completion         |
+| take_all_faceup_quests     | Take all face-up quests from Cliffwatch Inn (quest display)                                     |
+| take_all_faceup_buildings  | Put all face-up buildings from Builder's Hall (building marketplace) under your control for free |
+| return_workers             | Return up to N workers to your pool (they can be re-placed in future rounds)                    |
+| draw_intrigue_per_resource | Draw 1 intrigue card for each specific resource type used to complete the quest                  |
+| vp_per_resource_used       | Gain +2 VP for each specific resource type used to complete the quest                           |
+| draw_and_play_intrigue     | Draw N intrigue cards, may play each one immediately as drawn                                   |
+
+**Ongoing Effects / Plot Quests (new)**
+
+| Mechanic ID             | Description                                                                                       |
+|-------------------------|---------------------------------------------------------------------------------------------------|
+| use_marketplace_building| Once per turn, assign a worker to an unpurchased building in the marketplace and use its effect    |
+| intrigue_chain          | After any action that lets you play intrigue, draw an intrigue card and may play it immediately    |
+| return_quest_resource   | When completing any quest, you may return 1 resource used on that quest to your pool               |
+| on_take_quest_resource  | When you pick up a quest of a specific genre, gain 1 resource (×5 variants, one per genre)        |
+| complete_faceup_quests  | You may complete face-up quests in the quest display as though they were your active quests        |
+| gain_owner_benefit      | When you assign a worker to a building you own, you also gain the owner benefit                   |
+
+**Mega Quests:** Undermountain introduces 40-VP mega quests — one per quest type, with very high costs and no special effects.
+
+#### Undermountain Commerce Quests (6)
+
+| Card Name                       | Cost                | Reward Resources | VP | Special                            |
+|---------------------------------|---------------------|------------------|----|-------------------------------------|
+| Obtain Builders' Plans          | 2G 2B 1D 10$        | -                | 13 | use_marketplace_building (PLOT)     |
+| Recruit for City Watch          | 1S 1D (opt: +10$)   | (opt: 3G 3B)     | 8  | optional_cost                       |
+| Steal Gems from the Bone Throne | 4B 2D               | 10$              | 7  | -                                   |
+| Threaten the Builders' Guilds   | 2G 4B 2D 10$        | -                | 13 | take_all_faceup_buildings           |
+| Sponsor Bounty Hunters          | 1S 4G 3B 6$         | -                | 12 | on_take_commerce_resource (PLOT): +4$ when you take a Commerce quest |
+| Ransack Whitehelm's Tomb        | 2S 3G 4B 10$        | -                | 40 | mega_quest                          |
+
+#### Undermountain Arcana Quests (6)
+
+| Card Name                         | Cost              | Reward Resources | VP | Special                              |
+|-------------------------------------|-------------------|------------------|----|---------------------------------------|
+| Study in the Librarium              | 2B 5D 5$          | -                | 11 | intrigue_chain (PLOT)                 |
+| Deal With the Black Viper           | 1G 4B 2D 5$       | 4 Intrigue       | 10 | draw_and_play_intrigue                |
+| Resurrect Dead Wizards              | 3S 5$             | 3D               | 6  | -                                     |
+| Explore Trobriand's Graveyard       | 2G 3B 4D 6$       | -                | 40 | mega_quest                            |
+| Survive a Meeting With Halaster     | 1S 1G 4?          | -                | 15 | draw_intrigue_per_resource (per D used) |
+| Establish Wizard Academy            | 1S 1G 3B 3D       | -                | 12 | on_take_arcana_resource (PLOT): +1D when you take an Arcana quest |
+
+#### Undermountain Piety Quests (6)
+
+| Card Name                       | Cost              | Reward Resources     | VP | Special                               |
+|---------------------------------|-------------------|----------------------|----|----------------------------------------|
+| Establish Temple to Ibrandul    | 3S 4B 5$          | 1S 1G 1B 1D         | 11 | take_all_faceup_quests                 |
+| Rescue Clerics of Tymora        | 6G 2D             | 3S                   | 10 | -                                      |
+| Sanctify a Desecrated Temple    | 4S 2G 5$          | -                    | 13 | on_take_piety_resource (PLOT): +1S when you take a Piety quest |
+| Diplomatic Mission to Suzail    | 3S 3G 3$          | -                    | 10 | complete_faceup_quests (PLOT)          |
+| Plunder the Island Temple       | 5S 2G 2B 1D       | -                    | 40 | mega_quest                             |
+| Root Out Loviatar's Faithful    | 1G 1D 4?          | -                    | 15 | vp_per_resource_used (per S used)      |
+
+#### Undermountain Warfare Quests (6)
+
+| Card Name                          | Cost                 | Reward Resources | VP     | Special                               |
+|------------------------------------|----------------------|------------------|--------|----------------------------------------|
+| Seize Citadel of the Bloody Hand   | 1S 4G 2D             | -                | 6      | return_quest_resource (PLOT)           |
+| Defend the Yawning Portal          | 3S 6G 1B 1D          | 2?               | 15     | return_workers (up to 3)               |
+| Wake the Six Sleepers              | 3S 3B                | 6G               | 8      | -                                      |
+| Battle in Muiral's Gauntlet        | 2S 7G 2D 2$          | -                | 40     | mega_quest                             |
+| Recover the Flame of the North     | 5G 3B 1D 3$          | -                | 10     | on_take_warfare_resource (PLOT): +1G when you take a Warfare quest |
+| Destroy a Temple of Selvetarm      | 1S 2G 2$ (opt: +4G)  | -                | 10 (20)| optional_cost                          |
+
+#### Undermountain Skullduggery Quests (6)
+
+| Card Name                          | Cost                 | Reward Resources | VP     | Special                              |
+|------------------------------------|----------------------|------------------|--------|---------------------------------------|
+| Defend the Lanceboard Room         | 3G 6B 1D 10$         | 8?               | 12     | -                                     |
+| Survive Arcturia's Transformation  | 6G 5$                | 6B               | 6      | -                                     |
+| Ally with Xanathar's Guild         | 2G 5B 1D 5$          | -                | 10     | on_take_skullduggery_resource (PLOT): +1B when you take a Skullduggery quest |
+| Break Into Blackstaff Tower        | 1S 7B 2D 9$          | -                | 40     | mega_quest                            |
+| Unleash Crime Spree                | 1S 1G 1B 1D (opt: +4B) | -              | 12 (22)| optional_cost                         |
+| Impersonate Tax Collector           | 1G 4B 1D 5$          | -                | 9      | gain_owner_benefit (PLOT)             |
+
+#### Undermountain Plot Quest Summary
+
+| Card Name                        | Type | Cost              | VP | Ongoing Effect                                              |
+|----------------------------------|------|-------------------|----|--------------------------------------------------------------|
+| Obtain Builders' Plans           | C    | 2G 2B 1D 10$      | 13 | Once per turn, use an unpurchased building's effect           |
+| Sponsor Bounty Hunters           | C    | 1S 4G 3B 6$       | 12 | When you take a Commerce quest, +4$                          |
+| Study in the Librarium           | A    | 2B 5D 5$          | 11 | After playing intrigue, draw 1 intrigue and may play it      |
+| Establish Wizard Academy         | A    | 1S 1G 3B 3D       | 12 | When you take an Arcana quest, +1D                           |
+| Sanctify a Desecrated Temple     | P    | 4S 2G 5$          | 13 | When you take a Piety quest, +1S                             |
+| Diplomatic Mission to Suzail     | P    | 3S 3G 3$          | 10 | Complete face-up quests as if they were your active quests    |
+| Seize Citadel of the Bloody Hand | W    | 1S 4G 2D          | 6  | When completing any quest, return 1 resource used             |
+| Recover the Flame of the North   | W    | 5G 3B 1D 3$       | 10 | When you take a Warfare quest, +1G                           |
+| Ally with Xanathar's Guild       | S    | 2G 5B 1D 5$       | 10 | When you take a Skullduggery quest, +1B                      |
+| Impersonate Tax Collector        | S    | 1G 4B 1D 5$       | 9  | When visiting your own building, also gain owner benefit      |
+
+---
+
+### Skullport Expansion (30 quests)
+
+Priority: **Second expansion, if implemented.** Requires the Corruption mechanic.
+
+#### Corruption in Quests
+
+Skullport quests interact with corruption in three ways:
+- **Gain corruption** — quest reward includes taking corruption from the shared pool (shown as positive numbers)
+- **Remove corruption** — quest reward lets you return corruption to the pool (shown as negative numbers)
+- **Corruption-enhanced board spaces** — plot quests that let you gain extra resources + corruption when visiting specific permanent board spaces
+
+See the building-mapping-analysis.md for full corruption scoring rules (escalating shared-pool penalty).
+
+#### Skullport Board Space Reference
+
+Several Skullport plot quests enhance specific permanent board spaces. These are the Waterdeep names — music-themed equivalents TBD:
+
+| Waterdeep Board Space       | Normal Effect           | Enhanced Effect (after plot quest)                |
+|-----------------------------|-------------------------|---------------------------------------------------|
+| Blackstaff Tower            | 1 Wizard                | Also take 1 Wizard + 1 Corruption                |
+| Aurora's Realms Shop        | Buy from marketplace    | Also take 4 Gold + 1 Corruption                  |
+| The Plinth                  | Assign quest/intrigue   | Also take 1 Cleric + 1 Corruption                |
+| Grinning Lion Tavern        | Rogues                  | Also take 2 Rogues + 1 Corruption                |
+| Field of Triumph            | Fighters                | Also take 2 Fighters + 1 Corruption              |
+| Waterdeep Harbor            | Play intrigue           | May play up to 2 extra intrigue + 1 Corruption   |
+| Castle Waterdeep (FastPass) | First-player token      | You + visiting player each take 1 Fighter         |
+
+#### Skullport New Mechanics
+
+**One-Time Completion Rewards (new)**
+
+| Mechanic ID                   | Description                                                                  |
+|-------------------------------|------------------------------------------------------------------------------|
+| corruption_removal            | Remove N corruption from your pool (return to shared supply)                  |
+| corruption_gain               | Take N corruption from the shared supply                                      |
+| opponents_return_resource     | Each opponent must return 1 resource of their choice                          |
+| take_2_faceup_buildings       | Put 2 face-up buildings under your control for free (+ corruption)            |
+
+**Ongoing Effects / Plot Quests (new)**
+
+| Mechanic ID                    | Description                                                                              |
+|--------------------------------|------------------------------------------------------------------------------------------|
+| enhanced_board_space (×5)      | Gain bonus resources + corruption when visiting a specific permanent board space           |
+| play_extra_intrigue_corruption | Play up to 2 extra intrigue at Waterdeep Harbor, take corruption if you do                |
+| first_player_bonus             | When any player takes FastPass, you and that player each gain 1 Fighter (no double-dip)   |
+| remove_corruption_on_purchase  | When you buy a building, remove 1 corruption and place it on any action space             |
+| draw_intrigue_on_corruption    | Once per turn, when you gain corruption, draw 1 intrigue card                             |
+| double_corruption_return       | When you return any corruption, you may return 1 additional corruption                    |
+
+#### Skullport Commerce Quests (6)
+
+| Card Name                  | Cost              | Reward Resources | VP | Corruption | Special                              |
+|----------------------------|-------------------|------------------|----|------------|---------------------------------------|
+| Donate to the City         | 2S 1D 10$         | -                | 13 | -3         | -                                     |
+| Fund Alchemical Research   | 1S 1B 2D 4$       | 12$              | 20 | +3         | -                                     |
+| Extort Aurora              | 2B 4$             | -                | 8  | -          | enhanced_board_space (PLOT): +4$ +corruption at Aurora's Realms Shop |
+| Defame Rival Business      | 1S 2G 2B 4$       | -                | 9  | -          | remove_corruption_on_purchase (PLOT)  |
+| Fund Pilgrimage of Waukeen | 1S 1G 2B 5$       | -                | 16 | -          | -                                     |
+| Pay Fines                  | 1S 3B 4$          | -                | 4  | -2         | -                                     |
+
+#### Skullport Arcana Quests (6)
+
+| Card Name                    | Cost                | Reward Resources   | VP | Corruption | Special                                 |
+|------------------------------|---------------------|--------------------|----|------------|-----------------------------------------|
+| Investigate Thayan Vessel    | 1S 2G 2B 2D 2$     | 2? 2$              | 13 | -          | -                                       |
+| Seal an Entrance to Skullport| 1S 2G 2B 2D        | -                  | 10 | -3         | -                                       |
+| Renew Guards and Wards       | 1S 1G 2D 2$        | -                  | 9  | -2         | -                                       |
+| Recruit Academy Castoffs     | 1G 1D 2$           | -                  | 8  | -          | enhanced_board_space (PLOT): +1D +corruption at Blackstaff Tower |
+| Uncover Forbidden Lore       | 2B 3D              | -                  | 17 | -          | play_extra_intrigue_corruption (PLOT): play 2 extra intrigue at Harbor +corruption |
+| Establish Cult Cell          | 2B 2D 3$           | 2G 1D 1 Intrigue   | 18 | +3         | -                                       |
+
+#### Skullport Piety Quests (6)
+
+| Card Name                        | Cost            | Reward Resources | VP | Corruption | Special                                  |
+|----------------------------------|-----------------|------------------|----|------------|------------------------------------------|
+| Banish Evil Spirits              | 2S 2G 1D        | 1?               | 5  | -2         | -                                        |
+| Institute Reforms                | 4S 1G 1B 2$     | -                | 13 | -3         | -                                        |
+| Give Honor to Mask               | 1S 1B 2$        | -                | 8  | -          | enhanced_board_space (PLOT): +1S +corruption at the Plinth |
+| Sanctify Temple to Oghma         | 2S 1D 5$        | -                | 18 | -          | -                                        |
+| Enter the Tower of Seven Woes    | 7?              | 3S               | 19 | +4         | -                                        |
+| Protect Converts to Eilistraee   | 3S 2G 1D        | -                | 10 | -          | double_corruption_return (PLOT)           |
+
+#### Skullport Warfare Quests (6)
+
+| Card Name                | Cost              | Reward Resources | VP | Corruption | Special                                      |
+|--------------------------|-------------------|------------------|----|------------|-----------------------------------------------|
+| Train Castle Guards      | 2G 1D 5$          | -                | 10 | -          | first_player_bonus (PLOT): you + FastPass visitor each get 1G (no double-dip) |
+| Patrol Dock Ward         | 1S 3G 2B 2$       | 4B               | 9  | -          | -                                             |
+| Uncover Drow Plot        | 1S 5G 2B 5$       | -                | 18 | -2         | -                                             |
+| Fix the Champion's Games | 3G 2$             | -                | 8  | -          | enhanced_board_space (PLOT): +2G +corruption at Field of Triumph |
+| Improve Prison Security  | 1S 4G 2B 4$       | -                | 8  | -3         | -                                             |
+| Assassinate Rivals       | 4G 1B             | -                | 16 | +2         | opponents_return_resource                     |
+
+#### Skullport Skullduggery Quests (6)
+
+| Card Name                       | Cost              | Reward Resources | VP | Corruption | Special                                  |
+|---------------------------------|-------------------|------------------|----|------------|------------------------------------------|
+| Save Kidnapped Nobles           | 6B 2D 5$          | 4G               | 9  | -3         | -                                        |
+| Rescue of Victim from the Skulls| 2G 4B 1D          | 1?               | 9  | -1         | -                                        |
+| Expand Guild Activities         | 1G 2B 2$          | -                | 8  | -          | enhanced_board_space (PLOT): +2B +corruption at Grinning Lion |
+| Shelter Zhentarim Agents        | 1S 3G 2D          | -                | 16 | +1         | draw_intrigue_on_corruption (PLOT)       |
+| Bury the Bodies                 | 2G 3B 2$          | -                | 20 | +2         | -                                        |
+| Swindle the Builder's Guilds    | 1S 2G 3B 5$       | -                | 13 | +3         | take_2_faceup_buildings                  |
+
+#### Skullport Plot Quest Summary
+
+| Card Name                      | Type | Cost           | VP | Ongoing Effect                                                          |
+|--------------------------------|------|----------------|----|-------------------------------------------------------------------------|
+| Extort Aurora                  | C    | 2B 4$          | 8  | At Aurora's Realms Shop: also take 4$ + corruption                       |
+| Defame Rival Business          | C    | 1S 2G 2B 4$    | 9  | When buying a building: remove 1 corruption, place on any action space   |
+| Recruit Academy Castoffs       | A    | 1G 1D 2$       | 8  | At Blackstaff Tower: also take 1D + corruption                           |
+| Uncover Forbidden Lore         | A    | 2B 3D          | 17 | At Waterdeep Harbor: may play 2 extra intrigue + corruption              |
+| Give Honor to Mask             | P    | 1S 1B 2$       | 8  | At the Plinth: also take 1S + corruption                                 |
+| Protect Converts to Eilistraee | P    | 3S 2G 1D       | 10 | When returning corruption, may return 1 extra                             |
+| Train Castle Guards            | W    | 2G 1D 5$       | 10 | When any player takes FastPass: you + that player each gain 1G (no dupes) |
+| Fix the Champion's Games       | W    | 3G 2$          | 8  | At Field of Triumph: also take 2G + corruption                           |
+| Expand Guild Activities        | S    | 1G 2B 2$       | 8  | At Grinning Lion: also take 2B + corruption                              |
+| Shelter Zhentarim Agents       | S    | 1S 3G 2D       | 16 | Once per turn, when gaining corruption: draw 1 intrigue                   |
+
+---
+
+### Expansion Card Distribution Statistics
+
+| Expansion     | Quest Type      | Total Cards | Plot Quests | VP Range |
+|---------------|-----------------|-------------|-------------|----------|
+| Undermountain | Commerce (C)    | 6           | 2           | 7-40     |
+| Undermountain | Arcana (A)      | 6           | 2           | 6-40     |
+| Undermountain | Piety (P)       | 6           | 2           | 10-40    |
+| Undermountain | Warfare (W)     | 6           | 2           | 6-40     |
+| Undermountain | Skullduggery (S)| 6           | 2           | 6-40     |
+| **UM Total**  |                 | **30**      | **10**      |          |
+| Skullport     | Commerce (C)    | 6           | 2           | 4-20     |
+| Skullport     | Arcana (A)      | 6           | 2           | 8-18     |
+| Skullport     | Piety (P)       | 6           | 2           | 5-19     |
+| Skullport     | Warfare (W)     | 6           | 2           | 8-18     |
+| Skullport     | Skullduggery (S)| 6           | 2           | 8-20     |
+| **SP Total**  |                 | **30**      | **10**      |          |
+| **Grand Total** (all expansions) | | **120** | **38**     |          |
+
+---
+
 ## Implementation Status
 Tracks which special mechanics are implemented in the game engine.
 
