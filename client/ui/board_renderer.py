@@ -320,9 +320,7 @@ class BoardRenderer:
 
             all_constructed = self.board_data.get("constructed_buildings", [])
             bld_start = self._building_page * _BUILDINGS_PER_PAGE
-            bld_end = min(
-                bld_start + _BUILDINGS_PER_PAGE, len(all_constructed)
-            )
+            bld_end = min(bld_start + _BUILDINGS_PER_PAGE, len(all_constructed))
             page_buildings = all_constructed[bld_start:bld_end]
 
             if self._building_owner_dirty:
@@ -384,9 +382,7 @@ class BoardRenderer:
 
                 # Page indicator
                 if self._building_page_count > 1:
-                    pg_label = (
-                        f"{self._building_page + 1}/{self._building_page_count}"
-                    )
+                    pg_label = f"{self._building_page + 1}/{self._building_page_count}"
                     pg_cx, pg_cy, _, _ = g.cell_rect(1, 7, 2, 1)
                     self._building_page_text = arcade.Text(
                         pg_label,
