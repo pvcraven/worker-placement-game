@@ -1,0 +1,135 @@
+﻿,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,Average Points,,Average Percent Rank,
+,Configuration Options,,,,,,,,,,,,,,,,,,,,,,,,Arcana, 3.49 , 4.89 ,50%,54%
+,Current Turn,5,,,,,,,,,,,,,,,,,,,,,,,Commerce, 3.59 , 4.92 ,47%,46%
+,Estimated Building Points per Round,1.333333333,,,,,,,,,,,,,,,,,,,,,,,Piety, 3.43 , 5.04 ,49%,51%
+,Estimated Value of 1 Action in Points,5,,,,,,,,,,,,,,,,,,,,,,,Skullduggery, 4.15 , 5.67 ,45%,42%
+,Estimated Intrigue Cards Played per Turn,1.25,,,,,,,,,,,,,,,,,,,,,,,Warfare, 3.38 , 4.73 ,46%,47%
+,Players,4,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,Average Quest Values,,,,
+,,,Costs,,,,,,,Rewards,,,,,,,,,,,,,,,Median:,3.56,4.80,,
+,,Estimated Action Cost:,1,0.5,0.5,1,0.5,0.25,,Estimated Action Cost:,1,0.5,0.5,1,1,0.25,0.5,0.5,-1,1,,,,,,,,,
+Expansion,Quest Name,Quest Type,wh,oj,bl,pu,any,gold,Estimated Actions,VP,wh,oj,bl,pu,any,gold,Intrigue,Quest,Corruption,Actions,misc.,Estimated Actions,Estimated Bonus Actions,Estimated Bonus Points,Net Cost - Estimated Actions,No Bonus,4 Point Bonus,No Bonus,4 Point Bonus
+Base,Explore Ahghairon's Tower,Arcana,,1,,2,,2,3.5,6,,,,,,,,,,,"Whenever you take an action that provides any pu, also draw an Intrigue card",0,1.5,,2,3.00,5.00,22%,60%
+Undermountain,Obtain Builders' Plans,Commerce,,2,2,1,,10,6,13,,,,,,,,,,0,Once per turn you may assign a worker to a building in the Builder's Hall.  You immediately use the effect of the building as though you controlled it.,0,3,0,3,4.33,5.67,88%,85%
+Base,Bolster Griffon Cavalry,Warfare,,4,,,,4,3.5,6,,,,,,,,,,,"Whenever you take an action that provides any oj, also take oj from supply and place it in your Tavern",0,1.5,,2,3.00,5.00,22%,60%
+Base,Produce Miracle For The Masses,Piety,2,,,,,4,3.5,5,,,,,,,,,,,"Once per round, whenever you take an action that provides any wh, you can also replace oj, bl, or pu in your Tavern with wh",0,1.5,,2,2.50,4.50,13%,27%
+Undermountain,Study in the Librarium,Arcana,,,2,5,,5,7.75,11,,,,,,,3.75,,,,"After you take an action that allows you to play any intrigue card, draw an intrigue card.  You can play that card immediately without taking an action.",1.875,1.875,0,4,2.75,3.75,21%,13%
+Undermountain,Seize Citadel of the Bloody Hand,Warfare,1,4,,2,,,5.5,6,,,,,,,,,,,Whenever you complete a Quest you may return any resource used on that quest,0,3,0,2.5,2.40,4.00,9%,16%
+Base,Defend The Tower Of Luck,Piety,2,1,1,1,,,4.5,0,,,,,1,,,,,,"At the start of each round, take any from the supply and place it in your Tavern",1,3,0,0.5,0.00,8.00,0%,97%
+Base,Recruit Lieutenant,Warfare,1,5,1,1,,,5.5,0,,,,,,,,,,,Add the Lieutenant to your pool of Agents for the rest of the game,0,3,0,2.5,0.00,1.60,0%,0%
+Undermountain,Defend the Lanceboard Room,Skullduggery,,3,6,1,,10,8.5,12,,,,,8,,,,,,,8,,,0.5,24.00,32.00,100%,100%
+Base,Fence Goods For Duke Of Darkness,Skullduggery,1,,3,,,4,4,6,,,,,,,,,,,"Whenever you take an action that provides any bl, also take 2 Gold from the supply",0,1.5,,2.5,2.40,4.00,9%,16%
+Base,Thin The City Watch,Commerce,1,1,1,,,4,3.5,9,,,4,,,,,,,,,2,,,1.5,6.00,8.67,98%,99%
+Undermountain,Establish Temple to Ibrandul,Piety,3,,4,,,5,6.75,11,1,1,1,1,,,,3.4816,,,Take all quests from Cliffwatch Inn,4.7408,,,2.0092,5.47,7.47,97%,96%
+Skullport,Save Kidnapped Nobles,Skullduggery,,,6,2,,5,6.75,9,,4,,,,,,,-3,,,5,,,1.75,5.14,7.43,96%,95%
+Base,Recruit For Blackstaff Academy,Arcana,,1,1,2,,4,4.5,6,,,,3,,,,,,,,3,,,1.5,4.00,6.67,67%,94%
+Base,Heal Fallen Gray Hand Soldiers,Piety,2,,,1,,4,4.5,6,,6,,,,,,,,,,3,,,1.5,4.00,6.67,67%,94%
+Undermountain,Defend the Yawning Portal,Warfare,3,6,1,1,,,8,15,,,,,2,,,,,3,Return up to 3 workers to your pool,5,,,3,5.00,6.33,95%,93%
+Undermountain,Deal With the Black Viper,Arcana,,1,4,2,,5,6.25,10,,,,,,,4,,,2,As you draw each intrigue card from this quest you may play it immediately,4,,,2.25,4.44,6.22,91%,92%
+Undermountain,Recruit for City Watch (+ optional costs),Commerce,1,,,1,,10,5,8,,3,3,,,,,,,,Optional cost to get different rewards,3,,,2,4.00,6.00,67%,90%
+Skullport,Banish Evil Spirits,Piety,2,2,,1,,,4.5,5,,,,,1,,,,-2,,,3,,,1.5,3.33,6.00,42%,90%
+Undermountain,Wake the Six Sleepers,Warfare,3,,3,,,,5,8,,6,,,,,,,,,,3,,,2,4.00,6.00,67%,90%
+Skullport,Train Castle Guards,Warfare,,2,,1,,5,3.75,10,,,,,,,,,,,Whenever a player takes the first marker you and that player also take oj,0,0.5625,,3.1875,3.14,4.39,28%,25%
+Undermountain,Resurrect Dead Wizards,Arcana,3,,,,,5,4.75,6,,,,3,,,,,,,,3,,,1.75,3.43,5.71,45%,88%
+Undermountain,Survive Arcturia's Transformation,Skullduggery,,6,,,,5,4.75,6,,,6,,,,,,,,,3,,,1.75,3.43,5.71,45%,88%
+Skullport,Investigate Thayan Vessel,Arcana,1,2,2,2,,2,6,13,,,,,2,,2,,,,,3,,,3,4.33,5.67,88%,85%
+Skullport,Donate to the City,Commerce,2,,,1,,10,6,13,,,,,,,,,-3,,,3,,,3,4.33,5.67,88%,85%
+Skullport,Institute Reforms,Piety,4,1,1,,,2,6,13,,,,,,,,,-3,,,3,,,3,4.33,5.67,88%,85%
+Undermountain,Threaten the Builders' Guilds,Commerce,,2,4,2,,10,8,13,,,,,,,,,,,Immediately put all face-up Buildings in Builder's Hall in play under your control at no cost.,0,,18,8,3.88,4.38,66%,24%
+Skullport,Seal and Entrance to Skullport,Arcana,1,2,2,2,,,5.5,10,,,,,,,,,-3,,,3,,,2.5,4.00,5.60,67%,81%
+Base,Recruit Paladins For Tyr,Piety,2,4,,,,4,5.5,10,3,,,,,,,,,,,3,,,2.5,4.00,5.60,67%,81%
+Undermountain,Rescue Clerics of Tymora,Piety,,6,,2,,,5.5,10,3,,,,,,,,,,,3,,,2.5,4.00,5.60,67%,81%
+Base,Steal From House Adarbrent,Skullduggery,,1,4,1,,,4,10,,,,,,6,,,,,,1.5,,,2.5,4.00,5.60,67%,81%
+Base,Take Over Rival Organization,Skullduggery,,1,2,1,,6,4.5,10,,,4,,,,,,,,,2,,,2.5,4.00,5.60,67%,81%
+Base,Steal Spellbook From Silverhand,Arcana,,1,2,2,,,4,7,,,,,,4,2,,,,,2,,,2,3.50,5.50,48%,79%
+Undermountain,Steal Gems from the Bone Throne,Commerce,,,4,2,,,4.5,7,,,,,,10,,,,,,2.5,,,2,3.50,5.50,48%,79%
+Base,Establish New Merchant Guild,Commerce,1,2,,,,4,3.5,8,,,,,,,,,,,"Whenever you complete a Commerce Quest, you score 2 VP",0,,3,3.5,3.14,4.29,29%,21%
+Base,Protect The House Of Wonder,Piety,2,1,,,,2,3.5,8,,,,,,,,,,,"Whenever you complete a Piety Quest, you score 2 VP",0,,3,3.5,3.14,4.29,29%,21%
+Base,Quell Mercenary uprising,Warfare,1,4,,,,,3.5,8,,,,,,,,,,,"Whenever you complete a Warfare Quest, you score 2 VP",0,,3,3.5,3.14,4.29,29%,21%
+Base,Place A Sleeper Agent In Skullport,Skullduggery,,1,4,1,,,4,0,,,,,,,,,,,"Whenever you play Intrigue, you score 2 VP",0,,7.5,4,1.88,2.88,2%,1%
+Base,Research Chronomancy,Arcana,,,,2,,4,3.5,4,,,,1,,,,,,1,return 1 of your assigned Agents to your pool,2,,,1.5,2.67,5.33,16%,75%
+Base,Safeguard Eltorchul Mage,Commerce,,1,1,1,,4,3.5,4,,,,2,,,,,,,,2,,,1.5,2.67,5.33,16%,75%
+Base,Perform The Penance Of Duty,Piety,2,2,,,,4,4.5,12,1,1,,,,,,,,,,1.5,,,3,4.00,5.33,67%,75%
+Base,Expose Cult Corruption,Skullduggery,1,,4,,,,3.5,4,2,,,,,,,,,,,2,,,1.5,2.67,5.33,16%,75%
+Base,Train Bladesingers,Warfare,,3,,1,,,3,4,,1,,1,,,,,,,,1.5,,,1.5,2.67,5.33,16%,75%
+Undermountain,Sponsor Bounty Hunters,Commerce,1,4,3,,,6,6.5,12,,,,,,,,,,,"Whenever you take a Commerce Quest, take 4 gold",0,1.5,,5,2.40,3.20,9%,7%
+Undermountain,Sanctify a Desecrated Temple,Piety,4,2,,,,5,6.75,13,,,,,,,,,,,Whenever you take a Piety Quest take white,0,1.5,,5.25,2.48,3.24,13%,8%
+Base,Host Festival For Sune,Arcana,,2,,2,,4,4.5,9,2,,,,,,,,,,,2,,,2.5,3.60,5.20,50%,71%
+Skullport,Renew Guards and Wards,Arcana,1,1,,2,,2,4.5,9,,,,,,,,,-2,,,2,,,2.5,3.60,5.20,50%,71%
+Skullport,Rescue of Victim from the Skulls,Skullduggery,,2,4,1,,,4.5,9,,,,,1,,,,-1,,,2,,,2.5,3.60,5.20,50%,71%
+Base,Deliver Weapons To Selune's Temple,Warfare,,4,1,1,,2,4.5,9,2,,,,,,,,,,,2,,,2.5,3.60,5.20,50%,71%
+Skullport,Patrol Dock Ward,Warfare,1,3,2,,,2,4.5,9,,,4,,,,,,,,,2,,,2.5,3.60,5.20,50%,71%
+Base,Placate The Walking Statue,Commerce,2,,2,,,4,4.5,10,,,,,,,,,,,draw one Building from the stack and put it into play under your control at no cost,0,,4,4.5,3.11,4.00,27%,16%
+Undermountain,Diplomatic Mission to Suzail,Piety,3,3,,,,3,5.75,10,,,,,,,,,,,You may complete face-up quests at Cliffwatch Inn as though they were active quests.,0,1.3056,,4.4444,2.25,3.15,8%,6%
+Undermountain,Explore Trobriand's Graveyard,Arcana,,2,3,4,,6,8.5,40,,,,,,,,,,,,0,,,8.5,4.71,5.18,92%,67%
+Undermountain,Ransack Whitehelm's Tomb,Commerce,2,3,4,,,10,8.5,40,,,,,,,,,,,,0,,,8.5,4.71,5.18,92%,67%
+Undermountain,Plunder the Island Temple,Piety,5,2,2,1,,,8.5,40,,,,,,,,,,,,0,,,8.5,4.71,5.18,92%,67%
+Undermountain,Battle in Muiral's Gauntlet,Warfare,2,7,,2,,2,8.5,40,,,,,,,,,,,,0,,,8.5,4.71,5.18,92%,67%
+Skullport,Uncover Drow Plot,Warfare,1,5,2,,,5,6.25,18,,,,,,,,,-2,,,2,,,4.25,4.24,5.18,86%,67%
+Base,Prison Break,Skullduggery,,,4,2,,2,5,14,,2,,,,,,,,0.5,immediately play Intrigue without taking an action,1.5,,,3.5,4.00,5.14,67%,66%
+Base,Lure Artisans Of Mirabar,Commerce,1,1,1,,,2,3,4,,,,,,,,,,,put one Building from Builder's Hall into play under your control at no cost,0,,16.66666667,3,6.89,8.22,99%,98%
+Base,Bribe The Shipwrights,Commerce,,,4,1,,4,4.5,10,,,,,,,,,,,"Whenever you take an action that provides any Gold, also take bl from the supply and place it in your Tavern",0,0.75,,3.75,2.67,3.73,16%,12%
+Undermountain,Ally with Xanathar's Guild,Skullduggery,,2,5,1,,5,6.25,10,,,,,,,,,,,"Whenever you take a Skullduggery Quest, take bb",0,1.5,,4.75,2.11,2.95,4%,4%
+Undermountain,Recover the Flame of the North,Warfare,,5,3,1,,3,6.25,10,,,,,,,,,,,"Whenever you take a Warfare Quest, take oo",0,1.5,,4.75,2.11,2.95,4%,4%
+Base,Retrieve Ancient Artifacts,Arcana,,2,1,2,,,4,11,,,,,,4,,,,,,1,,,3,3.67,5.00,55%,60%
+Base,Spy On The Lighthouse,Commerce,,3,2,,,2,3.5,6,,,,,,6,,,,,,1.5,,,2,3.00,5.00,22%,60%
+Base,Eliminate Vampire Coven,Piety,2,2,1,,,,4,11,,,,,,4,,,,,,1,,,3,3.67,5.00,55%,60%
+Base,Defeat Uprising From Undermountain,Warfare,1,3,1,,,2,4,11,,2,,,,,,,,,,1,,,3,3.67,5.00,55%,60%
+Base,Deliver An Ultimatum,Warfare,,4,1,1,,,4,11,,,,,,4,,,,,,1,,,3,3.67,5.00,55%,60%
+Base,Impersonate Adarbrent Noble,Commerce,1,2,2,1,,4,5.5,18,,,,,,,2,,,,,1,,,4.5,4.00,4.89,67%,59%
+Base,Investigate Aberrant Infestation,Arcana,1,1,,2,,,4,13,,,,,,,1,,,,,0.5,,,3.5,3.71,4.86,59%,59%
+Base,Infiltrate Builder's Hall,Commerce,,2,2,,,4,3.5,6,,,,,,,,,,,"Whenever you buy a Building, you score 4 VP",0,,3,3.5,2.57,3.71,15%,11%
+Base,Infiltrate Halaster's Circle,Arcana,,,,5,,2,6,25,,,,,,,,,,,,0,,,6,4.17,4.83,82%,54%
+Base,Ally With House Thann,Commerce,1,,3,1,,8,6,25,,,,,,,,,,,,0,,,6,4.17,4.83,82%,54%
+Base,Create A Shrine To Oghma,Piety,5,,,,,2,6,25,,,,,,,,,,,,0,,,6,4.17,4.83,82%,54%
+Base,Establish Shadow Thieves' Guild,Skullduggery,,1,8,1,,,6,25,,,,,,,,,,,,0,,,6,4.17,4.83,82%,54%
+Base,Bolster City Guard,Warfare,,9,2,,,,6,25,,,,,,,,,,,,0,,,6,4.17,4.83,82%,54%
+Base,Expose Red Wizards' Spies,Arcana,1,1,2,2,,2,5.5,20,,,,,,,1,,,,,0.5,,,5,4.00,4.80,67%,40%
+Base,Domesticate Owlbears,Arcana,1,,,2,,,3.5,8,,1,,,,2,,,,,,1,,,2.5,3.20,4.80,31%,40%
+Skullport,Recruit Academy Castoffs,Arcana,,1,,1,,2,2.5,8,,,,,,,,,,,Whenever you assign a worker to Blackstaff Tower you can take p and a corruption,0,,,2.5,3.20,4.80,31%,40%
+Skullport,Fund Alchemical Research,Commerce,1,,1,2,,4,5,20,,,,,,12,,,3,,,0,,,5,4.00,4.80,67%,40%
+Undermountain,Recruit for City Watch (base card),Commerce,1,,,1,,,2.5,8,,,,,,,,,,,Optional cost to get different rewards,0,,,2.5,3.20,4.80,31%,40%
+Skullport,Extort Aurora,Commerce,,,2,,,4,2.5,8,,,,,,,,,,,Whenever you assign a worker to Aurora's Realms Shop you can take another 4 gold and corruption,0,,,2.5,3.20,4.80,31%,40%
+Base,Seal Gate To Cyric's Realm,Piety,2,,3,,,4,5,20,,,,,,,,,,,,0,,,5,4.00,4.80,67%,40%
+Skullport,Give Honor to Mask,Piety,1,,1,,,2,2.5,8,,,,,,,,,,,Whenever you assign a worker to the Plinth you may take w and corruption,0,,,2.5,3.20,4.80,31%,40%
+Base,Raid On Undermountain,Skullduggery,1,2,4,1,,,5.5,20,,,,,,2,,,,,,0.5,,,5,4.00,4.80,67%,40%
+Base,Procure Stolen Goods,Skullduggery,,,3,,,6,3.5,8,,,,,,,2,,,,,1,,,2.5,3.20,4.80,31%,40%
+Skullport,Expand Guild Activities,Skullduggery,,1,2,,,2,2.5,8,,,,,,,,,,,Whenever you assign a worker to the Grinning Lion Tavern you can take an additional bb and corruption,0,,,2.5,3.20,4.80,31%,40%
+Base,Confront The Xanathar,Warfare,1,4,2,1,,,5.5,20,,,,,,2,,,,,,0.5,,,5,4.00,4.80,67%,40%
+Undermountain,Destroy a Temple of Selvetarm (+ optional costs),Warfare,1,6,,,,2,5,20,,,,,,,,,,,Optional cost to get different rewards,0,,,5,4.00,4.80,67%,40%
+Base,Ambush Artor Morlin,Warfare,1,3,1,,,,3.5,8,,,,,,4,,,,,,1,,,2.5,3.20,4.80,31%,40%
+Base,Raid Orc Stronghold,Warfare,,4,2,,,,3.5,8,,,,,,4,,,,,,1,,,2.5,3.20,4.80,31%,40%
+Skullport,Fix the Champion's Games,Warfare,,3,,,,2,2.5,8,,,,,,,,,,,Whenever you assign a worker to the Field of Triumph you can take another ojoj and a corruption,0,,,2.5,3.20,4.80,31%,40%
+Skullport,Improve Prison Security,Warfare,1,4,2,,,4,5.5,8,,,,,,,,,-3,,,3,,,2.5,3.20,4.80,31%,40%
+Undermountain,Break Into Blackstaff Tower,Skullduggery,1,,7,2,,9,9.25,40,,,,,,,,,,,,0,,,9.25,4.32,4.76,87%,40%
+Undermountain,Survive a Meeting With Halaster,Arcana,1,1,,,4,,4,15,,,,,,,,,,,Draw an intrigue card for each purple you used to complete this quest,0,,,4,3.75,4.75,59%,37%
+Undermountain,Root Out Loviatar's Faithful,Piety,,1,,1,4,,4,15,,,,,,,,,,,+2 points for each white used to fulfill this quest,0,,,4,3.75,4.75,59%,37%
+Base,Repel Seawraiths,Warfare,1,4,,1,,,4.5,15,,,,,,2,,,,,,0.5,,,4,3.75,4.75,59%,37%
+Undermountain,Unleaseh Crime Spree (+ optional costs),Skullduggery,1,1,5,1,,,5.5,22,,,,,,,,,,,Optional cost to get different rewards,0,,,5.5,4.00,4.73,67%,36%
+Skullport,Defame Rival Business,Commerce,1,2,2,,,4,4.5,9,,,,,,,,,,,"Whenever you purchase a building, you can remove a corruption from your tavern and place it on an action space",0,0.75,,3.75,2.40,3.47,9%,9%
+Skullport,Fund Pilgrimage of Waukeen,Commerce,1,1,2,,,5,4.25,16,,,,,,,,,,,,0,,,4.25,3.76,4.71,62%,36%
+Base,Convert A Noble To Lathander,Piety,2,1,,,,,3,8,,,,,,,,0.8704,,,,0.4352,,,2.5648,3.12,4.68,27%,35%
+Skullport,Shelter Zhentarim Agents,Skullduggery,1,3,,2,,,5,16,,,,,,,,,1,,"Once on any turn, whenever you gain any corruption draw an intrigue card",-1,0.75,,5.25,3.05,3.81,26%,13%
+Skullport,Uncover Forbidden Lore,Arcana,,,2,3,,,4.5,17,,,,,,,,,,,"Whenever you assign a worker to Waterdeep Harbor you can play up to 2 additional intrigue cards, if you do take a corruption",0,,,4.5,3.78,4.67,63%,32%
+Base,Build A Reputation In Skullport,Skullduggery,,1,3,,,4,3.5,10,,,,,,,1,,,,,0.5,,,3,3.33,4.67,42%,32%
+Undermountain,Destroy a Temple of Selvetarm (base card),Warfare,1,2,,,,2,3,10,,,,,,,,,,,Optional cost to get different rewards,0,,,3,3.33,4.67,42%,32%
+Skullport,Establish Cult Cell,Arcana,,,2,2,,3,4.25,18,,2,,1,,,1,,3,,,-0.5,,,4.75,3.79,4.63,63%,31%
+Skullport,Sanctify Temple to Oghmaa,Piety,2,,,1,,5,4.75,18,,,,,,,,,,,,0,,,4.75,3.79,4.63,63%,31%
+Skullport,Enter the Tower of Seven Woes,Piety,,,,,7,,4,19,3,,,,,,,,4,,,-1,,,5,3.80,4.60,65%,30%
+Undermountain,Unleaseh Crime Spree (base card),Skullduggery,1,1,1,1,,,3.5,12,,,,,,,,,,,Optional cost to get different rewards,0,,,3.5,3.43,4.57,45%,29%
+Base,Discover Hidden Temple Of Lolth,Piety,2,1,1,,,,3.5,10,,,,,,,,0.8704,,,,0.4352,,,3.0648,3.26,4.57,40%,27%
+Base,Form An Alliance With The Rashemi,Piety,2,,,1,,,3.5,10,,,,,,,,0.8704,,,,0.4352,,,3.0648,3.26,4.57,40%,27%
+Skullport,Assassinate Rivals,Warfare,,4,1,,,,3,16,,,,,,,,,2,0.5,Each opponent returns any resource,-1.5,,,4.5,3.56,4.44,50%,26%
+Base,Study The Illusk Arch,Arcana,1,,,2,,,3.5,8,,,,,,,,,,,"Whenever you complete a Arcana Quest, you score 2 VP",0,,1.5,3.5,2.71,3.86,20%,14%
+Skullport,Bury the Bodies,Skullduggery,,2,3,,,2,3.5,20,,,,,,,,,2,,,-2,,,5.5,3.64,4.36,54%,23%
+Skullport,Swindle the Builder's Guilds,Skullduggery,1,2,3,,,5,5.25,13,,,,,,,,,3,,Put 2 face up Buildings in the Builder's Hall in play under your control,-3,,12,8.25,3.03,3.52,25%,10%
+Base,Send Aid To The Harpers,Commerce,1,1,1,,,4,3.5,15,,,,,,,,,,-1,choose an opponent to gain 4 gold,-1,,,4.5,3.33,4.22,42%,20%
+Base,Loot The Crypt Of Chauntea,Commerce,1,,3,,,2,3.5,7,,,,,,,1,0.4,,,,0.7,,,2.8,2.50,3.93,13%,15%
+Skullport,Pay Fines,Commerce,1,,3,,,4,4,4,,,,,,,,,-2,,,2,,,2,2.00,4.00,3%,16%
+Base,Establish Harpers Safe House,Skullduggery,,2,3,,,2,3.5,8,,,,,,,,,,,+2 for each building you control,0,,2,3.5,2.86,4.00,22%,16%
+Undermountain,Establish Wizard Academy,Arcana,1,1,3,3,,,6.5,12,,,,,,,,,,,"Whenever you take an Arcana Quest, take purple from the supply",0,1,,5.5,2.18,2.91,7%,3%
+Skullport,Protect Converts to Eilistraee,Piety,3,2,,1,,,5.5,10,,,,,,,,,,,Whenever you return any corruption you may return another corruption,0,0.75,,4.75,2.11,2.95,4%,4%
+Undermountain,Impersonate Tax Collector,Skullduggery,,1,4,1,,5,5.25,9,,,,,,,,,,,"Whenever you assign a worker to a building you control, you also gain the owner benefit",0,0.75,,4.5,2.00,2.89,3%,2%
+Base,Install A Spy In Castle Waterdeep,Skullduggery,,,4,,,4,3.5,8,,,,,,,,,,,"Whenever you complete a Skullduggery Quest, you score 2 VP",0,,,3.5,2.29,3.43,9%,9%
+Base,Recover The Magister's Orb,Arcana,,,3,2,,,4,6,,,,,,,,,,,"Once per round, you can assign an Agent to a space containing an opponent's Agent",0,,,4,1.50,2.50,1%,0%
