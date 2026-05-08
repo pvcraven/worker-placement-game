@@ -100,8 +100,8 @@ class GameRulesConfig(BaseModel):
 
     total_rounds: int = 8
     bonus_worker_round: int = 5
-    turn_timeout_seconds: int = 60
-    game_preserve_timeout_seconds: int = 1800
+    turn_timeout_seconds: int | None = None
+    game_preserve_timeout_seconds: int = 86400
     face_up_quest_count: int = 5
     starting_workers: dict[str, int] = Field(default={"2": 4, "3": 3, "4": 2, "5": 2})
     min_players: int = 1
