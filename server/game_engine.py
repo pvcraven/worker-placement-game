@@ -431,13 +431,11 @@ async def _end_round(server: GameServer, state) -> None:
         slot.occupied_by = None
         slot.intrigue_card_played = None
 
-    state.game_log.append(
-        GameLog(
-            round_number=round_number,
-            action="round_end",
-            details=f"Round {round_number} ended",
-            timestamp=time.time(),
-        )
+    _log_event(
+        state,
+        round_number=round_number,
+        action="round_end",
+        details=f"Round {round_number} ended",
     )
 
     if state.current_round >= state.total_rounds:
@@ -591,15 +589,31 @@ async def _end_game(server: GameServer, state) -> None:
         GameOverResponse(final_scores=scores, tiebreaker_applied=tiebreaker),
     )
 
-    state.game_log.append(
-        GameLog(
-            round_number=state.current_round,
-            action="game_over",
-            details=f"Game over. Winner: {scores[0].player_name}",
-            timestamp=time.time(),
-        )
+    _log_event(
+        state,
+        action="game_over",
+        details=f"Game over. Winner: {scores[0].player_name}",
     )
 
+
+def _log_event(
+    state,
+    *,
+    round_number: int | None = None,
+    action: str,
+    details: str,
+    player_id: str | None = None,
+    timestamp: float | None = None,
+) -> None:
+    """Append a GameLog entry and flush the full log to disk."""
+    entry = GameLog(
+        round_number=round_number if round_number is not None else state.current_round,
+        action=action,
+        details=details,
+        player_id=player_id,
+        timestamp=timestamp or time.time(),
+    )
+    state.game_log.append(entry)
     _write_game_log(state)
 
 
@@ -859,18 +873,15 @@ async def handle_resource_choice(
         ),
     )
 
-    state.game_log.append(
-        GameLog(
-            round_number=state.current_round,
-            player_id=player.player_id,
-            action="resource_choice",
-            details=(
-                f"{player.display_name} "
-                f"{'turned in' if is_spend else 'chose'}"
-                f" resources from {source_name}"
-            ),
-            timestamp=time.time(),
-        )
+    _log_event(
+        state,
+        action="resource_choice",
+        details=(
+            f"{player.display_name} "
+            f"{'turned in' if is_spend else 'chose'}"
+            f" resources from {source_name}"
+        ),
+        player_id=player.player_id,
     )
 
     # Handle trigger swap resolution (singer swap: spend 1 non-singer → gain 1 singer)
@@ -880,17 +891,14 @@ async def handle_resource_choice(
         swap_info = state.pending_resource_trigger_swap
         state.pending_resource_trigger_swap = None
         state.pending_resource_choice = None
-        state.game_log.append(
-            GameLog(
-                round_number=state.current_round,
-                player_id=player.player_id,
-                action="resource_trigger_swap",
-                details=(
-                    f"{player.display_name} swapped a resource for"
-                    f" 1 Singer ({swap_info.get('contract_name', 'plot quest')})"
-                ),
-                timestamp=time.time(),
-            )
+        _log_event(
+            state,
+            action="resource_trigger_swap",
+            details=(
+                f"{player.display_name} swapped a resource for"
+                f" 1 Singer ({swap_info.get('contract_name', 'plot quest')})"
+            ),
+            player_id=player.player_id,
         )
         await server.broadcast_to_game(
             state.game_code,
@@ -1075,17 +1083,14 @@ async def _resolve_copied_space_rewards(
             for k, v in tb["bonus_resources"].items():
                 if v:
                     reward_dict[k] = reward_dict.get(k, 0) + v
-        state.game_log.append(
-            GameLog(
-                round_number=state.current_round,
-                player_id=player.player_id,
-                action="resource_trigger",
-                details=(
-                    f"{player.display_name} triggered"
-                    f" {tb.get('contract_name', 'plot quest')} bonus"
-                ),
-                timestamp=time.time(),
-            )
+        _log_event(
+            state,
+            action="resource_trigger",
+            details=(
+                f"{player.display_name} triggered"
+                f" {tb.get('contract_name', 'plot quest')} bonus"
+            ),
+            player_id=player.player_id,
         )
 
     # T017: Building visitor_reward_special
@@ -1136,17 +1141,14 @@ async def _resolve_copied_space_rewards(
     pending["granted_vp"] = reward_dict.get("victory_points", 0)
     pending["trigger_bonuses"] = trigger_bonuses
 
-    state.game_log.append(
-        GameLog(
-            round_number=state.current_round,
-            player_id=player.player_id,
-            action="copy_space",
-            details=(
-                f"{player.display_name} copied {target_space.name}"
-                f" from {source_space_id}"
-            ),
-            timestamp=time.time(),
-        )
+    _log_event(
+        state,
+        action="copy_space",
+        details=(
+            f"{player.display_name} copied {target_space.name}"
+            f" from {source_space_id}"
+        ),
+        player_id=player.player_id,
     )
 
     # T022: Owner bonus cascading for copied buildings
@@ -1171,17 +1173,14 @@ async def _resolve_copied_space_rewards(
                 "bonus": bonus_dict,
             }
             pending["owner_bonus_info"] = owner_bonus_info
-            state.game_log.append(
-                GameLog(
-                    round_number=state.current_round,
-                    player_id=owner.player_id,
-                    action="owner_bonus",
-                    details=(
-                        f"{owner.display_name} received owner bonus from"
-                        f" {player.display_name} copying {target_space.name}"
-                    ),
-                    timestamp=time.time(),
-                )
+            _log_event(
+                state,
+                action="owner_bonus",
+                details=(
+                    f"{owner.display_name} received owner bonus from"
+                    f" {player.display_name} copying {target_space.name}"
+                ),
+                player_id=owner.player_id,
             )
 
     copied_space_info = {
@@ -1491,17 +1490,14 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
             for k, v in tb["bonus_resources"].items():
                 if v and k in reward_dict:
                     reward_dict[k] = reward_dict.get(k, 0) + v
-        state.game_log.append(
-            GameLog(
-                round_number=state.current_round,
-                player_id=player.player_id,
-                action="resource_trigger",
-                details=(
-                    f"{player.display_name} triggered"
-                    f" {tb.get('contract_name', 'plot quest')} bonus"
-                ),
-                timestamp=time.time(),
-            )
+        _log_event(
+            state,
+            action="resource_trigger",
+            details=(
+                f"{player.display_name} triggered"
+                f" {tb.get('contract_name', 'plot quest')} bonus"
+            ),
+            player_id=player.player_id,
         )
 
     # Build pending_placement base dict for cancel/unwind support
@@ -1546,17 +1542,14 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
     # Handle Real Estate Listings (building purchase — deferred turn)
     if space.reward_special == "purchase_building":
         state.pending_placement = _pending
-        state.game_log.append(
-            GameLog(
-                round_number=state.current_round,
-                player_id=player.player_id,
-                action="place_worker",
-                details=(
-                    f"{player.display_name} placed worker on"
-                    f" {space.name} — awaiting building purchase"
-                ),
-                timestamp=time.time(),
-            )
+        _log_event(
+            state,
+            action="place_worker",
+            details=(
+                f"{player.display_name} placed worker on"
+                f" {space.name} — awaiting building purchase"
+            ),
+            player_id=player.player_id,
         )
         await server.broadcast_to_game(
             state.game_code,
@@ -1625,17 +1618,14 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
                     "source_type": "building",
                     "eligible_spaces": [s["space_id"] for s in eligible],
                 }
-                state.game_log.append(
-                    GameLog(
-                        round_number=state.current_round,
-                        player_id=player.player_id,
-                        action="place_worker",
-                        details=(
-                            f"{player.display_name} placed worker on"
-                            f" {space.name} — selecting space to copy"
-                        ),
-                        timestamp=time.time(),
-                    )
+                _log_event(
+                    state,
+                    action="place_worker",
+                    details=(
+                        f"{player.display_name} placed worker on"
+                        f" {space.name} — selecting space to copy"
+                    ),
+                    player_id=player.player_id,
                 )
                 await server.broadcast_to_game(
                     state.game_code,
@@ -1683,17 +1673,14 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
                 "owner_name": owner.display_name,
                 "bonus": bonus_dict,
             }
-            state.game_log.append(
-                GameLog(
-                    round_number=state.current_round,
-                    player_id=owner.player_id,
-                    action="owner_bonus",
-                    details=(
-                        f"{owner.display_name} received owner bonus from"
-                        f" {player.display_name} visiting {space.name}"
-                    ),
-                    timestamp=time.time(),
-                )
+            _log_event(
+                state,
+                action="owner_bonus",
+                details=(
+                    f"{owner.display_name} received owner bonus from"
+                    f" {player.display_name} visiting {space.name}"
+                ),
+                player_id=owner.player_id,
             )
 
     _pending["owner_bonus_info"] = owner_bonus_info
@@ -1714,14 +1701,11 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
                 "space_name": space.name,
             }
 
-    state.game_log.append(
-        GameLog(
-            round_number=state.current_round,
-            player_id=player.player_id,
-            action="place_worker",
-            details=f"{player.display_name} placed worker on {space.name}",
-            timestamp=time.time(),
-        )
+    _log_event(
+        state,
+        action="place_worker",
+        details=f"{player.display_name} placed worker on {space.name}",
+        player_id=player.player_id,
     )
 
     await server.broadcast_to_game(
@@ -1899,17 +1883,14 @@ async def _handle_garage_placement(
             if card:
                 state.board.face_up_quests.append(card)
 
-        state.game_log.append(
-            GameLog(
-                round_number=state.current_round,
-                player_id=player.player_id,
-                action="place_worker",
-                details=(
-                    f"{player.display_name} placed worker on "
-                    f"{space.name} — quests reset, awaiting selection"
-                ),
-                timestamp=time.time(),
-            )
+        _log_event(
+            state,
+            action="place_worker",
+            details=(
+                f"{player.display_name} placed worker on "
+                f"{space.name} — quests reset, awaiting selection"
+            ),
+            player_id=player.player_id,
         )
 
         await server.broadcast_to_game(
@@ -1930,17 +1911,14 @@ async def _handle_garage_placement(
         )
     else:
         # Spots 1 & 2: player must select a quest card
-        state.game_log.append(
-            GameLog(
-                round_number=state.current_round,
-                player_id=player.player_id,
-                action="place_worker",
-                details=(
-                    f"{player.display_name} placed worker on "
-                    f"{space.name} — awaiting quest selection"
-                ),
-                timestamp=time.time(),
-            )
+        _log_event(
+            state,
+            action="place_worker",
+            details=(
+                f"{player.display_name} placed worker on "
+                f"{space.name} — awaiting quest selection"
+            ),
+            player_id=player.player_id,
         )
 
         # Send worker_placed with garage info so client
@@ -2032,14 +2010,11 @@ async def handle_select_quest_card(
     )
     source = "a building" if is_building_draw else "The Garage"
 
-    state.game_log.append(
-        GameLog(
-            round_number=state.current_round,
-            player_id=player.player_id,
-            action="select_quest_card",
-            details=(f"{player.display_name} selected '{card.name}' from {source}"),
-            timestamp=time.time(),
-        )
+    _log_event(
+        state,
+        action="select_quest_card",
+        details=f"{player.display_name} selected '{card.name}' from {source}",
+        player_id=player.player_id,
     )
 
     await server.broadcast_to_game(
@@ -2156,14 +2131,11 @@ async def handle_place_worker_backstage(
     if plot_bonus_vp:
         log_detail += f" (+{plot_bonus_vp} plot quest bonus)"
 
-    state.game_log.append(
-        GameLog(
-            round_number=state.current_round,
-            player_id=player.player_id,
-            action="place_worker_backstage",
-            details=log_detail,
-            timestamp=time.time(),
-        )
+    _log_event(
+        state,
+        action="place_worker_backstage",
+        details=log_detail,
+        player_id=player.player_id,
     )
 
     # Handle copy_occupied_space intrigue card
@@ -2389,18 +2361,15 @@ async def handle_place_worker_backstage(
                             ),
                         ),
                     )
-            state.game_log.append(
-                GameLog(
-                    round_number=state.current_round,
-                    player_id=player.player_id,
-                    action="resource_trigger",
-                    details=(
-                        f"{player.display_name} triggered"
-                        f" {tb.get('contract_name', 'plot quest')} bonus"
-                        f" from intrigue card"
-                    ),
-                    timestamp=time.time(),
-                )
+            _log_event(
+                state,
+                action="resource_trigger",
+                details=(
+                    f"{player.display_name} triggered"
+                    f" {tb.get('contract_name', 'plot quest')} bonus"
+                    f" from intrigue card"
+                ),
+                player_id=player.player_id,
             )
         if pending_swap:
             from shared.card_models import ResourceChoiceReward
@@ -2653,18 +2622,15 @@ async def handle_complete_quest(
     if showcase_bonus_vp:
         vp_detail += f" + {showcase_bonus_vp} Audition Showcase bonus"
 
-    state.game_log.append(
-        GameLog(
-            round_number=state.current_round,
-            player_id=player.player_id,
-            action="complete_quest",
-            details=(
-                f"{player.display_name} completed"
-                f" '{contract.name}'"
-                f" for {vp_detail}"
-            ),
-            timestamp=time.time(),
-        )
+    _log_event(
+        state,
+        action="complete_quest",
+        details=(
+            f"{player.display_name} completed"
+            f" '{contract.name}'"
+            f" for {vp_detail}"
+        ),
+        player_id=player.player_id,
     )
 
     drawn_intrigue = _draw_intrigue_cards(
@@ -2711,18 +2677,15 @@ async def handle_complete_quest(
                 "player_name": opponents[0].display_name,
                 "coins": contract.reward_opponent_gains_coins,
             }
-            state.game_log.append(
-                GameLog(
-                    round_number=state.current_round,
-                    player_id=player.player_id,
-                    action="opponent_gains_coins",
-                    details=(
-                        f"{opponents[0].display_name} gained"
-                        f" {contract.reward_opponent_gains_coins} coins"
-                        f" from {contract.name}"
-                    ),
-                    timestamp=time.time(),
-                )
+            _log_event(
+                state,
+                action="opponent_gains_coins",
+                details=(
+                    f"{opponents[0].display_name} gained"
+                    f" {contract.reward_opponent_gains_coins} coins"
+                    f" from {contract.name}"
+                ),
+                player_id=player.player_id,
             )
         elif len(opponents) > 1:
             state.pending_opponent_coins = {
@@ -2736,18 +2699,15 @@ async def handle_complete_quest(
     if contract.reward_extra_worker > 0:
         player.total_workers += contract.reward_extra_worker
         extra_workers_granted = contract.reward_extra_worker
-        state.game_log.append(
-            GameLog(
-                round_number=state.current_round,
-                player_id=player.player_id,
-                action="extra_worker",
-                details=(
-                    f"{player.display_name} gained"
-                    f" {extra_workers_granted} extra permanent worker(s)"
-                    f" from {contract.name}"
-                ),
-                timestamp=time.time(),
-            )
+        _log_event(
+            state,
+            action="extra_worker",
+            details=(
+                f"{player.display_name} gained"
+                f" {extra_workers_granted} extra permanent worker(s)"
+                f" from {contract.name}"
+            ),
+            player_id=player.player_id,
         )
 
     # --- Special reward: recall a placed worker ---
@@ -3017,14 +2977,11 @@ async def handle_skip_quest_completion(
     state.waiting_for_quest_completion = False
     state.pending_showcase_bonus = None
 
-    state.game_log.append(
-        GameLog(
-            round_number=state.current_round,
-            player_id=player.player_id,
-            action="skip_quest_completion",
-            details=(f"{player.display_name}" " skipped quest completion"),
-            timestamp=time.time(),
-        )
+    _log_event(
+        state,
+        action="skip_quest_completion",
+        details=f"{player.display_name} skipped quest completion",
+        player_id=player.player_id,
     )
 
     if is_reassignment:
@@ -3127,14 +3084,11 @@ async def handle_acquire_intrigue(
     card = state.board.intrigue_deck.pop(0)
     player.intrigue_hand.append(card)
 
-    state.game_log.append(
-        GameLog(
-            round_number=state.current_round,
-            player_id=player.player_id,
-            action="acquire_intrigue",
-            details=f"{player.display_name} drew an intrigue card",
-            timestamp=time.time(),
-        )
+    _log_event(
+        state,
+        action="acquire_intrigue",
+        details=f"{player.display_name} drew an intrigue card",
+        player_id=player.player_id,
     )
 
 
@@ -3236,18 +3190,15 @@ async def handle_purchase_building(
         bonus_part = f"+{plot_bonus_vp} plot quest bonus"
         vp_detail = f"{vp_detail} {bonus_part}".strip() if vp_detail else bonus_part
 
-    state.game_log.append(
-        GameLog(
-            round_number=state.current_round,
-            player_id=player.player_id,
-            action="purchase_building",
-            details=(
-                f"{player.display_name} built {building.name}" f" ({vp_detail})"
-                if vp_detail
-                else f"{player.display_name} built {building.name}"
-            ),
-            timestamp=time.time(),
-        )
+    _log_event(
+        state,
+        action="purchase_building",
+        details=(
+            f"{player.display_name} built {building.name}" f" ({vp_detail})"
+            if vp_detail
+            else f"{player.display_name} built {building.name}"
+        ),
+        player_id=player.player_id,
     )
 
     state.pending_placement = None
@@ -3375,14 +3326,11 @@ async def handle_cancel_purchase_building(
         return
 
     if state.phase == GamePhase.REASSIGNMENT:
-        state.game_log.append(
-            GameLog(
-                round_number=state.current_round,
-                player_id=player.player_id,
-                action="cancel_purchase_building",
-                details=f"{player.display_name} skipped building purchase",
-                timestamp=time.time(),
-            )
+        _log_event(
+            state,
+            action="cancel_purchase_building",
+            details=f"{player.display_name} skipped building purchase",
+            player_id=player.player_id,
         )
         state.pending_placement = None
         await server.broadcast_to_game(
@@ -3399,14 +3347,11 @@ async def handle_cancel_purchase_building(
     result = _unwind_placement(state, player, pending)
     state.pending_placement = None
 
-    state.game_log.append(
-        GameLog(
-            round_number=state.current_round,
-            player_id=player.player_id,
-            action="cancel_purchase_building",
-            details=f"{player.display_name} cancelled building purchase",
-            timestamp=time.time(),
-        )
+    _log_event(
+        state,
+        action="cancel_purchase_building",
+        details=f"{player.display_name} cancelled building purchase",
+        player_id=player.player_id,
     )
 
     next_player = state.current_player()
@@ -3445,14 +3390,11 @@ async def handle_cancel_quest_selection(
 
     state.pending_showcase_bonus = None
 
-    state.game_log.append(
-        GameLog(
-            round_number=state.current_round,
-            player_id=player.player_id,
-            action="cancel_quest_selection",
-            details=f"{player.display_name} cancelled quest selection",
-            timestamp=time.time(),
-        )
+    _log_event(
+        state,
+        action="cancel_quest_selection",
+        details=f"{player.display_name} cancelled quest selection",
+        player_id=player.player_id,
     )
 
     if state.phase == GamePhase.REASSIGNMENT:
@@ -3641,17 +3583,14 @@ async def handle_reassign_worker(
                 "owner_name": owner.display_name,
                 "bonus": bonus_dict,
             }
-            state.game_log.append(
-                GameLog(
-                    round_number=state.current_round,
-                    player_id=owner.player_id,
-                    action="owner_bonus",
-                    details=(
-                        f"{owner.display_name} received owner bonus from"
-                        f" {player.display_name} visiting {target.name}"
-                    ),
-                    timestamp=time.time(),
-                )
+            _log_event(
+                state,
+                action="owner_bonus",
+                details=(
+                    f"{owner.display_name} received owner bonus from"
+                    f" {player.display_name} visiting {target.name}"
+                ),
+                player_id=owner.player_id,
             )
 
     # Detect pending owner bonus choice
@@ -3680,17 +3619,14 @@ async def handle_reassign_worker(
             for k, v in tb["bonus_resources"].items():
                 if v and k in reward_dict:
                     reward_dict[k] = reward_dict.get(k, 0) + v
-        state.game_log.append(
-            GameLog(
-                round_number=state.current_round,
-                player_id=player.player_id,
-                action="resource_trigger",
-                details=(
-                    f"{player.display_name} triggered"
-                    f" {tb.get('contract_name', 'plot quest')} bonus"
-                ),
-                timestamp=time.time(),
-            )
+        _log_event(
+            state,
+            action="resource_trigger",
+            details=(
+                f"{player.display_name} triggered"
+                f" {tb.get('contract_name', 'plot quest')} bonus"
+            ),
+            player_id=player.player_id,
         )
 
     if target.space_type == "castle":
@@ -3706,18 +3642,15 @@ async def handle_reassign_worker(
 
     state.reassignment_queue.pop(0)
 
-    state.game_log.append(
-        GameLog(
-            round_number=state.current_round,
-            player_id=player.player_id,
-            action="reassign_worker",
-            details=(
-                f"{player.display_name} reassigned from"
-                f" Backstage slot {msg.slot_number}"
-                f" to {target.name}"
-            ),
-            timestamp=time.time(),
-        )
+    _log_event(
+        state,
+        action="reassign_worker",
+        details=(
+            f"{player.display_name} reassigned from"
+            f" Backstage slot {msg.slot_number}"
+            f" to {target.name}"
+        ),
+        player_id=player.player_id,
     )
 
     # Reset quests before broadcasting WorkerReassignedResponse so the
@@ -3987,17 +3920,14 @@ async def handle_choose_intrigue_target(
     state.pending_intrigue_target = None
     state.pending_placement = None
 
-    state.game_log.append(
-        GameLog(
-            round_number=state.current_round,
-            player_id=player.player_id,
-            action="intrigue_effect",
-            details=(
-                f"{player.display_name} used {effect_type} on"
-                f" {target.display_name}: {resources_affected}"
-            ),
-            timestamp=time.time(),
-        )
+    _log_event(
+        state,
+        action="intrigue_effect",
+        details=(
+            f"{player.display_name} used {effect_type} on"
+            f" {target.display_name}: {resources_affected}"
+        ),
+        player_id=player.player_id,
     )
 
     await server.broadcast_to_game(
@@ -4038,18 +3968,15 @@ async def handle_choose_intrigue_target(
                                 ),
                             ),
                         )
-                state.game_log.append(
-                    GameLog(
-                        round_number=state.current_round,
-                        player_id=player.player_id,
-                        action="resource_trigger",
-                        details=(
-                            f"{player.display_name} triggered"
-                            f" {tb.get('contract_name', 'plot quest')} bonus"
-                            f" from stolen resources"
-                        ),
-                        timestamp=time.time(),
-                    )
+                _log_event(
+                    state,
+                    action="resource_trigger",
+                    details=(
+                        f"{player.display_name} triggered"
+                        f" {tb.get('contract_name', 'plot quest')} bonus"
+                        f" from stolen resources"
+                    ),
+                    player_id=player.player_id,
                 )
             if pending_swap:
                 from shared.card_models import ResourceChoiceReward
@@ -4117,14 +4044,11 @@ async def handle_cancel_intrigue_target(
         player.victory_points -= reversed_bonus
         state.pending_intrigue_target = None
 
-        state.game_log.append(
-            GameLog(
-                round_number=state.current_round,
-                player_id=player.player_id,
-                action="cancel_intrigue_target",
-                details=f"{player.display_name} cancelled intrigue target from quest reward",
-                timestamp=time.time(),
-            )
+        _log_event(
+            state,
+            action="cancel_intrigue_target",
+            details=f"{player.display_name} cancelled intrigue target from quest reward",
+            player_id=player.player_id,
         )
 
         await _advance_after_quest_rewards(server, state, player)
@@ -4141,14 +4065,11 @@ async def handle_cancel_intrigue_target(
     state.pending_intrigue_target = None
     state.pending_placement = None
 
-    state.game_log.append(
-        GameLog(
-            round_number=state.current_round,
-            player_id=player.player_id,
-            action="cancel_intrigue_target",
-            details=f"{player.display_name} cancelled intrigue target selection",
-            timestamp=time.time(),
-        )
+    _log_event(
+        state,
+        action="cancel_intrigue_target",
+        details=f"{player.display_name} cancelled intrigue target selection",
+        player_id=player.player_id,
     )
 
     await server.broadcast_to_game(
@@ -4258,14 +4179,11 @@ async def handle_cancel_copy_space(
     if cost > 0:
         reversed_resources["coins"] = reversed_resources.get("coins", 0) - cost
 
-    state.game_log.append(
-        GameLog(
-            round_number=state.current_round,
-            player_id=player.player_id,
-            action="cancel_copy_space",
-            details=f"{player.display_name} cancelled copy-space selection",
-            timestamp=time.time(),
-        )
+    _log_event(
+        state,
+        action="cancel_copy_space",
+        details=f"{player.display_name} cancelled copy-space selection",
+        player_id=player.player_id,
     )
 
     next_player = state.current_player()
@@ -4392,14 +4310,11 @@ async def handle_play_intrigue_from_quest(
     if plot_bonus_vp:
         log_detail += f" (+{plot_bonus_vp} plot quest bonus)"
 
-    state.game_log.append(
-        GameLog(
-            round_number=state.current_round,
-            player_id=player.player_id,
-            action="play_intrigue_from_quest",
-            details=log_detail,
-            timestamp=time.time(),
-        )
+    _log_event(
+        state,
+        action="play_intrigue_from_quest",
+        details=log_detail,
+        player_id=player.player_id,
     )
 
     state.pending_play_intrigue = None
@@ -4471,17 +4386,14 @@ async def handle_choose_opponent(
     coins = state.pending_opponent_coins["coins"]
     target.resources.coins += coins
 
-    state.game_log.append(
-        GameLog(
-            round_number=state.current_round,
-            player_id=player.player_id,
-            action="opponent_gains_coins",
-            details=(
-                f"{target.display_name} gained {coins} coins"
-                f" (chosen by {player.display_name})"
-            ),
-            timestamp=time.time(),
-        )
+    _log_event(
+        state,
+        action="opponent_gains_coins",
+        details=(
+            f"{target.display_name} gained {coins} coins"
+            f" (chosen by {player.display_name})"
+        ),
+        player_id=player.player_id,
     )
 
     state.pending_opponent_coins = None
@@ -4517,14 +4429,11 @@ async def handle_recall_worker(server: GameServer, conn: ClientConnection, msg) 
     player.available_workers += 1
     state.pending_worker_recall = None
 
-    state.game_log.append(
-        GameLog(
-            round_number=state.current_round,
-            player_id=player.player_id,
-            action="recall_worker",
-            details=f"{player.display_name} recalled worker from {space.name}",
-            timestamp=time.time(),
-        )
+    _log_event(
+        state,
+        action="recall_worker",
+        details=f"{player.display_name} recalled worker from {space.name}",
+        player_id=player.player_id,
     )
 
     await server.broadcast_to_game(
@@ -4578,17 +4487,14 @@ async def handle_round_start_resource_choice(
             contract_name = c.name
             break
 
-    state.game_log.append(
-        GameLog(
-            round_number=state.current_round,
-            player_id=player.player_id,
-            action="round_start_resource",
-            details=(
-                f"{player.display_name} chose 1 {msg.resource_type}"
-                f" from {contract_name}"
-            ),
-            timestamp=time.time(),
-        )
+    _log_event(
+        state,
+        action="round_start_resource",
+        details=(
+            f"{player.display_name} chose 1 {msg.resource_type}"
+            f" from {contract_name}"
+        ),
+        player_id=player.player_id,
     )
 
     await server.broadcast_to_game(

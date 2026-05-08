@@ -145,6 +145,11 @@ class CancelCopySpaceRequest(BaseModel):
     action: Literal["cancel_copy_space"] = "cancel_copy_space"
 
 
+class SkipResourceChoiceRequest(BaseModel):
+    action: Literal["skip_resource_choice"] = "skip_resource_choice"
+    prompt_id: str = ""
+
+
 class PingRequest(BaseModel):
     action: Literal["ping"] = "ping"
 
@@ -177,6 +182,7 @@ ClientMessage = Annotated[
         SelectCopySpaceRequest,
         CancelCopySpaceRequest,
         ReconnectRequest,
+        SkipResourceChoiceRequest,
         PingRequest,
     ],
     Field(discriminator="action"),
