@@ -634,7 +634,7 @@ def _write_game_log(state) -> None:
             f.write(
                 f"R{entry.round_number} {ts}{player_str} {entry.action}: {entry.details}\n"
             )
-    logger.info("Game log written to %s", path)
+    logger.debug("Game log written to %s", path)
 
 
 def _tiebreak_coins(state, player_id: str) -> int:
@@ -2626,9 +2626,7 @@ async def handle_complete_quest(
         state,
         action="complete_quest",
         details=(
-            f"{player.display_name} completed"
-            f" '{contract.name}'"
-            f" for {vp_detail}"
+            f"{player.display_name} completed" f" '{contract.name}'" f" for {vp_detail}"
         ),
         player_id=player.player_id,
     )

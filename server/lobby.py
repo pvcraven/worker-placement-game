@@ -323,6 +323,7 @@ def _initialize_game(state, config) -> None:
     )
 
     from server.game_engine import _write_game_log
+
     _write_game_log(state)
 
 
