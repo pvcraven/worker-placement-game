@@ -131,7 +131,9 @@ class NetworkClient:
                                 }
                             )
                         )
-                        logger.info("Sent auto-reconnect for game %s", self._reconnect_game_code)
+                        logger.info(
+                            "Sent auto-reconnect for game %s", self._reconnect_game_code
+                        )
 
                     recv_task = asyncio.create_task(self._recv_loop(ws))
                     send_task = asyncio.create_task(self._send_loop(ws))

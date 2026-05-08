@@ -105,6 +105,7 @@ async def join_game(server: GameServer, conn: ClientConnection, msg) -> None:
         if player is None:
             await conn.send_error("INVALID_ACTION", "Game already in progress.")
             return
+
         # Delegate to existing reconnect handler via a lightweight shim
         class _ReconnectShim:
             game_code = msg.game_code
