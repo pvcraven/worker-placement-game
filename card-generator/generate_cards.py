@@ -1876,14 +1876,43 @@ def generate_worker_markers() -> int:
     for name, color in PLAYER_COLORS:
         img = Image.new("RGBA", (MARKER_SIZE, MARKER_SIZE), (0, 0, 0, 0))
         draw = ImageDraw.Draw(img)
-        r = MARKER_SIZE // 2 - 1
-        cx, cy = MARKER_SIZE // 2, MARKER_SIZE // 2
+        fill = (*color, 255)
+        outline = (255, 255, 255, 200)
+        cx = MARKER_SIZE // 2
+
+        # Head (circle at top)
+        head_r = 6
+        head_cy = head_r + 1
         draw.ellipse(
-            (cx - r, cy - r, cx + r, cy + r),
-            fill=(*color, 255),
-            outline=(255, 255, 255, 200),
+            (cx - head_r, head_cy - head_r, cx + head_r, head_cy + head_r),
+            fill=fill,
+            outline=outline,
             width=2,
         )
+
+        # Body (trapezoid: narrow neck to wide base)
+        neck_top = head_cy + head_r - 1
+        base_bottom = MARKER_SIZE - 3
+        neck_half = 4
+        base_half = MARKER_SIZE // 2 - 2
+        body_pts = [
+            (cx - neck_half, neck_top),
+            (cx + neck_half, neck_top),
+            (cx + base_half, base_bottom),
+            (cx - base_half, base_bottom),
+        ]
+        draw.polygon(body_pts, fill=fill, outline=outline, width=2)
+
+        # Base (wide ellipse at bottom)
+        base_h = 5
+        draw.ellipse(
+            (cx - base_half, base_bottom - base_h // 2,
+             cx + base_half, base_bottom + base_h // 2),
+            fill=fill,
+            outline=outline,
+            width=2,
+        )
+
         img.save(OUTPUT_MARKERS / f"worker_{name}.png")
         count += 1
     return count

@@ -28,13 +28,21 @@ from shared.constants import (
 )
 from shared.messages import (
     BuildingMarketUpdateResponse,
+    CopySpacePromptResponse,
     GameCreatedResponse,
     GameStartedResponse,
+    IntriguePlayPromptResponse,
     LobbyPlayerInfo,
+    OpponentChoicePromptResponse,
     PlayerJoinedResponse,
     PlayerReadyUpdateResponse,
     PlayerReconnectedResponse,
+    QuestCompletionPromptResponse,
+    QuestRewardChoicePromptResponse,
+    ResourceChoicePromptResponse,
+    RoundStartResourceChoicePromptResponse,
     StateSyncResponse,
+    WorkerRecallPromptResponse,
 )
 
 if TYPE_CHECKING:
@@ -395,3 +403,145 @@ async def reconnect(server: GameServer, conn: ClientConnection, msg) -> None:
     logger.info(
         "Player '%s' reconnected to game %s", player.display_name, state.game_code
     )
+
+    await _resend_pending_prompts(server, state, player)
+
+
+async def _resend_pending_prompts(
+    server: GameServer, state, player: Player
+) -> None:
+    """Re-send any pending prompt that is waiting on the reconnected player."""
+    pid = player.player_id
+
+    # --- Resource choice (most common: building owner bonus, space rewards) ---
+    pending = state.pending_resource_choice
+    if pending and pending.get("player_id") == pid:
+        await server.send_to_player(
+            pid,
+            ResourceChoicePromptResponse(
+                prompt_id=pending["prompt_id"],
+                player_id=pid,
+                choice_type=pending.get("choice_type", "pick"),
+                title=f"Pick {pending.get('pick_count', 1)} resource(s)",
+                description=f"Choose from {pending.get('source_name', '')}",
+                allowed_types=pending.get("allowed_types", []),
+                pick_count=pending.get("pick_count", 0),
+                total=pending.get("total", 0),
+                bundles=pending.get("bundles", []),
+                is_spend=pending.get("is_spend", False),
+                can_skip=pending.get("can_skip", False),
+            ),
+        )
+        return
+
+    # --- Intrigue play prompt ---
+    pending_intr = state.pending_play_intrigue
+    if pending_intr and pending_intr.get("player_id") == pid:
+        await server.send_to_player(
+            pid,
+            IntriguePlayPromptResponse(
+                intrigue_hand=[c.model_dump() for c in player.intrigue_hand],
+            ),
+        )
+        return
+
+    # --- Opponent choice (give coins to opponent) ---
+    pending_opp = state.pending_opponent_coins
+    if pending_opp and pending_opp.get("player_id") == pid:
+        opponents = [
+            {"player_id": p.player_id, "player_name": p.display_name}
+            for p in state.players
+            if p.player_id != pid
+        ]
+        await server.send_to_player(
+            pid,
+            OpponentChoicePromptResponse(
+                opponents=opponents,
+                coins_amount=pending_opp.get("coins", 0),
+            ),
+        )
+        return
+
+    # --- Worker recall ---
+    pending_recall = state.pending_worker_recall
+    if pending_recall and pending_recall.get("player_id") == pid:
+        occupied = [
+            {"space_id": sid, "name": sp.name}
+            for sid, sp in state.board.action_spaces.items()
+            if sp.occupied_by == pid
+        ]
+        await server.send_to_player(
+            pid,
+            WorkerRecallPromptResponse(occupied_spaces=occupied),
+        )
+        return
+
+    # --- Copy space selection ---
+    pending_copy = state.pending_copy_source
+    if pending_copy and pending_copy.get("player_id") == pid:
+        await server.send_to_player(
+            pid,
+            CopySpacePromptResponse(
+                eligible_spaces=pending_copy.get("eligible_spaces", []),
+                source_type=pending_copy.get("source_type", "building"),
+            ),
+        )
+        return
+
+    # --- Quest reward choice (choose quest or building as reward) ---
+    pending_qr = state.pending_quest_reward
+    if pending_qr and pending_qr.get("player_id") == pid:
+        await server.send_to_player(
+            pid,
+            QuestRewardChoicePromptResponse(
+                reward_type=pending_qr.get("reward_type", "choose_quest"),
+                available_choices=pending_qr.get("available_choices", []),
+                quest_name=pending_qr.get("quest_name", ""),
+            ),
+        )
+        return
+
+    # --- Quest completion prompt ---
+    if state.waiting_for_quest_completion:
+        current = state.current_player()
+        if current and current.player_id == pid:
+            completable = [
+                c
+                for c in player.contract_hand
+                if player.resources.can_afford(c.cost)
+            ]
+            bonus_quest_id = None
+            bonus_vp = 0
+            if state.pending_showcase_bonus:
+                scid = state.pending_showcase_bonus.get("contract_id")
+                if scid and any(c.id == scid for c in completable):
+                    bonus_quest_id = scid
+                    bonus_vp = state.pending_showcase_bonus["bonus_vp"]
+            await server.send_to_player(
+                pid,
+                QuestCompletionPromptResponse(
+                    completable_quests=[c.model_dump() for c in completable],
+                    bonus_quest_id=bonus_quest_id,
+                    bonus_vp=bonus_vp,
+                ),
+            )
+            return
+
+    # --- Round-start resource choice ---
+    if (
+        state.pending_round_start_choices
+        and state.pending_round_start_choices[0] == pid
+    ):
+        contract_name = ""
+        for c in player.completed_contracts:
+            if c.reward_choose_resource_per_round:
+                contract_name = c.name
+                break
+        await server.send_to_player(
+            pid,
+            RoundStartResourceChoicePromptResponse(
+                player_id=pid,
+                contract_name=contract_name,
+            ),
+        )
+        return

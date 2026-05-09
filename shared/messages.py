@@ -317,6 +317,7 @@ class ContractAcquiredResponse(BaseModel):
     action: Literal["contract_acquired"] = "contract_acquired"
     player_id: str
     contract_id: str
+    contract: dict | None = None
     new_face_up: dict | None = None
 
 

@@ -260,15 +260,22 @@ class MenuView(arcade.View):
     def on_update(self, delta_time: float) -> None:
         """Poll network for responses."""
         network = self.window.network
-        for msg in network.poll():
+        messages = network.poll()
+        for i, msg in enumerate(messages):
             action = msg.get("action")
             if action == "game_created":
                 self.window.player_id = msg["player_id"]
                 self.window.game_code = msg["game_code"]
                 self.window.slot_index = msg.get("slot_index", 0)
+                for remaining in messages[i + 1 :]:
+                    network.incoming.put(remaining)
                 self.window.show_lobby()
+                return
             elif action == "player_joined":
+                for remaining in messages[i + 1 :]:
+                    network.incoming.put(remaining)
                 self.window.show_lobby()
+                return
             elif action == "state_sync":
                 game_state = msg.get("game_state", {})
                 my_name = getattr(self.window, "player_name", None)
@@ -279,6 +286,7 @@ class MenuView(arcade.View):
                         break
                 self.window.game_state = game_state
                 self.window.show_game()
+                return
             elif action == "error":
                 self.status_label.text = msg.get("message", "Error")
 
