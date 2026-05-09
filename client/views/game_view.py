@@ -65,7 +65,7 @@ class GameView(arcade.View):
             "client/assets/sounds/sound2.mp3",
         )
         self._tick_sound = arcade.load_sound(
-            "client/assets/sounds/tick_001.ogg",
+            "client/assets/sounds/bong_001.ogg",
         )
         self._info_dialog = InfoDialog()
         self._player_marker_positions: dict[str, tuple[float, float]] = {}
@@ -1710,10 +1710,7 @@ class GameView(arcade.View):
                 s["intrigue_card_played"] = None
                 break
 
-        # Mark target space as occupied
         spaces = board.get("action_spaces", {})
-        if to_space in spaces:
-            spaces[to_space]["occupied_by"] = pid
 
         # Apply reward
         self._apply_reward_to_player(pid, reward)
@@ -1738,13 +1735,21 @@ class GameView(arcade.View):
             self._status_text = "Reassignment — ending round..."
 
         if anim_origin and anim_target:
+            # Refresh now to clear backstage marker; defer target occupation
+            self._refresh_board(board)
+
+            def _on_reassign_complete():
+                if to_space in spaces:
+                    spaces[to_space]["occupied_by"] = pid
+                self._refresh_board(self.game_state.get("board", {}))
+
             self._queue_marker_animation(
                 pid, anim_origin, anim_target,
-                on_complete=lambda: self._refresh_board(
-                    self.game_state.get("board", {}),
-                ),
+                on_complete=_on_reassign_complete,
             )
         else:
+            if to_space in spaces:
+                spaces[to_space]["occupied_by"] = pid
             self._refresh_board(board)
 
         if self.tabbed_panel:
@@ -2972,8 +2977,16 @@ class GameView(arcade.View):
             return
 
         player_map = {p["player_id"]: p for p in players}
-        idx = self.game_state.get("current_player_index", 0)
-        current_pid = turn_order[idx] if idx < len(turn_order) else None
+        phase = self.game_state.get("phase", "")
+        if phase == "reassignment":
+            queue = self.game_state.get("reassignment_queue", [])
+            if queue:
+                current_pid = self._reassignment_slot_owners.get(queue[0])
+            else:
+                current_pid = None
+        else:
+            idx = self.game_state.get("current_player_index", 0)
+            current_pid = turn_order[idx] if idx < len(turn_order) else None
 
         font_sz = max(10, int(14 * s))
         vp_font_sz = max(8, int(11 * s))
