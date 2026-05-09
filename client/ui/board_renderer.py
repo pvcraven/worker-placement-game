@@ -688,3 +688,30 @@ class BoardRenderer:
             if rx <= x <= rx + rw and ry <= y <= ry + rh:
                 return space_id
         return None
+
+    def get_space_position(self, space_id: str) -> tuple[float, float] | None:
+        """Return pixel coordinates for an action space, backstage slot, or constructed building."""
+        g = self._grid
+        if g is None:
+            return None
+
+        s = self._last_scale
+        space_scale = g.card_scale(1, CARD_WIDTH, SPACE_CARD_HEIGHT)
+        token_offset = CARD_WIDTH * 2 * space_scale / 2 - 10 * s
+
+        if space_id in _GRID_PLACEMENT:
+            col, row, cs, rs = _GRID_PLACEMENT[space_id]
+            cx, cy, _, _ = g.cell_rect(col, row, cs, rs)
+            return (cx + token_offset, cy)
+
+        all_constructed = self.board_data.get("constructed_buildings", [])
+        if space_id in all_constructed:
+            bld_scale = g.card_scale(2, CARD_WIDTH, BUILDING_CARD_HEIGHT)
+            bld_cw = CARD_WIDTH * 2 * bld_scale
+            j = all_constructed.index(space_id)
+            col = 1 + (j % 2)
+            row = (j // 2) * 2
+            cx, cy, _, _ = g.cell_rect(col, row, 1, 2)
+            return (cx + bld_cw / 2 - 14 * s, cy)
+
+        return None

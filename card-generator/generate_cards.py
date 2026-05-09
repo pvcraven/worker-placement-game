@@ -1867,7 +1867,7 @@ PLAYER_COLORS = [
     ("purple", (128, 0, 128)),
 ]
 
-MARKER_SIZE = 36
+MARKER_SIZE = 48
 
 
 def _lerp_color(c1: tuple, c2: tuple, t: float) -> tuple:

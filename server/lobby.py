@@ -310,12 +310,14 @@ def _initialize_game(state, config) -> None:
                 player.contract_hand.append(board.quest_deck.pop())
         player.resources.coins = STARTING_COINS_BASE + (i * STARTING_COINS_INCREMENT)
 
-    # First player is slot 0 by default
-    state.board.first_player_id = state.players[0].player_id
-    state.players[0].has_first_player_marker = True
-
-    # Set turn order
-    state.turn_order = [p.player_id for p in state.players]
+    # Randomize starting turn order
+    pids = [p.player_id for p in state.players]
+    random.shuffle(pids)
+    state.turn_order = pids
+    first_pid = pids[0]
+    state.board.first_player_id = first_pid
+    for p in state.players:
+        p.has_first_player_marker = p.player_id == first_pid
     state.current_player_index = 0
     state.current_round = 1
     state.phase = GamePhase.PLACEMENT
