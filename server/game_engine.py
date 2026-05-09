@@ -37,6 +37,7 @@ from shared.messages import (
     ResourceChoicePromptResponse,
     ResourceChoiceResolvedResponse,
     RoundEndResponse,
+    StateSyncResponse,
     RoundStartBonusResponse,
     RoundStartResourceChoicePromptResponse,
     WorkerPlacedBackstageResponse,
@@ -410,6 +411,48 @@ async def _end_placement_phase(server: GameServer, state) -> None:
         await _end_round(server, state)
 
 
+async def _broadcast_state_sync(server: GameServer, state) -> None:
+    """Send filtered state sync to every connected player to correct client drift."""
+    full = state.model_dump()
+    for player in state.players:
+        if not player.is_connected:
+            continue
+        pid = player.player_id
+        data = _make_filtered_state(full, pid)
+        await server.send_to_player(pid, StateSyncResponse(game_state=data))
+
+
+def _make_filtered_state(data: dict, player_id: str) -> dict:
+    """Return a copy of state dict with opponent hands hidden."""
+    import copy
+
+    filtered = copy.deepcopy(data)
+    for p_data in filtered["players"]:
+        p_data["contract_hand_count"] = len(p_data.get("contract_hand", []))
+        p_data["intrigue_hand_count"] = len(p_data.get("intrigue_hand", []))
+        if p_data["player_id"] != player_id:
+            p_data["intrigue_hand"] = []
+            p_data["producer_card"] = None
+    filtered["board"]["contract_deck_count"] = len(
+        filtered["board"].get("contract_deck", [])
+    )
+    filtered["board"]["contract_deck"] = []
+    filtered["board"]["intrigue_deck_count"] = len(
+        filtered["board"].get("intrigue_deck", [])
+    )
+    filtered["board"]["intrigue_deck"] = []
+    filtered["board"]["quest_deck_count"] = len(
+        filtered["board"].get("quest_deck", [])
+    )
+    filtered["board"]["quest_deck"] = []
+    filtered["board"]["quest_discard"] = []
+    filtered["board"]["building_deck_count"] = len(
+        filtered["board"].get("building_deck", [])
+    )
+    filtered["board"]["building_deck"] = []
+    return filtered
+
+
 async def _end_round(server: GameServer, state) -> None:
     """End the current round: return workers, advance round."""
     round_number = state.current_round
@@ -437,6 +480,27 @@ async def _end_round(server: GameServer, state) -> None:
         action="round_end",
         details=f"Round {round_number} ended",
     )
+
+    # Debug snapshot: player state summary for post-mortem drift detection
+    for player in state.players:
+        r = player.resources
+        snapshot = (
+            f"VP={player.victory_points} "
+            f"G={r.guitarists} B={r.bass_players} D={r.drummers} "
+            f"S={r.singers} C={r.coins} "
+            f"quests={len(player.contract_hand)} "
+            f"completed={len(player.completed_contracts)} "
+            f"intrigue={len(player.intrigue_hand)} "
+            f"workers={player.available_workers}/{player.total_workers} "
+            f"connected={player.is_connected}"
+        )
+        _log_event(
+            state,
+            round_number=round_number,
+            action="round_snapshot",
+            details=snapshot,
+            player_id=player.player_id,
+        )
 
     if state.current_round >= state.total_rounds:
         await _end_game(server, state)
@@ -502,6 +566,9 @@ async def _end_round(server: GameServer, state) -> None:
 
     # Broadcast updated building market with incremented VP
     await _broadcast_building_market(server, state)
+
+    # Send full state sync to each player as a safety net against client drift
+    await _broadcast_state_sync(server, state)
 
     # Round-start resource choice for players with reward_choose_resource_per_round
     eligible_players = []
@@ -3042,6 +3109,7 @@ async def handle_acquire_contract(
             ContractAcquiredResponse(
                 player_id=player.player_id,
                 contract_id=contract.id,
+                contract=contract.model_dump(),
                 new_face_up=new_face_up,
             ),
         )
@@ -3057,6 +3125,7 @@ async def handle_acquire_contract(
             ContractAcquiredResponse(
                 player_id=player.player_id,
                 contract_id=contract.id,
+                contract=contract.model_dump(),
                 new_face_up=None,
             ),
         )

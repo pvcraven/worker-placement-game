@@ -516,6 +516,7 @@ class GameView(arcade.View):
                 p["available_workers"] = max(0, p.get("available_workers", 0) - 1)
                 hand = p.get("intrigue_hand", [])
                 p["intrigue_hand"] = [c for c in hand if c.get("id") != card_id]
+                p["intrigue_hand_count"] = max(0, p.get("intrigue_hand_count", 0) - 1)
                 break
 
         # Apply intrigue effect cost deduction (e.g. copy_occupied_space costs 2 coins)
@@ -1438,6 +1439,26 @@ class GameView(arcade.View):
 
     def _on_contract_acquired(self, msg: dict) -> None:
         pid = msg.get("player_id", "")
+        my_id = getattr(self.window, "player_id", None)
+        contract_data = msg.get("contract")
+
+        for p in self.game_state.get("players", []):
+            if p.get("player_id") == pid:
+                if pid == my_id and contract_data:
+                    p.setdefault("contract_hand", []).append(contract_data)
+                p["contract_hand_count"] = p.get("contract_hand_count", 0) + 1
+                break
+
+        board = self.game_state.get("board", {})
+        face_up = board.get("face_up_contracts", [])
+        contract_id = msg.get("contract_id", "")
+        board["face_up_contracts"] = [
+            c for c in face_up if c.get("id") != contract_id
+        ]
+        new_face_up = msg.get("new_face_up")
+        if new_face_up:
+            board.setdefault("face_up_contracts", []).append(new_face_up)
+
         if self.tabbed_panel:
             name = self._player_name(pid)
             self.tabbed_panel.add_entry(
