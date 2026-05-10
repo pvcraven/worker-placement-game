@@ -48,8 +48,9 @@ EASING_LIST = [
 class EasingCircle(arcade.SpriteCircle):
     """A ball that eases along the x-axis using a specific curve."""
 
-    def __init__(self, radius: int, color: arcade.types.RGBOrA255,
-                 ease_function: Easing):
+    def __init__(
+        self, radius: int, color: arcade.types.RGBOrA255, ease_function: Easing
+    ):
         super().__init__(radius, color)
         self.ease_function = ease_function
         self.start_time = 0.0
@@ -117,8 +118,10 @@ class GameView(arcade.View):
 
         for ball in self.ball_list:
             eased_x = ease(
-                X_START, X_END,
-                ball.start_time, ball.start_time + TRAVEL_TIME,
+                X_START,
+                X_END,
+                ball.start_time,
+                ball.start_time + TRAVEL_TIME,
                 self.time_elapsed,
                 func=ball.ease_function,
             )

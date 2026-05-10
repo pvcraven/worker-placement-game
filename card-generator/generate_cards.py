@@ -1908,7 +1908,9 @@ def generate_worker_markers() -> int:
 
             # Elliptical bottom curve: center columns go deeper
             dx = (x - cx) / max(1, half_w)
-            curve_y = bot_flat - int(round_depth * (1.0 - math.sqrt(max(0, 1 - dx * dx))))
+            curve_y = bot_flat - int(
+                round_depth * (1.0 - math.sqrt(max(0, 1 - dx * dx)))
+            )
             # Darken the bottom few pixels for a 3D underside look
             top_start = top_y + oval_h // 2
             for y in range(top_start, curve_y + 1):

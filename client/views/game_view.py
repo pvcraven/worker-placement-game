@@ -349,7 +349,9 @@ class GameView(arcade.View):
 
         if origin and target:
             self._queue_marker_animation(
-                pid, origin, target,
+                pid,
+                origin,
+                target,
                 on_complete=lambda: self._refresh_board(
                     self.game_state.get("board", {}),
                 ),
@@ -629,7 +631,9 @@ class GameView(arcade.View):
 
         if origin and target:
             self._queue_marker_animation(
-                pid, origin, target,
+                pid,
+                origin,
+                target,
                 on_complete=lambda: self._refresh_board(
                     self.game_state.get("board", {}),
                 ),
@@ -1492,9 +1496,7 @@ class GameView(arcade.View):
         board = self.game_state.get("board", {})
         face_up = board.get("face_up_contracts", [])
         contract_id = msg.get("contract_id", "")
-        board["face_up_contracts"] = [
-            c for c in face_up if c.get("id") != contract_id
-        ]
+        board["face_up_contracts"] = [c for c in face_up if c.get("id") != contract_id]
         new_face_up = msg.get("new_face_up")
         if new_face_up:
             board.setdefault("face_up_contracts", []).append(new_face_up)
@@ -1744,7 +1746,9 @@ class GameView(arcade.View):
                 self._refresh_board(self.game_state.get("board", {}))
 
             self._queue_marker_animation(
-                pid, anim_origin, anim_target,
+                pid,
+                anim_origin,
+                anim_target,
                 on_complete=_on_reassign_complete,
             )
         else:
@@ -1923,9 +1927,7 @@ class GameView(arcade.View):
                     space_pos = self.board_renderer.get_space_position(space_id)
                     player_pos = self._player_marker_positions.get(occupied)
                     if space_pos and player_pos:
-                        self._queue_marker_animation(
-                            occupied, space_pos, player_pos
-                        )
+                        self._queue_marker_animation(occupied, space_pos, player_pos)
             for slot in board.get("backstage_slots", []):
                 occupied = slot.get("occupied_by")
                 if occupied:
@@ -1934,9 +1936,7 @@ class GameView(arcade.View):
                     space_pos = self.board_renderer.get_space_position(slot_id)
                     player_pos = self._player_marker_positions.get(occupied)
                     if space_pos and player_pos:
-                        self._queue_marker_animation(
-                            occupied, space_pos, player_pos
-                        )
+                        self._queue_marker_animation(occupied, space_pos, player_pos)
 
         for space in board.get("action_spaces", {}).values():
             space["occupied_by"] = None

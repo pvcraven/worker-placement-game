@@ -107,20 +107,26 @@ class GameView(arcade.View):
 
         # Draw a crosshair at the target
         arcade.draw_circle_outline(
-            self.target_x, self.target_y, 10, arcade.color.RED, 2,
+            self.target_x,
+            self.target_y,
+            10,
+            arcade.color.RED,
+            2,
         )
 
         # HUD
         description = MODE_DESCRIPTIONS.get(self.mode, "")
         arcade.draw_text(
             f"Mode {self.mode}: {description}",
-            10, WINDOW_HEIGHT - 30,
+            10,
+            WINDOW_HEIGHT - 30,
             color=arcade.color.WHITE,
             font_size=16,
         )
         arcade.draw_text(
             "Press 1-9 to change mode.  Click to set target.",
-            10, WINDOW_HEIGHT - 55,
+            10,
+            WINDOW_HEIGHT - 55,
             color=arcade.color.GRAY,
             font_size=12,
         )
@@ -163,7 +169,8 @@ class GameView(arcade.View):
         elif 2 <= self.mode <= 5:
             # Angle easing
             eased_angle = ease(
-                self.angle_start, self.angle_end,
+                self.angle_start,
+                self.angle_end,
                 self.angle_ease_start_time,
                 self.angle_ease_start_time + EASE_DURATION,
                 self.time_elapsed,
@@ -176,14 +183,16 @@ class GameView(arcade.View):
             self.ship_sprite.angle = self._target_angle()
 
             eased_x = ease(
-                self.pos_start_x, self.pos_end_x,
+                self.pos_start_x,
+                self.pos_end_x,
                 self.pos_ease_start_time,
                 self.pos_ease_start_time + EASE_DURATION,
                 self.time_elapsed,
                 func=ease_func,
             )
             eased_y = ease(
-                self.pos_start_y, self.pos_end_y,
+                self.pos_start_y,
+                self.pos_end_y,
                 self.pos_ease_start_time,
                 self.pos_ease_start_time + EASE_DURATION,
                 self.time_elapsed,
@@ -214,9 +223,15 @@ class GameView(arcade.View):
     def on_key_press(self, key: int, modifiers: int):
         """Switch modes with number keys 1-9."""
         key_map = {
-            arcade.key.KEY_1: 1, arcade.key.KEY_2: 2, arcade.key.KEY_3: 3,
-            arcade.key.KEY_4: 4, arcade.key.KEY_5: 5, arcade.key.KEY_6: 6,
-            arcade.key.KEY_7: 7, arcade.key.KEY_8: 8, arcade.key.KEY_9: 9,
+            arcade.key.KEY_1: 1,
+            arcade.key.KEY_2: 2,
+            arcade.key.KEY_3: 3,
+            arcade.key.KEY_4: 4,
+            arcade.key.KEY_5: 5,
+            arcade.key.KEY_6: 6,
+            arcade.key.KEY_7: 7,
+            arcade.key.KEY_8: 8,
+            arcade.key.KEY_9: 9,
         }
         new_mode = key_map.get(key)
         if new_mode is not None:
