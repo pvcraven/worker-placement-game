@@ -1867,54 +1867,76 @@ PLAYER_COLORS = [
     ("purple", (128, 0, 128)),
 ]
 
-MARKER_SIZE = 36
+MARKER_SIZE = 48
+
+
+def _lerp_color(c1: tuple, c2: tuple, t: float) -> tuple:
+    """Linearly interpolate between two RGB tuples."""
+    return tuple(int(a + (b - a) * t) for a, b in zip(c1, c2))
 
 
 def generate_worker_markers() -> int:
+    import math
+
     OUTPUT_MARKERS.mkdir(parents=True, exist_ok=True)
     count = 0
     for name, color in PLAYER_COLORS:
-        img = Image.new("RGBA", (MARKER_SIZE, MARKER_SIZE), (0, 0, 0, 0))
+        s = MARKER_SIZE
+        img = Image.new("RGBA", (s, s), (0, 0, 0, 0))
         draw = ImageDraw.Draw(img)
-        fill = (*color, 255)
-        outline = (255, 255, 255, 200)
-        cx = MARKER_SIZE // 2
 
-        # Head (circle at top)
-        head_r = 6
-        head_cy = head_r + 1
+        cx = s // 2
+        half_w = s // 2 - 3
+        oval_h = 5
+        top_y = 4
+        # Body extends to near the very bottom
+        bot_flat = s - 2
+        # Rounded bottom: each column ends at a y computed from an ellipse
+        round_depth = 4
+
+        bright = _lerp_color(color, (255, 255, 255), 0.45)
+        dark = _lerp_color(color, (0, 0, 0), 0.45)
+
+        # Draw cylinder body column-by-column with left-to-right shading
+        # Bottom edge follows an elliptical curve for a rounded look
+        for x in range(cx - half_w, cx + half_w + 1):
+            t = (x - (cx - half_w)) / max(1, 2 * half_w)
+            if t < 0.35:
+                col = _lerp_color(bright, color, t / 0.35)
+            else:
+                col = _lerp_color(color, dark, (t - 0.35) / 0.65)
+
+            # Elliptical bottom curve: center columns go deeper
+            dx = (x - cx) / max(1, half_w)
+            curve_y = bot_flat - int(
+                round_depth * (1.0 - math.sqrt(max(0, 1 - dx * dx)))
+            )
+            # Darken the bottom few pixels for a 3D underside look
+            top_start = top_y + oval_h // 2
+            for y in range(top_start, curve_y + 1):
+                bottom_dist = curve_y - y
+                if bottom_dist < 3:
+                    shade = _lerp_color(col, (0, 0, 0), (3 - bottom_dist) * 0.15)
+                    img.putpixel((x, y), (*shade, 255))
+                else:
+                    img.putpixel((x, y), (*col, 255))
+
+        # Top oval (bright highlight)
         draw.ellipse(
-            (cx - head_r, head_cy - head_r, cx + head_r, head_cy + head_r),
-            fill=fill,
-            outline=outline,
-            width=2,
+            (cx - half_w, top_y, cx + half_w, top_y + oval_h),
+            fill=(*bright, 255),
+            outline=(255, 255, 255, 200),
+            width=1,
         )
 
-        # Body (trapezoid: narrow neck to wide base)
-        neck_top = head_cy + head_r - 1
-        base_bottom = MARKER_SIZE - 3
-        neck_half = 4
-        base_half = MARKER_SIZE // 2 - 2
-        body_pts = [
-            (cx - neck_half, neck_top),
-            (cx + neck_half, neck_top),
-            (cx + base_half, base_bottom),
-            (cx - base_half, base_bottom),
-        ]
-        draw.polygon(body_pts, fill=fill, outline=outline, width=2)
-
-        # Base (wide ellipse at bottom)
-        base_h = 5
-        draw.ellipse(
-            (
-                cx - base_half,
-                base_bottom - base_h // 2,
-                cx + base_half,
-                base_bottom + base_h // 2,
-            ),
-            fill=fill,
-            outline=outline,
-            width=2,
+        # Vertical edge highlights
+        draw.line(
+            [(cx - half_w, top_y + oval_h // 2), (cx - half_w, bot_flat - round_depth)],
+            fill=(255, 255, 255, 160),
+        )
+        draw.line(
+            [(cx + half_w, top_y + oval_h // 2), (cx + half_w, bot_flat - round_depth)],
+            fill=(0, 0, 0, 120),
         )
 
         img.save(OUTPUT_MARKERS / f"worker_{name}.png")

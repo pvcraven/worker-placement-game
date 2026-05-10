@@ -7,6 +7,7 @@ from pathlib import Path
 import arcade
 import arcade.gui
 
+from client.ui.animation_manager import AnimationManager
 from client.ui.board_renderer import BoardRenderer
 from client.ui.info_dialog import InfoDialog
 from client.ui.dialogs import (
@@ -63,7 +64,13 @@ class GameView(arcade.View):
         self._round_sound = arcade.load_sound(
             "client/assets/sounds/sound2.mp3",
         )
+        self._tick_sound = arcade.load_sound(
+            "client/assets/sounds/bong_001.ogg",
+        )
         self._info_dialog = InfoDialog()
+        self._player_marker_positions: dict[str, tuple[float, float]] = {}
+        self._player_marker_sprites: dict[str, arcade.Sprite] = {}
+        self._player_marker_list: arcade.SpriteList = arcade.SpriteList()
 
     def on_show_view(self) -> None:
         self.ui.enable()
@@ -91,6 +98,7 @@ class GameView(arcade.View):
         self.board_renderer = BoardRenderer()
         self.resource_bar = ResourceBar()
         self.tabbed_panel = TabbedPanel()
+        self.animation_manager = AnimationManager()
 
         self._rebuild_buttons()
 
@@ -214,6 +222,8 @@ class GameView(arcade.View):
     def on_update(self, delta_time: float) -> None:
         """Poll network and process messages."""
         self._info_dialog.update(delta_time)
+        if hasattr(self, "animation_manager"):
+            self.animation_manager.update(delta_time)
         network = self.window.network
         for msg in network.poll():
             self._handle_message(msg)
@@ -321,6 +331,13 @@ class GameView(arcade.View):
         pid = msg.get("player_id", "")
         reward = msg.get("reward_granted", {})
 
+        origin = self._player_marker_positions.get(pid)
+        target = (
+            self.board_renderer.get_space_position(space_id)
+            if self.board_renderer
+            else None
+        )
+
         # Update local state
         board = self.game_state.get("board", {})
         spaces = board.get("action_spaces", {})
@@ -330,7 +347,17 @@ class GameView(arcade.View):
             if bt and bt.get("accumulation_type"):
                 bt["accumulated_stock"] = 0
 
-        self._refresh_board(board)
+        if origin and target:
+            self._queue_marker_animation(
+                pid,
+                origin,
+                target,
+                on_complete=lambda: self._refresh_board(
+                    self.game_state.get("board", {}),
+                ),
+            )
+        else:
+            self._refresh_board(board)
 
         # Update player resources and worker count
         self._apply_reward_to_player(pid, reward)
@@ -504,6 +531,13 @@ class GameView(arcade.View):
         card = msg.get("intrigue_card", {})
         card_id = card.get("id", "")
 
+        origin = self._player_marker_positions.get(pid)
+        target = (
+            self.board_renderer.get_space_position(f"backstage_slot_{slot_num}")
+            if self.board_renderer
+            else None
+        )
+
         # Update backstage slot state
         board = self.game_state.get("board", {})
         for s in board.get("backstage_slots", []):
@@ -595,7 +629,17 @@ class GameView(arcade.View):
                     p["victory_points"] = p.get("victory_points", 0) + plot_bonus
                     break
 
-        self._refresh_board(board)
+        if origin and target:
+            self._queue_marker_animation(
+                pid,
+                origin,
+                target,
+                on_complete=lambda: self._refresh_board(
+                    self.game_state.get("board", {}),
+                ),
+            )
+        else:
+            self._refresh_board(board)
 
         if self.tabbed_panel:
             name = self._player_name(pid)
@@ -1465,6 +1509,8 @@ class GameView(arcade.View):
 
     def _on_placement_cancelled(self, msg: dict) -> None:
         """Handle placement cancellation — free space, return worker."""
+        if hasattr(self, "animation_manager"):
+            self.animation_manager.clear()
         space_id = msg.get("space_id", "")
         pid = msg.get("player_id", "")
 
@@ -1649,6 +1695,14 @@ class GameView(arcade.View):
         to_space = msg.get("to_space_id", "")
         reward = msg.get("reward_granted", {})
 
+        anim_origin = None
+        anim_target = None
+        if self.board_renderer:
+            anim_origin = self.board_renderer.get_space_position(
+                f"backstage_slot_{from_slot}"
+            )
+            anim_target = self.board_renderer.get_space_position(to_space)
+
         board = self.game_state.get("board", {})
 
         # Clear the backstage slot
@@ -1658,10 +1712,7 @@ class GameView(arcade.View):
                 s["intrigue_card_played"] = None
                 break
 
-        # Mark target space as occupied
         spaces = board.get("action_spaces", {})
-        if to_space in spaces:
-            spaces[to_space]["occupied_by"] = pid
 
         # Apply reward
         self._apply_reward_to_player(pid, reward)
@@ -1685,7 +1736,25 @@ class GameView(arcade.View):
         else:
             self._status_text = "Reassignment — ending round..."
 
-        self._refresh_board(board)
+        if anim_origin and anim_target:
+            # Refresh now to clear backstage marker; defer target occupation
+            self._refresh_board(board)
+
+            def _on_reassign_complete():
+                if to_space in spaces:
+                    spaces[to_space]["occupied_by"] = pid
+                self._refresh_board(self.game_state.get("board", {}))
+
+            self._queue_marker_animation(
+                pid,
+                anim_origin,
+                anim_target,
+                on_complete=_on_reassign_complete,
+            )
+        else:
+            if to_space in spaces:
+                spaces[to_space]["occupied_by"] = pid
+            self._refresh_board(board)
 
         if self.tabbed_panel:
             name = self._player_name(pid)
@@ -1849,6 +1918,26 @@ class GameView(arcade.View):
             p["completed_quest_this_turn"] = False
 
         board = self.game_state.get("board", {})
+
+        # Snapshot worker positions for recall animation before clearing
+        if self.board_renderer and hasattr(self, "animation_manager"):
+            for space_id, space_data in board.get("action_spaces", {}).items():
+                occupied = space_data.get("occupied_by")
+                if occupied:
+                    space_pos = self.board_renderer.get_space_position(space_id)
+                    player_pos = self._player_marker_positions.get(occupied)
+                    if space_pos and player_pos:
+                        self._queue_marker_animation(occupied, space_pos, player_pos)
+            for slot in board.get("backstage_slots", []):
+                occupied = slot.get("occupied_by")
+                if occupied:
+                    slot_num = slot.get("slot_number", 0)
+                    slot_id = f"backstage_slot_{slot_num}"
+                    space_pos = self.board_renderer.get_space_position(slot_id)
+                    player_pos = self._player_marker_positions.get(occupied)
+                    if space_pos and player_pos:
+                        self._queue_marker_animation(occupied, space_pos, player_pos)
+
         for space in board.get("action_spaces", {}).values():
             space["occupied_by"] = None
         for slot in board.get("backstage_slots", []):
@@ -2359,6 +2448,9 @@ class GameView(arcade.View):
                 scale=s,
                 bonus_genres=my_bonus_genres,
             )
+
+        if hasattr(self, "animation_manager"):
+            self.animation_manager.draw()
 
         if self.resource_bar:
             my_id = getattr(self.window, "player_id", None)
@@ -2885,8 +2977,16 @@ class GameView(arcade.View):
             return
 
         player_map = {p["player_id"]: p for p in players}
-        idx = self.game_state.get("current_player_index", 0)
-        current_pid = turn_order[idx] if idx < len(turn_order) else None
+        phase = self.game_state.get("phase", "")
+        if phase == "reassignment":
+            queue = self.game_state.get("reassignment_queue", [])
+            if queue:
+                current_pid = self._reassignment_slot_owners.get(queue[0])
+            else:
+                current_pid = None
+        else:
+            idx = self.game_state.get("current_player_index", 0)
+            current_pid = turn_order[idx] if idx < len(turn_order) else None
 
         font_sz = max(10, int(14 * s))
         vp_font_sz = max(8, int(11 * s))
@@ -2897,14 +2997,27 @@ class GameView(arcade.View):
         row_bot = bar_bot + status_h * 0.28
         list_x = int(10 * s)
 
+        marker_size = circle_r * 2
+        self._player_marker_list.clear()
+
         for i, pid in enumerate(turn_order):
             p = player_map.get(pid)
             if not p:
                 continue
-            color = self.board_renderer._player_color(pid)
             is_current = pid == current_pid
             cx = list_x + circle_r
-            arcade.draw_circle_filled(cx, row_top, circle_r, color)
+
+            color_name = self.board_renderer._player_color_name(pid)
+            if pid not in self._player_marker_sprites:
+                tex = self.board_renderer._get_worker_texture(color_name)
+                sp = arcade.Sprite(tex)
+                self._player_marker_sprites[pid] = sp
+            sp = self._player_marker_sprites[pid]
+            sp.scale = marker_size / max(sp.texture.height, 1)
+            sp.position = (cx, row_top)
+            self._player_marker_list.append(sp)
+            self._player_marker_positions[pid] = (cx, row_top)
+
             name = p.get("display_name", "???")
             if is_current:
                 name = f"> {name}"
@@ -2937,6 +3050,34 @@ class GameView(arcade.View):
             )
             vp_txt.draw()
             list_x = int(cx + circle_r + gap + txt.content_width + int(30 * s))
+
+        self._player_marker_list.draw()
+
+    def _queue_marker_animation(
+        self,
+        player_id: str,
+        start: tuple[float, float],
+        end: tuple[float, float],
+        on_complete=None,
+    ) -> None:
+        if not self.board_renderer or not hasattr(self, "animation_manager"):
+            if on_complete:
+                on_complete()
+            return
+        color_name = self.board_renderer._player_color_name(player_id)
+        tex = self.board_renderer._get_worker_texture(color_name)
+        sprite = arcade.Sprite(tex)
+        s = self.window.ui_scale
+        token_size = max(10, int(18 * s))
+        sprite.scale = token_size / max(tex.height, 1)
+        self.animation_manager.animate(
+            sprite=sprite,
+            start=start,
+            end=end,
+            duration=1.0,
+            sound=self._tick_sound,
+            on_complete=on_complete,
+        )
 
     # ------------------------------------------------------------------
     # Helpers
