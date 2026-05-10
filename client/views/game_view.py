@@ -1452,9 +1452,7 @@ class GameView(arcade.View):
         board = self.game_state.get("board", {})
         face_up = board.get("face_up_contracts", [])
         contract_id = msg.get("contract_id", "")
-        board["face_up_contracts"] = [
-            c for c in face_up if c.get("id") != contract_id
-        ]
+        board["face_up_contracts"] = [c for c in face_up if c.get("id") != contract_id]
         new_face_up = msg.get("new_face_up")
         if new_face_up:
             board.setdefault("face_up_contracts", []).append(new_face_up)

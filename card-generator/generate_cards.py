@@ -1906,8 +1906,12 @@ def generate_worker_markers() -> int:
         # Base (wide ellipse at bottom)
         base_h = 5
         draw.ellipse(
-            (cx - base_half, base_bottom - base_h // 2,
-             cx + base_half, base_bottom + base_h // 2),
+            (
+                cx - base_half,
+                base_bottom - base_h // 2,
+                cx + base_half,
+                base_bottom + base_h // 2,
+            ),
             fill=fill,
             outline=outline,
             width=2,

@@ -441,9 +441,7 @@ def _make_filtered_state(data: dict, player_id: str) -> dict:
         filtered["board"].get("intrigue_deck", [])
     )
     filtered["board"]["intrigue_deck"] = []
-    filtered["board"]["quest_deck_count"] = len(
-        filtered["board"].get("quest_deck", [])
-    )
+    filtered["board"]["quest_deck_count"] = len(filtered["board"].get("quest_deck", []))
     filtered["board"]["quest_deck"] = []
     filtered["board"]["quest_discard"] = []
     filtered["board"]["building_deck_count"] = len(

@@ -407,9 +407,7 @@ async def reconnect(server: GameServer, conn: ClientConnection, msg) -> None:
     await _resend_pending_prompts(server, state, player)
 
 
-async def _resend_pending_prompts(
-    server: GameServer, state, player: Player
-) -> None:
+async def _resend_pending_prompts(server: GameServer, state, player: Player) -> None:
     """Re-send any pending prompt that is waiting on the reconnected player."""
     pid = player.player_id
 
@@ -506,9 +504,7 @@ async def _resend_pending_prompts(
         current = state.current_player()
         if current and current.player_id == pid:
             completable = [
-                c
-                for c in player.contract_hand
-                if player.resources.can_afford(c.cost)
+                c for c in player.contract_hand if player.resources.can_afford(c.cost)
             ]
             bonus_quest_id = None
             bonus_vp = 0
