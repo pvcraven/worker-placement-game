@@ -19,8 +19,8 @@
 
 **Purpose**: No new project structure needed — all changes go in existing files. This phase prepares the board renderer to expose data the animation needs.
 
-- [ ] T001 Store quest card scale as `self._quest_scale` during `_rebuild_shapes()` in client/ui/board_renderer.py
-- [ ] T002 Add `get_quest_card_info(card_id)` method returning `(x, y, scale)` for a face-up quest card in client/ui/board_renderer.py
+- [X] T001 Store quest card scale as `self._quest_scale` during `_rebuild_shapes()` in client/ui/board_renderer.py
+- [X] T002 Add `get_quest_card_info(card_id)` method returning `(x, y, scale)` for a face-up quest card in client/ui/board_renderer.py
 
 **Checkpoint**: Board renderer can provide quest card position and scale by ID
 
@@ -30,9 +30,9 @@
 
 **Purpose**: Add animation state fields and input blocking to GameView — required before any animation work.
 
-- [ ] T003 Add `_card_animation_active` bool and `_pending_face_up_update` dict fields to `__init__` in client/views/game_view.py
-- [ ] T004 Add early return in `on_mouse_press()` when `_card_animation_active` is True in client/views/game_view.py
-- [ ] T005 Modify `_on_face_up_quests_updated()` to buffer message in `_pending_face_up_update` when `_card_animation_active` is True in client/views/game_view.py
+- [X] T003 Add `_card_animation_active` bool and `_pending_face_up_update` dict fields to `__init__` in client/views/game_view.py
+- [X] T004 Add early return in `on_mouse_press()` when `_card_animation_active` is True in client/views/game_view.py
+- [X] T005 Modify `_on_face_up_quests_updated()` to buffer message in `_pending_face_up_update` when `_card_animation_active` is True in client/views/game_view.py
 
 **Checkpoint**: Input blocking and message buffering infrastructure in place
 
@@ -46,7 +46,7 @@
 
 ### Implementation for User Story 1
 
-- [ ] T006 [US1] Add animation trigger in `_on_quest_card_selected()`: create a new `arcade.Sprite` from `client/assets/card_images/quests/{card_id}.png` with scale from `get_quest_card_info()`, remove the selected card from local `face_up_quests`, refresh board to show empty slot, set `_card_animation_active = True`, and start entry animation to screen center with `Easing.SINE` and 0.75s duration in client/views/game_view.py
+- [X] T006 [US1] Add animation trigger in `_on_quest_card_selected()`: create a new `arcade.Sprite` from `client/assets/card_images/quests/{card_id}.png` with scale from `get_quest_card_info()`, remove the selected card from local `face_up_quests`, refresh board to show empty slot, set `_card_animation_active = True`, and start entry animation to screen center with `Easing.SINE` and 0.75s duration in client/views/game_view.py
 - [ ] T007 [US1] Verify animation plays on all clients by testing with 2+ connected clients — the `quest_card_selected` message is already broadcast, so each client's `_on_quest_card_selected()` triggers the animation independently
 
 **Checkpoint**: Card animates from board to center on all clients. Original slot is empty. Input is blocked.
@@ -61,9 +61,9 @@
 
 ### Implementation for User Story 2
 
-- [ ] T008 [US2] Chain pause phase in the entry animation's `on_complete` callback: animate the same sprite from screen center to screen center (zero distance) with `Easing.LINEAR` and 1.0s duration in client/views/game_view.py
-- [ ] T009 [US2] Chain exit phase in the pause animation's `on_complete` callback: animate the sprite from screen center to `_player_marker_positions[player_id]` with `Easing.QUAD_IN` and 0.75s duration in client/views/game_view.py
-- [ ] T010 [US2] In the exit animation's `on_complete` callback: set `_card_animation_active = False`, apply `_pending_face_up_update` if buffered by calling `_on_face_up_quests_updated()`, then clear the buffer in client/views/game_view.py
+- [X] T008 [US2] Chain pause phase in the entry animation's `on_complete` callback: animate the same sprite from screen center to screen center (zero distance) with `Easing.LINEAR` and 1.0s duration in client/views/game_view.py
+- [X] T009 [US2] Chain exit phase in the pause animation's `on_complete` callback: animate the sprite from screen center to `_player_marker_positions[player_id]` with `Easing.QUAD_IN` and 0.75s duration in client/views/game_view.py
+- [X] T010 [US2] In the exit animation's `on_complete` callback: set `_card_animation_active = False`, apply `_pending_face_up_update` if buffered by calling `_on_face_up_quests_updated()`, then clear the buffer in client/views/game_view.py
 
 **Checkpoint**: Full 3-phase animation plays (entry → pause → exit). Board refreshes after exit. Input unblocked.
 
@@ -77,8 +77,8 @@
 
 ### Implementation for User Story 3
 
-- [ ] T011 [US3] Before starting the animation, save the pre-animation slot-to-card-ID mapping (e.g., `_pre_animation_slots: list[str]` with card IDs in slot order) in client/views/game_view.py
-- [ ] T012 [US3] When applying the deferred `_pending_face_up_update`, reorder the new `face_up_quests` list to match the original slot assignments: keep each surviving card in its original slot index and place the new card in the vacated slot, then call `_refresh_board()` in client/views/game_view.py
+- [X] T011 [US3] Before starting the animation, save the pre-animation slot-to-card-ID mapping (e.g., `_pre_animation_slots: list[str]` with card IDs in slot order) in client/views/game_view.py
+- [X] T012 [US3] When applying the deferred `_pending_face_up_update`, reorder the new `face_up_quests` list to match the original slot assignments: keep each surviving card in its original slot index and place the new card in the vacated slot, then call `_refresh_board()` in client/views/game_view.py
 
 **Checkpoint**: All 3 user stories complete. Non-selected cards remain stationary after animation.
 
@@ -88,7 +88,7 @@
 
 **Purpose**: Final verification and cleanup.
 
-- [ ] T013 Run `pytest` and `ruff check .` to verify no regressions in client/views/game_view.py or client/ui/board_renderer.py
+- [X] T013 Run `pytest` and `ruff check .` to verify no regressions in client/views/game_view.py or client/ui/board_renderer.py
 - [ ] T014 Manual end-to-end test with 2+ clients: verify full animation sequence, slot stability, input blocking, and edge cases (empty deck, window resize)
 
 ---

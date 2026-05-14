@@ -2040,6 +2040,60 @@ def generate_star_icon() -> int:
     return 1
 
 
+def generate_blank_cards() -> int:
+    count = 0
+
+    # Blank quest cards — one per genre
+    OUTPUT_QUESTS.mkdir(parents=True, exist_ok=True)
+    cw, ch, cr = QUEST_CARD_WIDTH, QUEST_CARD_HEIGHT, QUEST_CORNER_RADIUS
+    band_h = 60
+    for genre, color in GENRE_COLORS.items():
+        img, draw = create_card_base(cw, ch, cr)
+        _draw_color_band(draw, cw, band_h, color, cr)
+        draw_text_centered(
+            draw, genre.upper(), 10, Q_FONT_GENRE, (255, 255, 255), width=cw
+        )
+        img.save(OUTPUT_QUESTS / f"blank_{genre}.png")
+        count += 1
+
+    # Blank building card
+    OUTPUT_BUILDINGS.mkdir(parents=True, exist_ok=True)
+    cw, ch, cr = BLD_CARD_WIDTH, BLD_CARD_HEIGHT, BLD_CORNER_RADIUS
+    band_h = 80
+    img, draw = create_card_base(cw, ch, cr)
+    _draw_color_band(draw, cw, band_h, (30, 70, 30), cr)
+    draw_text_centered(
+        draw, "BUILDING", 16, B_FONT_TITLE, (255, 255, 255), width=cw
+    )
+    img.save(OUTPUT_BUILDINGS / "blank.png")
+    count += 1
+
+    # Blank intrigue card
+    OUTPUT_INTRIGUE.mkdir(parents=True, exist_ok=True)
+    cw, ch, cr = INT_CARD_WIDTH, INT_CARD_HEIGHT, INT_CORNER_RADIUS
+    band_h = 80
+    img, draw = create_card_base(cw, ch, cr)
+    _draw_color_band(draw, cw, band_h, (60, 60, 60), cr)
+    draw_text_centered(
+        draw, "INTRIGUE", 16, I_FONT_TITLE, (255, 255, 255), width=cw
+    )
+    img.save(OUTPUT_INTRIGUE / "blank.png")
+    count += 1
+
+    # Blank space card
+    OUTPUT_SPACES.mkdir(parents=True, exist_ok=True)
+    cw = CARD_WIDTH * 2
+    ch = SPACE_CARD_HEIGHT * 2
+    cr = CORNER_RADIUS * 2
+    band_h = 70
+    img, draw = create_card_base(cw, ch, cr)
+    _draw_color_band(draw, cw, band_h, (50, 70, 100), cr)
+    img.save(OUTPUT_SPACES / "blank.png")
+    count += 1
+
+    return count
+
+
 def generate_all() -> int:
     q = generate_quest_cards()
     b = generate_building_cards()
@@ -2050,7 +2104,8 @@ def generate_all() -> int:
     ri = generate_resource_icons()
     ci = generate_card_icon_pngs()
     st = generate_star_icon()
-    return q + b + i + p + s + m + ri + ci + st
+    bl = generate_blank_cards()
+    return q + b + i + p + s + m + ri + ci + st + bl
 
 
 def ensure_card_images() -> None:
