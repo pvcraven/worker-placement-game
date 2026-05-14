@@ -44,7 +44,7 @@ class GameView(arcade.View):
         self._game_over_final = False
         self._final_scores: list | None = None
         self._target_dialog: PlayerTargetDialog | None = None
-        self._text_cache: dict[str, arcade.Text] = {}
+        self._text_pool = arcade.TextPool(font_name="Tahoma")
         self._sprite_cache: dict[str, arcade.Sprite] = {}
         self._fs_card_sprites: arcade.SpriteList | None = None
         self._fs_card_positions: list[tuple] | None = None
@@ -2526,7 +2526,7 @@ class GameView(arcade.View):
             arcade.rect.XYWH(cw / 2, status_y, cw, status_h),
             arcade.color.BLACK,
         )
-        self._text(
+        self._text_pool.draw(
             "status",
             self._status_text,
             cw / 2,
@@ -2535,7 +2535,7 @@ class GameView(arcade.View):
             max(8, int(16 * s)),
             anchor_x="center",
             anchor_y="center",
-        ).draw()
+        )
 
         self._draw_player_list(ch, status_h, s)
 
@@ -2582,7 +2582,7 @@ class GameView(arcade.View):
             border_width=2,
         )
 
-        self._text(
+        self._text_pool.draw(
             "po_title",
             "Player Overview",
             panel_x,
@@ -2592,7 +2592,7 @@ class GameView(arcade.View):
             anchor_x="center",
             anchor_y="center",
             bold=True,
-        ).draw()
+        )
 
         headers = [
             "#",
@@ -2630,7 +2630,7 @@ class GameView(arcade.View):
 
         cx = start_x
         for i, hdr in enumerate(headers):
-            self._text(
+            self._text_pool.draw(
                 f"po_h_{i}",
                 hdr,
                 cx + col_widths[i] / 2,
@@ -2640,7 +2640,7 @@ class GameView(arcade.View):
                 anchor_x="center",
                 anchor_y="center",
                 bold=True,
-            ).draw()
+            )
             cx += col_widths[i]
 
         turn_order = self.game_state.get("turn_order", [])
@@ -2721,7 +2721,7 @@ class GameView(arcade.View):
             color = arcade.color.WHITE if is_me else arcade.color.LIGHT_GRAY
             cx = start_x
             for i, val in enumerate(vals):
-                self._text(
+                self._text_pool.draw(
                     f"po_{row}_{i}",
                     val,
                     cx + col_widths[i] / 2,
@@ -2730,7 +2730,7 @@ class GameView(arcade.View):
                     font_tbl,
                     anchor_x="center",
                     anchor_y="center",
-                ).draw()
+                )
                 cx += col_widths[i]
 
     def _draw_final_screen(
@@ -2777,7 +2777,7 @@ class GameView(arcade.View):
         title = (
             "Final Scores" if not self._game_over_final else "Game Over - Final Scores"
         )
-        self._text(
+        self._text_pool.draw(
             "fs_title",
             title,
             px,
@@ -2787,7 +2787,7 @@ class GameView(arcade.View):
             anchor_x="center",
             anchor_y="center",
             bold=True,
-        ).draw()
+        )
 
         max_vp = max(sc.get("total_vp", 0) for sc in scores)
         col_w = panel_w / max(n, 1)
@@ -2813,7 +2813,7 @@ class GameView(arcade.View):
             cur_y = top_y
 
             if sc.get("total_vp", 0) == max_vp:
-                self._text(
+                self._text_pool.draw(
                     f"fs_win_{i}",
                     "WINNER",
                     cx,
@@ -2823,7 +2823,7 @@ class GameView(arcade.View):
                     anchor_x="center",
                     anchor_y="center",
                     bold=True,
-                ).draw()
+                )
             cur_y -= 20 * s
 
             pc = sc.get("producer_card") or {}
@@ -2836,7 +2836,7 @@ class GameView(arcade.View):
                 sp.position = (cx, cur_y - card_h / 2)
                 sprite_idx += 1
             elif pc_name:
-                self._text(
+                self._text_pool.draw(
                     f"fs_nocard_{i}",
                     "No Producer",
                     cx,
@@ -2845,10 +2845,10 @@ class GameView(arcade.View):
                     small_font,
                     anchor_x="center",
                     anchor_y="center",
-                ).draw()
+                )
             cur_y -= card_h + 10 * s
 
-            self._text(
+            self._text_pool.draw(
                 f"fs_name_{i}",
                 sc.get("player_name", "???"),
                 cx,
@@ -2858,7 +2858,7 @@ class GameView(arcade.View):
                 anchor_x="center",
                 anchor_y="center",
                 bold=True,
-            ).draw()
+            )
             cur_y -= 22 * s
 
             rows = [
@@ -2871,7 +2871,7 @@ class GameView(arcade.View):
             rows.append(("Resource VP", str(sc.get("resource_vp", 0))))
 
             for label, val in rows:
-                self._text(
+                self._text_pool.draw(
                     f"fs_l_{i}_{label}",
                     label + ":",
                     cx - 5 * s,
@@ -2880,8 +2880,8 @@ class GameView(arcade.View):
                     small_font,
                     anchor_x="right",
                     anchor_y="center",
-                ).draw()
-                self._text(
+                )
+                self._text_pool.draw(
                     f"fs_v_{i}_{label}",
                     val,
                     cx + 5 * s,
@@ -2890,11 +2890,11 @@ class GameView(arcade.View):
                     small_font,
                     anchor_x="left",
                     anchor_y="center",
-                ).draw()
+                )
                 cur_y -= 18 * s
 
             cur_y -= 4 * s
-            self._text(
+            self._text_pool.draw(
                 f"fs_tl_{i}",
                 "Total:",
                 cx - 5 * s,
@@ -2904,8 +2904,8 @@ class GameView(arcade.View):
                 anchor_x="right",
                 anchor_y="center",
                 bold=True,
-            ).draw()
-            self._text(
+            )
+            self._text_pool.draw(
                 f"fs_tv_{i}",
                 str(sc.get("total_vp", 0)),
                 cx + 5 * s,
@@ -2915,7 +2915,7 @@ class GameView(arcade.View):
                 anchor_x="left",
                 anchor_y="center",
                 bold=True,
-            ).draw()
+            )
 
         if self._fs_card_sprites:
             self._fs_card_sprites.draw()
@@ -2933,7 +2933,7 @@ class GameView(arcade.View):
             arcade.color.WHITE,
             border_width=1,
         )
-        self._text(
+        self._text_pool.draw(
             "fs_close_btn",
             "Close",
             btn_x,
@@ -2942,7 +2942,7 @@ class GameView(arcade.View):
             max(8, int(14 * s)),
             anchor_x="center",
             anchor_y="center",
-        ).draw()
+        )
         self._fs_close_rect = (
             btn_x - btn_w / 2,
             btn_y - btn_h / 2,
@@ -3023,7 +3023,7 @@ class GameView(arcade.View):
                 name = f"> {name}"
             connected = p.get("is_connected", True)
             name_color = arcade.color.WHITE if connected else arcade.color.RED
-            txt = self._text(
+            txt = self._text_pool.draw(
                 f"plist_{i}",
                 name,
                 cx + circle_r + gap,
@@ -3034,11 +3034,8 @@ class GameView(arcade.View):
                 anchor_x="left",
                 anchor_y="center",
             )
-            txt.bold = is_current
-            txt.color = name_color
-            txt.draw()
             vp = p.get("victory_points", 0)
-            vp_txt = self._text(
+            self._text_pool.draw(
                 f"plist_vp_{i}",
                 f"{vp} VP",
                 cx + circle_r + gap,
@@ -3048,7 +3045,6 @@ class GameView(arcade.View):
                 anchor_x="left",
                 anchor_y="center",
             )
-            vp_txt.draw()
             list_x = int(cx + circle_r + gap + txt.content_width + int(30 * s))
 
         self._player_marker_list.draw()
@@ -3082,37 +3078,6 @@ class GameView(arcade.View):
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
-
-    def _text(
-        self,
-        key: str,
-        text: str,
-        x: float,
-        y: float,
-        color,
-        font_size: int,
-        **kwargs,
-    ) -> arcade.Text:
-        """Get or create a cached Text object."""
-        if key in self._text_cache:
-            t = self._text_cache[key]
-            t.text = text
-            t.x = x
-            t.y = y
-            t.color = color
-            t.font_size = font_size
-            return t
-        t = arcade.Text(
-            text,
-            x,
-            y,
-            color,
-            font_size=font_size,
-            font_name="Tahoma",
-            **kwargs,
-        )
-        self._text_cache[key] = t
-        return t
 
     def _get_my_player(self) -> dict | None:
         """Return the local player's data dict, or None."""
