@@ -16,38 +16,7 @@ class GameLogPanel:
         self.scroll_offset: int = 0
         self._auto_scroll: bool = True
         self._max_lines: int = _VISIBLE_LINES
-        self._text_cache: dict[str, arcade.Text] = {}
-
-    def _text(
-        self,
-        key: str,
-        text: str,
-        x: float,
-        y: float,
-        color,
-        font_size: int,
-        **kwargs,
-    ) -> arcade.Text:
-        """Get or create a cached Text object."""
-        if key in self._text_cache:
-            t = self._text_cache[key]
-            t.text = text
-            t.x = x
-            t.y = y
-            t.color = color
-            t.font_size = font_size
-            return t
-        t = arcade.Text(
-            text,
-            x,
-            y,
-            color,
-            font_size=font_size,
-            font_name="Tahoma",
-            **kwargs,
-        )
-        self._text_cache[key] = t
-        return t
+        self._text_pool = arcade.TextPool(font_name="Tahoma")
 
     def add_entry(self, text: str) -> None:
         for line in text.split("\n"):
@@ -93,7 +62,7 @@ class GameLogPanel:
         line_height = max(14, int(22 * s))
 
         if show_title:
-            self._text(
+            self._text_pool.draw(
                 "title",
                 "Game Log",
                 x + w / 2,
@@ -102,7 +71,7 @@ class GameLogPanel:
                 font_title,
                 anchor_x="center",
                 bold=True,
-            ).draw()
+            )
 
         top_margin = 50 * s if show_title else 16 * s
 
@@ -121,11 +90,11 @@ class GameLogPanel:
             if len(text) > max_chars:
                 text = text[: max_chars - 2] + ".."
             ty = y + h - top_margin - i * line_height
-            self._text(
+            self._text_pool.draw(
                 f"line_{i}",
                 text,
                 x + 8 * s,
                 ty,
                 arcade.color.LIGHT_GRAY,
                 font_entry,
-            ).draw()
+            )

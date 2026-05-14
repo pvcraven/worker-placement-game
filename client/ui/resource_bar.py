@@ -26,39 +26,9 @@ class ResourceBar:
 
     def __init__(self) -> None:
         self.resources: dict = {}
-        self._text_cache: dict[str, arcade.Text] = {}
+        self._text_pool = arcade.TextPool(font_name="Tahoma")
         self._sprite_list: arcade.SpriteList | None = None
         self._last_draw_key: tuple = ()
-
-    def _text(
-        self,
-        key: str,
-        text: str,
-        x: float,
-        y: float,
-        color,
-        font_size: int,
-        **kwargs,
-    ) -> arcade.Text:
-        if key in self._text_cache:
-            t = self._text_cache[key]
-            t.text = text
-            t.x = x
-            t.y = y
-            t.color = color
-            t.font_size = font_size
-            return t
-        t = arcade.Text(
-            text,
-            x,
-            y,
-            color,
-            font_size=font_size,
-            font_name="Tahoma",
-            **kwargs,
-        )
-        self._text_cache[key] = t
-        return t
 
     def update_resources(self, resources: dict) -> None:
         self.resources = resources
@@ -175,7 +145,7 @@ class ResourceBar:
         for i, (key, label, _png, _color) in enumerate(_RESOURCE_CONFIG):
             cx = x + section_w * (i + 0.5) - left_shift
             val = self.resources.get(key, 0)
-            self._text(
+            self._text_pool.draw(
                 f"res_{key}",
                 f"{label}: {val}",
                 cx - 15 * s,
@@ -185,7 +155,7 @@ class ResourceBar:
                 anchor_x="left",
                 anchor_y="center",
                 bold=True,
-            ).draw()
+            )
 
         # Top row: workers, VP, intrigue, quests
         top_items = [
@@ -200,7 +170,7 @@ class ResourceBar:
             text_x = cx - 15 * s
             if key in ("intrigue", "quests_open", "quests_closed"):
                 text_x = cx - 10 * s
-            self._text(
+            self._text_pool.draw(
                 key,
                 label,
                 text_x,
@@ -210,4 +180,4 @@ class ResourceBar:
                 anchor_x="left",
                 anchor_y="center",
                 bold=True,
-            ).draw()
+            )
