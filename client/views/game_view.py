@@ -876,9 +876,7 @@ class GameView(arcade.View):
         except Exception:
             return
 
-        self._pre_animation_slots = [
-            q.get("id", "") for q in face_up
-        ]
+        self._pre_animation_slots = [q.get("id", "") for q in face_up]
 
         for i, q in enumerate(face_up):
             if q.get("id") == card_id:

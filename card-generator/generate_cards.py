@@ -2062,9 +2062,7 @@ def generate_blank_cards() -> int:
     band_h = 80
     img, draw = create_card_base(cw, ch, cr)
     _draw_color_band(draw, cw, band_h, (30, 70, 30), cr)
-    draw_text_centered(
-        draw, "BUILDING", 16, B_FONT_TITLE, (255, 255, 255), width=cw
-    )
+    draw_text_centered(draw, "BUILDING", 16, B_FONT_TITLE, (255, 255, 255), width=cw)
     img.save(OUTPUT_BUILDINGS / "blank.png")
     count += 1
 
@@ -2074,9 +2072,7 @@ def generate_blank_cards() -> int:
     band_h = 80
     img, draw = create_card_base(cw, ch, cr)
     _draw_color_band(draw, cw, band_h, (60, 60, 60), cr)
-    draw_text_centered(
-        draw, "INTRIGUE", 16, I_FONT_TITLE, (255, 255, 255), width=cw
-    )
+    draw_text_centered(draw, "INTRIGUE", 16, I_FONT_TITLE, (255, 255, 255), width=cw)
     img.save(OUTPUT_INTRIGUE / "blank.png")
     count += 1
 
