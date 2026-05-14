@@ -110,6 +110,25 @@ I_FONT_BODY_SMALL = _load_font(26)
 I_FONT_LABEL = _load_font(28, bold=True)
 
 
+def _load_template(
+    output_dir: Path,
+    template_name: str,
+    expected_width: int,
+    expected_height: int,
+) -> tuple[Image.Image, ImageDraw.ImageDraw] | None:
+    path = output_dir / template_name
+    if not path.exists():
+        return None
+    img = Image.open(path).convert("RGBA")
+    if img.size != (expected_width, expected_height):
+        img = img.resize(
+            (expected_width, expected_height), Image.LANCZOS
+        )
+    else:
+        img = img.copy()
+    return img, ImageDraw.Draw(img)
+
+
 def create_card_base(
     width: int = CARD_WIDTH,
     height: int = CARD_HEIGHT,
@@ -791,17 +810,21 @@ def generate_quest_cards() -> int:
     cr = QUEST_CORNER_RADIUS
     count = 0
     for card in config.contracts:
-        img, draw = create_card_base(cw, ch, cr)
-
         genre = card.genre.value
-        genre_color = GENRE_COLORS.get(genre, (80, 80, 80))
-
-        # --- Section 1: Genre color bar ---
         band_h = 60
-        _draw_color_band(draw, cw, band_h, genre_color, cr)
-        draw_text_centered(
-            draw, genre.upper(), 10, Q_FONT_GENRE, (255, 255, 255), width=cw
+
+        result = _load_template(
+            OUTPUT_QUESTS, f"blank_{genre}_template.png", cw, ch
         )
+        if result:
+            img, draw = result
+        else:
+            img, draw = create_card_base(cw, ch, cr)
+            genre_color = GENRE_COLORS.get(genre, (80, 80, 80))
+            _draw_color_band(draw, cw, band_h, genre_color, cr)
+            draw_text_centered(
+                draw, genre.upper(), 10, Q_FONT_GENRE, (255, 255, 255), width=cw
+            )
 
         # --- Section 2: Title ---
         y = band_h + 8
@@ -990,11 +1013,17 @@ def generate_building_cards() -> int:
     cr = BLD_CORNER_RADIUS
     count = 0
     for card in config.buildings:
-        img, draw = create_card_base(cw, ch, cr)
-
         band_h = 80
-        band_color = (30, 70, 30)
-        _draw_color_band(draw, cw, band_h, band_color, cr)
+
+        result = _load_template(
+            OUTPUT_BUILDINGS, "blank_template.png", cw, ch
+        )
+        if result:
+            img, draw = result
+        else:
+            img, draw = create_card_base(cw, ch, cr)
+            band_color = (30, 70, 30)
+            _draw_color_band(draw, cw, band_h, band_color, cr)
 
         # Cost diamond in upper-left, centered vertically on the band
         diamond_sz = 36
@@ -1437,11 +1466,17 @@ def generate_intrigue_cards() -> int:
     cr = INT_CORNER_RADIUS
     count = 0
     for card in config.intrigue_cards:
-        img, draw = create_card_base(cw, ch, cr)
-
         band_h = 80
-        band_color = (60, 60, 60)
-        _draw_color_band(draw, cw, band_h, band_color, cr)
+
+        result = _load_template(
+            OUTPUT_INTRIGUE, "blank_template.png", cw, ch
+        )
+        if result:
+            img, draw = result
+        else:
+            img, draw = create_card_base(cw, ch, cr)
+            band_color = (60, 60, 60)
+            _draw_color_band(draw, cw, band_h, band_color, cr)
 
         title_y = _title_start_y(draw, card.name, I_FONT_TITLE, 16, max_width=cw - 32)
         draw_text_wrapped(
@@ -1610,13 +1645,19 @@ def generate_space_cards() -> int:
     count = 0
 
     for space in spaces:
-        img, draw = create_card_base(cw, ch, cr)
         space_id = space.get("space_id", "")
         name = space.get("name", space_id)
-
         band_h = 70
-        band_color = (50, 70, 100)
-        _draw_color_band(draw, cw, band_h, band_color, cr)
+
+        result = _load_template(
+            OUTPUT_SPACES, "blank_template.png", cw, ch
+        )
+        if result:
+            img, draw = result
+        else:
+            img, draw = create_card_base(cw, ch, cr)
+            band_color = (50, 70, 100)
+            _draw_color_band(draw, cw, band_h, band_color, cr)
 
         title_y = 10
         bbox = draw.textbbox((0, 0), name, font=Q_FONT_TITLE)
