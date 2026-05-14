@@ -7,6 +7,8 @@ from pathlib import Path
 import arcade
 import arcade.gui
 
+from arcade.anim import Easing
+
 from client.ui.animation_manager import AnimationManager
 from client.ui.board_renderer import BoardRenderer
 from client.ui.info_dialog import InfoDialog
@@ -71,6 +73,9 @@ class GameView(arcade.View):
         self._player_marker_positions: dict[str, tuple[float, float]] = {}
         self._player_marker_sprites: dict[str, arcade.Sprite] = {}
         self._player_marker_list: arcade.SpriteList = arcade.SpriteList()
+        self._card_animation_active: bool = False
+        self._pending_face_up_update: dict | None = None
+        self._pre_animation_slots: list[str] = []
 
     def on_show_view(self) -> None:
         self.ui.enable()
@@ -847,6 +852,83 @@ class GameView(arcade.View):
             name = self._player_name(pid)
             self.tabbed_panel.add_entry(f"{name} selected a quest")
 
+        self._start_card_pick_animation(card_id, pid, board, face_up)
+
+    def _start_card_pick_animation(
+        self,
+        card_id: str,
+        pid: str,
+        board: dict,
+        face_up: list[dict],
+    ) -> None:
+        card_info = (
+            self.board_renderer.get_quest_card_info(card_id)
+            if self.board_renderer
+            else None
+        )
+        if not card_info:
+            return
+
+        card_x, card_y, scale = card_info
+        img = f"client/assets/card_images/quests/{card_id}.png"
+        try:
+            sprite = arcade.Sprite(img, scale=scale)
+        except Exception:
+            return
+
+        self._pre_animation_slots = [q.get("id", "") for q in face_up]
+
+        for i, q in enumerate(face_up):
+            if q.get("id") == card_id:
+                face_up[i] = None
+                break
+        self._refresh_board(board)
+
+        self._card_animation_active = True
+
+        cx = self.window.width / 2
+        cy = self.window.height / 2
+        center = (cx, cy)
+        target = self._player_marker_positions.get(
+            pid, (0.0, float(self.window.height))
+        )
+
+        def start_pause() -> None:
+            self.animation_manager.animate(
+                sprite=sprite,
+                start=center,
+                end=center,
+                duration=1.0,
+                easing=Easing.LINEAR,
+                on_complete=start_exit,
+            )
+
+        def start_exit() -> None:
+            self.animation_manager.animate(
+                sprite=sprite,
+                start=center,
+                end=target,
+                duration=0.75,
+                easing=Easing.QUAD_IN,
+                on_complete=on_complete,
+            )
+
+        def on_complete() -> None:
+            self._card_animation_active = False
+            if self._pending_face_up_update is not None:
+                pending = self._pending_face_up_update
+                self._pending_face_up_update = None
+                self._apply_face_up_update(pending)
+
+        self.animation_manager.animate(
+            sprite=sprite,
+            start=(card_x, card_y),
+            end=center,
+            duration=0.75,
+            easing=Easing.SINE,
+            on_complete=start_pause,
+        )
+
     def _on_quests_reset(self, msg: dict) -> None:
         pid = msg.get("player_id", "")
         reshuffled = msg.get("deck_reshuffled", False)
@@ -860,7 +942,32 @@ class GameView(arcade.View):
             self.tabbed_panel.add_entry(f"{name} reset the quest display{extra}")
 
     def _on_face_up_quests_updated(self, msg: dict) -> None:
+        if self._card_animation_active:
+            self._pending_face_up_update = msg
+            return
+        self._apply_face_up_update(msg)
+
+    def _apply_face_up_update(self, msg: dict) -> None:
         quests = msg.get("face_up_quests", [])
+        if self._pre_animation_slots:
+            reordered: list[dict] = [{}] * len(self._pre_animation_slots)
+            new_card: dict | None = None
+            vacated_idx: int | None = None
+            new_ids = {q.get("id") for q in quests}
+            for idx, old_id in enumerate(self._pre_animation_slots):
+                if old_id not in new_ids:
+                    vacated_idx = idx
+                    break
+            for q in quests:
+                qid = q.get("id")
+                if qid in self._pre_animation_slots:
+                    reordered[self._pre_animation_slots.index(qid)] = q
+                else:
+                    new_card = q
+            if new_card is not None and vacated_idx is not None:
+                reordered[vacated_idx] = new_card
+            quests = [q for q in reordered if q]
+            self._pre_animation_slots = []
         board = self.game_state.get("board", {})
         board["face_up_quests"] = quests
         self._refresh_board(board)
@@ -2039,6 +2146,8 @@ class GameView(arcade.View):
         modifiers: int,
     ) -> None:
         """Handle clicks on the board to place or reassign workers."""
+        if self._card_animation_active:
+            return
         if self._show_final_screen:
             rect = getattr(self, "_fs_close_rect", None)
             if rect:

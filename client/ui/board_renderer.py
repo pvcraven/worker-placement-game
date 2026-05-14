@@ -61,6 +61,8 @@ def _build_card_sprite_list(
 ) -> arcade.SpriteList:
     sprite_list = arcade.SpriteList()
     for card, (cx, cy) in zip(cards, positions):
+        if card is None:
+            continue
         card_id = card.get("id", "")
         png_path = Path(f"client/assets/card_images/{card_type}/{card_id}.png")
         if not png_path.exists():
@@ -90,6 +92,7 @@ class BoardRenderer:
         self._grid: BoardGrid | None = None
         self._quest_sprite_list: arcade.SpriteList | None = None
         self._quest_positions: list[tuple[float, float]] = []
+        self._quest_scale: float = 1.0
         self._building_sprite_list: arcade.SpriteList | None = None
         self._bld_positions: list[tuple[float, float]] = []
         self._constructed_sprite_list: arcade.SpriteList | None = None
@@ -214,6 +217,8 @@ class BoardRenderer:
             for i, quest in enumerate(face_up_quests):
                 if i >= len(self._quest_positions):
                     break
+                if quest is None:
+                    continue
                 qid = quest.get("id", f"quest_{i}")
                 if qid in hl:
                     qx, qy = self._quest_positions[i]
@@ -237,7 +242,7 @@ class BoardRenderer:
             and star_png.exists()
         ):
             star_key = (
-                tuple(q.get("id", "") for q in face_up_quests),
+                tuple(q.get("id", "") if q else "" for q in face_up_quests),
                 tuple(bonus_genres),
             )
             if self._star_overlay_list is None or self._star_overlay_key != star_key:
@@ -247,6 +252,8 @@ class BoardRenderer:
                 for i, quest in enumerate(face_up_quests):
                     if i >= len(self._quest_positions):
                         break
+                    if quest is None:
+                        continue
                     genre = quest.get("genre", "")
                     if genre not in bonus_genres:
                         continue
@@ -426,6 +433,7 @@ class BoardRenderer:
         space_scale = g.card_scale(1, CARD_WIDTH, SPACE_CARD_HEIGHT)
         bld_scale = g.card_scale(2, CARD_WIDTH, BUILDING_CARD_HEIGHT)
         quest_scale = g.card_scale(2.5, CARD_WIDTH, CARD_HEIGHT)
+        self._quest_scale = quest_scale
 
         spaces = self.board_data.get("action_spaces", {})
 
@@ -538,6 +546,8 @@ class BoardRenderer:
             for i, quest in enumerate(face_up_quests):
                 if i >= len(self._quest_positions):
                     break
+                if quest is None:
+                    continue
                 qid = quest.get("id", f"quest_{i}")
                 qx, qy = self._quest_positions[i]
                 self._space_rects[f"quest_card_{qid}"] = self._click_rect(
@@ -714,4 +724,15 @@ class BoardRenderer:
             cx, cy, _, _ = g.cell_rect(col, row, 1, 2)
             return (cx + bld_cw / 2 - 14 * s, cy)
 
+        return None
+
+    def get_quest_card_info(self, card_id: str) -> tuple[float, float, float] | None:
+        """Return (x, y, scale) for a face-up quest card, or None."""
+        face_up = self.board_data.get("face_up_quests", [])
+        for i, quest in enumerate(face_up):
+            if quest is None:
+                continue
+            if quest.get("id") == card_id and i < len(self._quest_positions):
+                x, y = self._quest_positions[i]
+                return (x, y, self._quest_scale)
         return None
