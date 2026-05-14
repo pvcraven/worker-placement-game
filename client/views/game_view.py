@@ -69,6 +69,9 @@ class GameView(arcade.View):
         self._tick_sound = arcade.load_sound(
             "client/assets/sounds/bong_001.ogg",
         )
+        self._card_sound = arcade.load_sound(
+            "client/assets/sounds/card1.mp3",
+        )
         self._info_dialog = InfoDialog()
         self._player_marker_positions: dict[str, tuple[float, float]] = {}
         self._player_marker_sprites: dict[str, arcade.Sprite] = {}
@@ -926,6 +929,7 @@ class GameView(arcade.View):
             end=center,
             duration=0.75,
             easing=Easing.SINE,
+            sound=self._card_sound,
             on_complete=start_pause,
         )
 
