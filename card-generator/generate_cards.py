@@ -121,9 +121,7 @@ def _load_template(
         return None
     img = Image.open(path).convert("RGBA")
     if img.size != (expected_width, expected_height):
-        img = img.resize(
-            (expected_width, expected_height), Image.LANCZOS
-        )
+        img = img.resize((expected_width, expected_height), Image.LANCZOS)
     else:
         img = img.copy()
     return img, ImageDraw.Draw(img)
@@ -813,9 +811,7 @@ def generate_quest_cards() -> int:
         genre = card.genre.value
         band_h = 60
 
-        result = _load_template(
-            OUTPUT_QUESTS, f"blank_{genre}_template.png", cw, ch
-        )
+        result = _load_template(OUTPUT_QUESTS, f"blank_{genre}_template.png", cw, ch)
         if result:
             img, draw = result
         else:
@@ -1015,9 +1011,7 @@ def generate_building_cards() -> int:
     for card in config.buildings:
         band_h = 80
 
-        result = _load_template(
-            OUTPUT_BUILDINGS, "blank_template.png", cw, ch
-        )
+        result = _load_template(OUTPUT_BUILDINGS, "blank_template.png", cw, ch)
         if result:
             img, draw = result
         else:
@@ -1468,9 +1462,7 @@ def generate_intrigue_cards() -> int:
     for card in config.intrigue_cards:
         band_h = 80
 
-        result = _load_template(
-            OUTPUT_INTRIGUE, "blank_template.png", cw, ch
-        )
+        result = _load_template(OUTPUT_INTRIGUE, "blank_template.png", cw, ch)
         if result:
             img, draw = result
         else:
@@ -1649,9 +1641,7 @@ def generate_space_cards() -> int:
         name = space.get("name", space_id)
         band_h = 70
 
-        result = _load_template(
-            OUTPUT_SPACES, "blank_template.png", cw, ch
-        )
+        result = _load_template(OUTPUT_SPACES, "blank_template.png", cw, ch)
         if result:
             img, draw = result
         else:
