@@ -617,20 +617,15 @@ class GameView(arcade.View):
                 my_id = getattr(self.window, "player_id", None)
                 for p in self.game_state.get("players", []):
                     if p.get("player_id") == pid:
-                        if pid == my_id:
-                            if etype == "draw_intrigue":
+                        if etype == "draw_intrigue":
+                            if pid == my_id:
                                 p.setdefault("intrigue_hand", []).extend(drawn)
-                            elif etype == "draw_contracts":
-                                p.setdefault("contract_hand", []).extend(drawn)
-                        else:
-                            key = "intrigue_hand_count"
-                            if etype == "draw_contracts":
-                                key = "contract_hand_count"
-                            if etype in (
-                                "draw_intrigue",
-                                "draw_contracts",
-                            ):
-                                p[key] = p.get(key, 0) + len(drawn)
+                            else:
+                                p["intrigue_hand_count"] = p.get(
+                                    "intrigue_hand_count", 0
+                                ) + len(drawn)
+                        elif etype == "draw_contracts":
+                            p.setdefault("contract_hand", []).extend(drawn)
                         break
 
         # Apply plot quest bonus VP for playing an intrigue card
@@ -836,13 +831,9 @@ class GameView(arcade.View):
                 selected_card = q
                 break
         if selected_card:
-            my_id = getattr(self.window, "player_id", None)
             for p in self.game_state.get("players", []):
                 if p.get("player_id") == pid:
-                    if pid == my_id:
-                        p.setdefault("contract_hand", []).append(selected_card)
-                    else:
-                        p["contract_hand_count"] = p.get("contract_hand_count", 0) + 1
+                    p.setdefault("contract_hand", []).append(selected_card)
                     break
 
         # Apply bonus to local state
@@ -1231,18 +1222,11 @@ class GameView(arcade.View):
         reward_type = msg.get("reward_type", "")
         choice = msg.get("choice", {})
         quest_name = msg.get("quest_name", "")
-        my_id = getattr(self.window, "player_id", None)
 
         if reward_type == "choose_quest":
             for p in self.game_state.get("players", []):
                 if p.get("player_id") == pid:
-                    if pid == my_id:
-                        p.setdefault(
-                            "contract_hand",
-                            [],
-                        ).append(choice)
-                    else:
-                        p["contract_hand_count"] = p.get("contract_hand_count", 0) + 1
+                    p.setdefault("contract_hand", []).append(choice)
                     break
             face_up = self.game_state.get(
                 "board",
@@ -1641,14 +1625,12 @@ class GameView(arcade.View):
 
     def _on_contract_acquired(self, msg: dict) -> None:
         pid = msg.get("player_id", "")
-        my_id = getattr(self.window, "player_id", None)
         contract_data = msg.get("contract")
 
         for p in self.game_state.get("players", []):
             if p.get("player_id") == pid:
-                if pid == my_id and contract_data:
+                if contract_data:
                     p.setdefault("contract_hand", []).append(contract_data)
-                p["contract_hand_count"] = p.get("contract_hand_count", 0) + 1
                 break
 
         board = self.game_state.get("board", {})

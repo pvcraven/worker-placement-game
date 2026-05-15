@@ -2135,9 +2135,9 @@ def generate_all() -> int:
     return q + b + i + p + s + m + ri + ci + st + bl
 
 
-def ensure_card_images() -> None:
-    if _needs_regeneration():
-        print("Card images out of date, regenerating...")
+def ensure_card_images(*, force: bool = True) -> None:
+    if force or _needs_regeneration():
+        print("Regenerating card images...")
         total = generate_all()
         print(f"Generated {total} card images.")
 

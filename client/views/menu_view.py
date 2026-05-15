@@ -110,8 +110,12 @@ class MenuView(arcade.View):
             "press": _input_s,
             "disabled": _input_s,
         }
+        from client.user_config import load_config
+
+        saved = load_config()
+
         self.name_input = arcade.gui.UIInputText(
-            text=getattr(self.window, "player_name", "") or "",
+            text=getattr(self.window, "player_name", "") or saved.get("name", ""),
             width=350,
             height=45,
             font_size=16,
@@ -180,9 +184,7 @@ class MenuView(arcade.View):
             "disabled": _server_s,
         }
         self.server_input = arcade.gui.UIInputText(
-            text=getattr(self.window, "network", None)
-            and self.window.network.server_url
-            or "ws://localhost:8765",
+            text=saved.get("server", "ws://localhost:8765"),
             width=350,
             height=35,
             font_size=14,
