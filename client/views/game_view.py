@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
+
+_log = logging.getLogger(__name__)
 
 import arcade
 import arcade.gui
@@ -68,6 +71,9 @@ class GameView(arcade.View):
         )
         self._tick_sound = arcade.load_sound(
             "client/assets/sounds/bong_001.ogg",
+        )
+        self._card_sound = arcade.load_sound(
+            "client/assets/sounds/card1.mp3",
         )
         self._info_dialog = InfoDialog()
         self._player_marker_positions: dict[str, tuple[float, float]] = {}
@@ -235,6 +241,7 @@ class GameView(arcade.View):
 
     def _handle_message(self, msg: dict) -> None:
         action = msg.get("action")
+        _log.info("MSG received: %s", action)
 
         if action == "worker_placed":
             self._on_worker_placed(msg)
@@ -893,13 +900,17 @@ class GameView(arcade.View):
             pid, (0.0, float(self.window.height))
         )
 
+        big_scale = scale * 2
+
         def start_pause() -> None:
             self.animation_manager.animate(
                 sprite=sprite,
                 start=center,
                 end=center,
-                duration=1.0,
+                duration=2.0,
                 easing=Easing.LINEAR,
+                start_scale=big_scale,
+                end_scale=big_scale,
                 on_complete=start_exit,
             )
 
@@ -910,6 +921,8 @@ class GameView(arcade.View):
                 end=target,
                 duration=0.75,
                 easing=Easing.QUAD_IN,
+                start_scale=big_scale,
+                end_scale=scale,
                 on_complete=on_complete,
             )
 
@@ -924,8 +937,11 @@ class GameView(arcade.View):
             sprite=sprite,
             start=(card_x, card_y),
             end=center,
-            duration=0.75,
+            duration=0.5,
             easing=Easing.SINE,
+            start_scale=scale,
+            end_scale=big_scale,
+            sound=self._card_sound,
             on_complete=start_pause,
         )
 
@@ -985,20 +1001,44 @@ class GameView(arcade.View):
         drawn_q = msg.get("drawn_quests", [])
         building = msg.get("building_granted")
         my_id = getattr(self.window, "player_id", None)
+        _log.info(
+            "quest_completed: pid=%s cid=%s cname=%s vp=%s my_id=%s",
+            pid,
+            cid,
+            cname,
+            vp,
+            my_id,
+        )
 
+        player_found = False
         for p in self.game_state.get("players", []):
             if p.get("player_id") == pid:
+                player_found = True
+                hand = p.get("contract_hand", [])
+                _log.info(
+                    "quest_completed: found player %s, hand has %d cards, ids=%s",
+                    pid,
+                    len(hand),
+                    [c.get("id") for c in hand],
+                )
                 p["victory_points"] = (
                     p.get("victory_points", 0) + vp + plot_bonus + showcase_bonus
                 )
-                hand = p.get("contract_hand", [])
                 completed_card = {"id": cid, "name": cname, "victory_points": vp}
                 for c in hand:
                     if c.get("id") == cid:
                         completed_card["genre"] = c.get("genre", "")
                         break
                 p["contract_hand"] = [c for c in hand if c.get("id") != cid]
+                if "contract_hand_count" in p:
+                    p["contract_hand_count"] = max(0, p["contract_hand_count"] - 1)
                 p.setdefault("completed_contracts", []).append(completed_card)
+                _log.info(
+                    "quest_completed: hand now %d cards, completed now %d: %s",
+                    len(p["contract_hand"]),
+                    len(p["completed_contracts"]),
+                    [c.get("id") for c in p["completed_contracts"]],
+                )
                 res = p.get("resources", {})
                 for k in (
                     "guitarists",
@@ -1033,6 +1073,13 @@ class GameView(arcade.View):
                         res,
                     )
                 break
+
+        if not player_found:
+            _log.warning(
+                "quest_completed: player %s NOT found in game_state players: %s",
+                pid,
+                [p.get("player_id") for p in self.game_state.get("players", [])],
+            )
 
         if building:
             board = self.game_state.get("board", {})
