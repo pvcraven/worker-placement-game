@@ -19,6 +19,8 @@ class EaseAnimation:
     start_time: float
     duration: float
     easing: Easing = Easing.SINE
+    start_scale: float | None = None
+    end_scale: float | None = None
     sound: arcade.Sound | None = None
     on_complete: Callable[[], None] | None = None
     _sound_played: bool = field(default=False, repr=False)
@@ -39,10 +41,14 @@ class AnimationManager:
         end: tuple[float, float],
         duration: float = 1.0,
         easing: Easing = Easing.SINE,
+        start_scale: float | None = None,
+        end_scale: float | None = None,
         sound: arcade.Sound | None = None,
         on_complete: Callable[[], None] | None = None,
     ) -> None:
         sprite.position = start
+        if start_scale is not None:
+            sprite.scale = start_scale
         anim = EaseAnimation(
             sprite=sprite,
             start_x=start[0],
@@ -52,6 +58,8 @@ class AnimationManager:
             start_time=self._elapsed,
             duration=duration,
             easing=easing,
+            start_scale=start_scale,
+            end_scale=end_scale,
             sound=sound,
             on_complete=on_complete,
         )
@@ -68,6 +76,8 @@ class AnimationManager:
             end_time = anim.start_time + anim.duration
             if self._elapsed >= end_time:
                 anim.sprite.position = (anim.end_x, anim.end_y)
+                if anim.end_scale is not None:
+                    anim.sprite.scale = anim.end_scale
                 completed.append(anim)
             else:
                 x = ease(
@@ -87,6 +97,15 @@ class AnimationManager:
                     func=anim.easing,
                 )
                 anim.sprite.position = (x, y)
+                if anim.start_scale is not None and anim.end_scale is not None:
+                    anim.sprite.scale = ease(
+                        anim.start_scale,
+                        anim.end_scale,
+                        anim.start_time,
+                        end_time,
+                        self._elapsed,
+                        func=anim.easing,
+                    )
 
         for anim in completed:
             anim.sprite.remove_from_sprite_lists()
