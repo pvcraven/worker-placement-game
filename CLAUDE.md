@@ -1,6 +1,6 @@
 # Worker Placement Game Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-05-14
+Auto-generated from all feature plans. Last updated: 2026-05-15
 
 ## Active Technologies
 - Python 3.12+ + Arcade (client UI), websockets (networking), Pydantic (validation) (002-garage-quest-display)
@@ -53,9 +53,9 @@ cd src && pytest && ruff check .
 Python 3.12+: Follow standard conventions
 
 ## Recent Changes
+- 031-event-action-queue: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 - 030-card-pick-animation: Added Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), arcade.anim (Easing, ease)
 - 029-marker-animation: Added Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), arcade.anim (ease, Easing)
-- 028-client-reconnect: Added Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), websockets, Pydantic v2
 
 
 <!-- MANUAL ADDITIONS START -->
