@@ -5,11 +5,8 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-_log = logging.getLogger(__name__)
-
 import arcade
 import arcade.gui
-
 from arcade.anim import Easing
 
 from client.ui.animation_manager import AnimationManager
@@ -25,6 +22,8 @@ from client.ui.dialogs import (
 from client.ui.resource_bar import ResourceBar
 from client.ui.tabbed_panel import TabbedPanel
 from shared.constants import RESOURCE_SYMBOLS
+
+_log = logging.getLogger(__name__)
 
 
 class GameView(arcade.View):
