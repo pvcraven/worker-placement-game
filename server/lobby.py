@@ -300,15 +300,14 @@ def _initialize_game(state, config) -> None:
 
     state.board = board
 
-    # Deal starting intrigue cards and coins
-    for i, player in enumerate(state.players):
+    # Deal starting intrigue cards
+    for player in state.players:
         for _ in range(STARTING_INTRIGUE_CARDS):
             if board.intrigue_deck:
                 player.intrigue_hand.append(board.intrigue_deck.pop())
         for _ in range(STARTING_QUEST_CARDS):
             if board.quest_deck:
                 player.contract_hand.append(board.quest_deck.pop())
-        player.resources.coins = STARTING_COINS_BASE + (i * STARTING_COINS_INCREMENT)
 
     # Randomize starting turn order
     pids = [p.player_id for p in state.players]
@@ -316,8 +315,11 @@ def _initialize_game(state, config) -> None:
     state.turn_order = pids
     first_pid = pids[0]
     state.board.first_player_id = first_pid
-    for p in state.players:
-        p.has_first_player_marker = p.player_id == first_pid
+    players_by_id = {p.player_id: p for p in state.players}
+    for i, pid in enumerate(pids):
+        player = players_by_id[pid]
+        player.has_first_player_marker = pid == first_pid
+        player.resources.coins = STARTING_COINS_BASE + (i * STARTING_COINS_INCREMENT)
     state.current_player_index = 0
     state.current_round = 1
     state.phase = GamePhase.PLACEMENT

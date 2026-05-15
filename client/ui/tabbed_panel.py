@@ -88,15 +88,22 @@ class TabbedPanel:
             else:
                 opp = self._find_player(game_state, self._active_sub_tab)
                 if opp:
-                    cards = opp.get("contract_hand", []) + opp.get(
-                        "completed_contracts", []
-                    )
+                    cards = opp.get("contract_hand", [])
                 else:
                     cards = []
         elif self.active_tab == "my_intrigue":
             cards = player_data.get("intrigue_hand", []) if player_data else []
         elif self.active_tab == "completed_quests":
-            cards = player_data.get("completed_contracts", []) if player_data else []
+            if self._active_sub_tab == "my_quests":
+                cards = (
+                    player_data.get("completed_contracts", []) if player_data else []
+                )
+            else:
+                opp = self._find_player(game_state, self._active_sub_tab)
+                if opp:
+                    cards = opp.get("completed_contracts", [])
+                else:
+                    cards = []
         else:
             self._card_page_count = 1
             return
@@ -117,7 +124,7 @@ class TabbedPanel:
                     self._active_sub_tab = "my_quests"
                     self._sub_tabs_dirty = True
                 return True
-        if self.active_tab == "my_quests":
+        if self.active_tab in ("my_quests", "completed_quests"):
             for sub_id, (rx, ry, rw, rh) in self._sub_tab_rects.items():
                 if rx <= x <= rx + rw and ry <= y <= ry + rh:
                     if self._active_sub_tab != sub_id:
@@ -156,7 +163,7 @@ class TabbedPanel:
         tab_bar_h = max(28, int(36 * s))
         title_h = max(20, int(28 * s))
         sub_tab_h = 0
-        if self.active_tab == "my_quests":
+        if self.active_tab in ("my_quests", "completed_quests"):
             sub_tab_h = max(22, int(28 * s))
         content_y = y
         content_h = h - tab_bar_h - title_h - sub_tab_h
@@ -166,7 +173,7 @@ class TabbedPanel:
         if self._shapes_dirty:
             self._rebuild_tab_bar(x, y, w, h, tab_bar_h, s)
             self._rebuild_title(x, y + h - tab_bar_h, w, title_h, s)
-            if self.active_tab == "my_quests" and game_state:
+            if self.active_tab in ("my_quests", "completed_quests") and game_state:
                 sub_tab_top = y + h - tab_bar_h - title_h
                 self._rebuild_sub_tabs(
                     x, sub_tab_top, w, sub_tab_h, s, game_state, player_data
@@ -212,8 +219,12 @@ class TabbedPanel:
             self._draw_quests_tab(
                 x, content_y, w, content_h, player_data, s, game_state
             )
-        elif self.active_tab in ("my_intrigue", "completed_quests"):
+        elif self.active_tab == "my_intrigue":
             self._draw_card_tab(x, content_y, w, content_h, player_data, s)
+        elif self.active_tab == "completed_quests":
+            self._draw_completed_tab(
+                x, content_y, w, content_h, player_data, s, game_state
+            )
         elif self.active_tab == "producer":
             self._draw_producer_tab(x, content_y, w, content_h, player_data, s)
 
@@ -327,7 +338,10 @@ class TabbedPanel:
         self._sub_tab_rects = {}
 
         my_id = player_data.get("player_id", "") if player_data else ""
-        entries: list[tuple[str, str]] = [("my_quests", "My Quests")]
+        my_label = (
+            "My Completed" if self.active_tab == "completed_quests" else "My Quests"
+        )
+        entries: list[tuple[str, str]] = [("my_quests", my_label)]
         for p in game_state.get("players", []):
             pid = p.get("player_id", "")
             if pid and pid != my_id:
@@ -392,6 +406,29 @@ class TabbedPanel:
                 return
             self._draw_opponent_quests(x, y, w, h, opponent, scale)
 
+    def _draw_completed_tab(
+        self,
+        x: float,
+        y: float,
+        w: float,
+        h: float,
+        player_data: dict | None,
+        scale: float,
+        game_state: dict | None,
+    ) -> None:
+        if self._active_sub_tab == "my_quests":
+            self._draw_card_tab(x, y, w, h, player_data, scale)
+        else:
+            opponent = self._find_player(game_state, self._active_sub_tab)
+            if not opponent:
+                self._draw_empty(x, y, w, h, scale, "Player not found")
+                return
+            cards = opponent.get("completed_contracts", [])
+            if not cards:
+                self._draw_empty(x, y, w, h, scale, "No completed quests")
+                return
+            self._draw_card_grid(x, y, w, h, cards, "quests", scale)
+
     def _find_player(self, game_state: dict | None, player_id: str) -> dict | None:
         if not game_state:
             return None
@@ -409,22 +446,11 @@ class TabbedPanel:
         opponent: dict,
         scale: float,
     ) -> None:
-        uncompleted = opponent.get("contract_hand", [])
-        completed = opponent.get("completed_contracts", [])
-        all_cards = uncompleted + completed
-        if not all_cards:
+        cards = opponent.get("contract_hand", [])
+        if not cards:
             self._draw_empty(x, y, w, h, scale, "No quests")
             return
-        self._draw_card_grid(
-            x,
-            y,
-            w,
-            h,
-            all_cards,
-            "quests",
-            scale,
-            separator_after=len(uncompleted) if completed else -1,
-        )
+        self._draw_card_grid(x, y, w, h, cards, "quests", scale)
 
     def _draw_card_tab(
         self,
