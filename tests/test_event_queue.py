@@ -62,23 +62,25 @@ class TestDialogEvent:
         event.done = True
         assert event.is_complete()
 
-    @patch("arcade.play_sound")
-    def test_sound_plays_on_start(self, mock_play: MagicMock) -> None:
+    def test_sound_plays_on_start(self) -> None:
         gv = _make_game_view()
         sound = MagicMock()
         event = DialogEvent(show_fn=lambda g: None, sound=sound)
-        event.start(gv)
-        mock_play.assert_called_once_with(sound)
+        mock_arcade = MagicMock()
+        with patch.dict("sys.modules", {"arcade": mock_arcade}):
+            event.start(gv)
+        mock_arcade.play_sound.assert_called_once_with(sound)
 
 
 class TestSoundEvent:
-    @patch("arcade.play_sound")
-    def test_completes_after_duration(self, mock_play: MagicMock) -> None:
+    def test_completes_after_duration(self) -> None:
         sound = MagicMock()
         event = SoundEvent(sound=sound, duration=1.0)
         gv = _make_game_view()
-        event.start(gv)
-        mock_play.assert_called_once_with(sound)
+        mock_arcade = MagicMock()
+        with patch.dict("sys.modules", {"arcade": mock_arcade}):
+            event.start(gv)
+        mock_arcade.play_sound.assert_called_once_with(sound)
         assert not event.is_complete()
         event.update(0.5)
         assert not event.is_complete()
