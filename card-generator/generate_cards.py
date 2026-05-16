@@ -2121,6 +2121,52 @@ def generate_blank_cards() -> int:
     return count
 
 
+def generate_intrigue_back() -> int:
+    OUTPUT_INTRIGUE.mkdir(parents=True, exist_ok=True)
+    cw, ch = INT_CARD_WIDTH, INT_CARD_HEIGHT
+    cr = INT_CORNER_RADIUS
+    img, draw = create_card_base(cw, ch, cr)
+
+    border = 12
+    inner = 12
+    draw.rounded_rectangle(
+        [border, border, cw - 1 - border, ch - 1 - border],
+        radius=max(0, cr - border),
+        fill=(20, 20, 20),
+    )
+    draw.rounded_rectangle(
+        [
+            border + inner,
+            border + inner,
+            cw - 1 - border - inner,
+            ch - 1 - border - inner,
+        ],
+        radius=max(0, cr - border - inner),
+        fill=(240, 240, 240),
+    )
+    inner2 = 12
+    draw.rounded_rectangle(
+        [
+            border + inner + inner2,
+            border + inner + inner2,
+            cw - 1 - border - inner - inner2,
+            ch - 1 - border - inner - inner2,
+        ],
+        radius=max(0, cr - border - inner - inner2),
+        fill=_INTRIGUE_BACK_COLOR,
+    )
+
+    font = _load_font_serif(120, bold=True)
+    letter = "I"
+    bbox = draw.textbbox((0, 0), letter, font=font)
+    tx = cw // 2 - (bbox[0] + bbox[2]) // 2
+    ty = ch // 2 - (bbox[1] + bbox[3]) // 2
+    draw.text((tx, ty), letter, fill=PARCHMENT_COLOR, font=font)
+
+    img.save(OUTPUT_INTRIGUE / "intrigue_back.png")
+    return 1
+
+
 def generate_all() -> int:
     q = generate_quest_cards()
     b = generate_building_cards()
@@ -2132,7 +2178,8 @@ def generate_all() -> int:
     ci = generate_card_icon_pngs()
     st = generate_star_icon()
     bl = generate_blank_cards()
-    return q + b + i + p + s + m + ri + ci + st + bl
+    ib = generate_intrigue_back()
+    return q + b + i + p + s + m + ri + ci + st + bl + ib
 
 
 def ensure_card_images(*, force: bool = True) -> None:

@@ -460,6 +460,8 @@ class IntrigueEffectResolvedResponse(BaseModel):
     target_player_id: str
     effect_type: str
     resources_affected: dict
+    intrigue_card_id: str = ""
+    intrigue_card_name: str = ""
 
 
 class ResourceChoicePromptResponse(BaseModel):

@@ -3995,6 +3995,7 @@ async def handle_choose_intrigue_target(
         player_id=player.player_id,
     )
 
+    intrigue_card = pending.get("intrigue_card", {})
     await server.broadcast_to_game(
         state.game_code,
         IntrigueEffectResolvedResponse(
@@ -4002,6 +4003,8 @@ async def handle_choose_intrigue_target(
             target_player_id=target.player_id,
             effect_type=effect_type,
             resources_affected=resources_affected,
+            intrigue_card_id=intrigue_card.get("id", ""),
+            intrigue_card_name=intrigue_card.get("name", ""),
         ),
     )
 
@@ -4417,6 +4420,18 @@ async def handle_play_intrigue_from_quest(
             ),
         )
         return
+
+    await server.broadcast_to_game(
+        state.game_code,
+        IntrigueEffectResolvedResponse(
+            player_id=player.player_id,
+            target_player_id="",
+            effect_type=card.effect_type,
+            resources_affected=effect_details.get("resources_affected", {}),
+            intrigue_card_id=card.id,
+            intrigue_card_name=card.name,
+        ),
+    )
 
     await _advance_after_quest_rewards(server, state, player)
 

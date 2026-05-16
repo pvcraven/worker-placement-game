@@ -473,6 +473,15 @@ class GameView(arcade.View):
                                 reward["drawn_intrigue_card"]
                             )
                     break
+            if reward.get("drawn_intrigue_cards"):
+                for card in reward["drawn_intrigue_cards"]:
+                    cid = card.get("id", "")
+                    if cid:
+                        self._enqueue_intrigue_draw(cid, pid)
+            elif reward.get("drawn_intrigue_card"):
+                cid = reward["drawn_intrigue_card"].get("id", "")
+                if cid:
+                    self._enqueue_intrigue_draw(cid, pid)
             if self.tabbed_panel:
                 name = self._player_name(pid)
                 if drawn_count == 1:
@@ -519,6 +528,10 @@ class GameView(arcade.View):
                                 tb["drawn_intrigue"]
                             )
                             break
+                for card in tb["drawn_intrigue"]:
+                    cid = card.get("id", "")
+                    if cid:
+                        self._enqueue_intrigue_draw(cid, pid)
             if self.tabbed_panel:
                 name = self._player_name(pid)
                 parts = []
@@ -542,6 +555,9 @@ class GameView(arcade.View):
         pid = msg.get("player_id", "")
         card = msg.get("intrigue_card", {})
         card_id = card.get("id", "")
+
+        if card_id:
+            self._enqueue_intrigue_play(card_id, pid)
 
         origin = self._player_marker_positions.get(pid)
         target = (
@@ -624,6 +640,10 @@ class GameView(arcade.View):
                                 p["intrigue_hand_count"] = p.get(
                                     "intrigue_hand_count", 0
                                 ) + len(drawn)
+                            for d in drawn:
+                                dcid = d.get("id", "")
+                                if dcid:
+                                    self._enqueue_intrigue_draw(dcid, pid)
                         elif etype == "draw_contracts":
                             p.setdefault("contract_hand", []).extend(drawn)
                         break
@@ -780,6 +800,10 @@ class GameView(arcade.View):
         effect_type = msg.get("effect_type", "")
         affected = msg.get("resources_affected", {})
 
+        card_id = msg.get("intrigue_card_id", "")
+        if card_id:
+            self._enqueue_intrigue_play(card_id, pid)
+
         keys = (
             "guitarists",
             "bass_players",
@@ -830,8 +854,17 @@ class GameView(arcade.View):
             else:
                 self.tabbed_panel.add_entry(f"{tname} lost {res_str}")
 
-        if effect_type == "steal_resources" and res_str:
-            self._info_dialog.show(f"{name} stole {res_str} from {tname}", duration=1.5)
+        if res_str:
+            if effect_type == "steal_resources":
+                self._info_dialog.show(
+                    f"{name} stole {res_str} from {tname}",
+                    duration=1.5,
+                )
+            elif target_pid:
+                self._info_dialog.show(
+                    f"{tname} lost {res_str}",
+                    duration=1.5,
+                )
 
     def _on_quest_card_selected(self, msg: dict) -> None:
         pid = msg.get("player_id", "")
@@ -876,6 +909,11 @@ class GameView(arcade.View):
             ),
         )
         self.event_queue.enqueue(anim_event, self)
+
+        if bonus.get("intrigue_card"):
+            icid = bonus["intrigue_card"].get("id", "")
+            if icid:
+                self._enqueue_intrigue_draw(icid, pid)
 
     def _start_card_pick_animation(
         self,
@@ -949,6 +987,149 @@ class GameView(arcade.View):
         self.animation_manager.animate(
             sprite=sprite,
             start=(card_x, card_y),
+            end=center,
+            duration=0.5,
+            easing=Easing.SINE,
+            start_scale=scale,
+            end_scale=big_scale,
+            sound=self._card_sound,
+            on_complete=start_pause,
+        )
+
+    def _enqueue_intrigue_draw(self, card_id: str, pid: str) -> None:
+        anim_event = AnimationEvent(
+            lambda gv, c=card_id, p=pid: (
+                gv._start_intrigue_draw_animation(c, p, anim_event)
+            ),
+        )
+        self.event_queue.enqueue(anim_event, self)
+
+    def _enqueue_intrigue_play(self, card_id: str, pid: str) -> None:
+        anim_event = AnimationEvent(
+            lambda gv, c=card_id, p=pid: (
+                gv._start_intrigue_play_animation(c, p, anim_event)
+            ),
+        )
+        self.event_queue.enqueue(anim_event, self)
+
+    def _start_intrigue_draw_animation(
+        self,
+        card_id: str,
+        pid: str,
+        event: AnimationEvent,
+    ) -> None:
+        my_id = getattr(self.window, "player_id", None)
+        if pid == my_id:
+            img = f"client/assets/card_images/intrigue/{card_id}.png"
+        else:
+            img = "client/assets/card_images/intrigue/intrigue_back.png"
+
+        scale = 0.5
+        try:
+            sprite = arcade.Sprite(img, scale=scale)
+        except Exception:
+            event.done = True
+            return
+
+        cx = self.window.width / 2
+        cy = self.window.height / 2
+        center = (cx, cy)
+        start = (float(self.window.width - 100), 100.0)
+        target = self._player_marker_positions.get(
+            pid, (0.0, float(self.window.height))
+        )
+        big_scale = scale * 2
+
+        def start_pause() -> None:
+            self.animation_manager.animate(
+                sprite=sprite,
+                start=center,
+                end=center,
+                duration=2.0,
+                easing=Easing.LINEAR,
+                start_scale=big_scale,
+                end_scale=big_scale,
+                on_complete=start_exit,
+            )
+
+        def start_exit() -> None:
+            self.animation_manager.animate(
+                sprite=sprite,
+                start=center,
+                end=target,
+                duration=0.75,
+                easing=Easing.QUAD_IN,
+                start_scale=big_scale,
+                end_scale=scale,
+                on_complete=on_complete,
+            )
+
+        def on_complete() -> None:
+            event.done = True
+
+        self.animation_manager.animate(
+            sprite=sprite,
+            start=start,
+            end=center,
+            duration=0.5,
+            easing=Easing.SINE,
+            start_scale=scale,
+            end_scale=big_scale,
+            sound=self._card_sound,
+            on_complete=start_pause,
+        )
+
+    def _start_intrigue_play_animation(
+        self,
+        card_id: str,
+        pid: str,
+        event: AnimationEvent,
+    ) -> None:
+        img = f"client/assets/card_images/intrigue/{card_id}.png"
+        scale = 0.5
+        try:
+            sprite = arcade.Sprite(img, scale=scale)
+        except Exception:
+            event.done = True
+            return
+
+        cx = self.window.width / 2
+        cy = self.window.height / 2
+        center = (cx, cy)
+        start = self._player_marker_positions.get(pid, (0.0, float(self.window.height)))
+        target = (float(self.window.width - 100), 100.0)
+        big_scale = scale * 2
+
+        def start_pause() -> None:
+            self.animation_manager.animate(
+                sprite=sprite,
+                start=center,
+                end=center,
+                duration=2.0,
+                easing=Easing.LINEAR,
+                start_scale=big_scale,
+                end_scale=big_scale,
+                on_complete=start_exit,
+            )
+
+        def start_exit() -> None:
+            self.animation_manager.animate(
+                sprite=sprite,
+                start=center,
+                end=target,
+                duration=0.75,
+                easing=Easing.QUAD_IN,
+                start_scale=big_scale,
+                end_scale=scale,
+                on_complete=on_complete,
+            )
+
+        def on_complete() -> None:
+            event.done = True
+
+        self.animation_manager.animate(
+            sprite=sprite,
+            start=start,
             end=center,
             duration=0.5,
             easing=Easing.SINE,
@@ -1190,6 +1371,11 @@ class GameView(arcade.View):
                 self.tabbed_panel.add_entry(
                     f"{name} completed '{cname}' ({reward_str})"
                 )
+
+        for intr_card in drawn_intr:
+            cid = intr_card.get("id", "")
+            if cid:
+                self._enqueue_intrigue_draw(cid, pid)
 
         next_pid = msg.get("next_player_id")
         if next_pid:
@@ -1995,6 +2181,15 @@ class GameView(arcade.View):
                                 reward["drawn_intrigue_card"]
                             )
                     break
+            if reward.get("drawn_intrigue_cards"):
+                for card in reward["drawn_intrigue_cards"]:
+                    cid = card.get("id", "")
+                    if cid:
+                        self._enqueue_intrigue_draw(cid, pid)
+            elif reward.get("drawn_intrigue_card"):
+                cid = reward["drawn_intrigue_card"].get("id", "")
+                if cid:
+                    self._enqueue_intrigue_draw(cid, pid)
             if self.tabbed_panel:
                 name = self._player_name(pid)
                 if drawn_count == 1:
