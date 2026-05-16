@@ -2725,7 +2725,9 @@ async def handle_complete_quest(
         vp_detail += f" + {showcase_bonus_vp} Audition Showcase bonus"
 
     quest_reward = contract.bonus_resources.model_dump()
-    quest_reward["victory_points"] = contract.victory_points + plot_bonus_vp + showcase_bonus_vp
+    quest_reward["victory_points"] = (
+        contract.victory_points + plot_bonus_vp + showcase_bonus_vp
+    )
     quest_reward_str = _format_reward(quest_reward)
     _log_event(
         state,
