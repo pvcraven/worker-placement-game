@@ -682,10 +682,32 @@ def _log_event(
     _write_game_log(state)
 
 
+def _format_reward(reward: dict) -> str:
+    """Format a reward dict as a compact string like '+2G +1B +3$'."""
+    symbols = [
+        ("guitarists", "G"),
+        ("bass_players", "B"),
+        ("drummers", "D"),
+        ("singers", "S"),
+        ("coins", "$"),
+        ("victory_points", "VP"),
+    ]
+    parts = []
+    for key, sym in symbols:
+        v = reward.get(key, 0)
+        if v:
+            parts.append(f"+{v}{sym}")
+    n = reward.get("intrigue_cards_drawn", 0)
+    if n:
+        parts.append(f"+{n}I")
+    return " ".join(parts)
+
+
 def _write_game_log(state) -> None:
     log_dir = Path("game_logs")
     log_dir.mkdir(exist_ok=True)
-    path = log_dir / f"{state.game_code}.txt"
+    date_str = datetime.date.today().strftime("%Y-%m-%d")
+    path = log_dir / f"{date_str} {state.game_code}.txt"
     player_names = {p.player_id: p.display_name for p in state.players}
     with open(path, "w", encoding="utf-8") as f:
         f.write(f"Game: {state.game_code}\n")
@@ -1148,12 +1170,14 @@ async def _resolve_copied_space_rewards(
             for k, v in tb["bonus_resources"].items():
                 if v:
                     reward_dict[k] = reward_dict.get(k, 0) + v
+        trigger_str = _format_reward(tb.get("bonus_resources", {}))
         _log_event(
             state,
             action="resource_trigger",
             details=(
                 f"{player.display_name} triggered"
                 f" {tb.get('contract_name', 'plot quest')} bonus"
+                + (f" ({trigger_str})" if trigger_str else "")
             ),
             player_id=player.player_id,
         )
@@ -1238,12 +1262,14 @@ async def _resolve_copied_space_rewards(
                 "bonus": bonus_dict,
             }
             pending["owner_bonus_info"] = owner_bonus_info
+            copy_owner_str = _format_reward(bonus_dict)
             _log_event(
                 state,
                 action="owner_bonus",
                 details=(
                     f"{owner.display_name} received owner bonus from"
                     f" {player.display_name} copying {target_space.name}"
+                    + (f" ({copy_owner_str})" if copy_owner_str else "")
                 ),
                 player_id=owner.player_id,
             )
@@ -1555,12 +1581,14 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
             for k, v in tb["bonus_resources"].items():
                 if v and k in reward_dict:
                     reward_dict[k] = reward_dict.get(k, 0) + v
+        trigger_str = _format_reward(tb.get("bonus_resources", {}))
         _log_event(
             state,
             action="resource_trigger",
             details=(
                 f"{player.display_name} triggered"
                 f" {tb.get('contract_name', 'plot quest')} bonus"
+                + (f" ({trigger_str})" if trigger_str else "")
             ),
             player_id=player.player_id,
         )
@@ -1738,12 +1766,14 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
                 "owner_name": owner.display_name,
                 "bonus": bonus_dict,
             }
+            owner_bonus_str = _format_reward(bonus_dict)
             _log_event(
                 state,
                 action="owner_bonus",
                 details=(
                     f"{owner.display_name} received owner bonus from"
                     f" {player.display_name} visiting {space.name}"
+                    + (f" ({owner_bonus_str})" if owner_bonus_str else "")
                 ),
                 player_id=owner.player_id,
             )
@@ -1766,10 +1796,12 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
                 "space_name": space.name,
             }
 
+    reward_str = _format_reward(reward_dict)
     _log_event(
         state,
         action="place_worker",
-        details=f"{player.display_name} placed worker on {space.name}",
+        details=f"{player.display_name} placed worker on {space.name}"
+        + (f" ({reward_str})" if reward_str else ""),
         player_id=player.player_id,
     )
 
@@ -2075,10 +2107,12 @@ async def handle_select_quest_card(
     )
     source = "a building" if is_building_draw else "The Garage"
 
+    bonus_str = _format_reward(bonus_reward)
     _log_event(
         state,
         action="select_quest_card",
-        details=f"{player.display_name} selected '{card.name}' from {source}",
+        details=f"{player.display_name} selected '{card.name}' from {source}"
+        + (f" ({bonus_str})" if bonus_str else ""),
         player_id=player.player_id,
     )
 
@@ -2192,9 +2226,12 @@ async def handle_place_worker_backstage(
             plot_bonus_vp += completed.bonus_vp_per_intrigue_played
     player.victory_points += plot_bonus_vp
 
+    effect_reward_str = _format_reward(effect_details)
     log_detail = f"{player.display_name} placed worker on Backstage slot {msg.slot_number}, played {card.name}"
+    if effect_reward_str:
+        log_detail += f" ({effect_reward_str})"
     if plot_bonus_vp:
-        log_detail += f" (+{plot_bonus_vp} plot quest bonus)"
+        log_detail += f" (+{plot_bonus_vp}VP plot quest bonus)"
 
     _log_event(
         state,
@@ -2687,11 +2724,17 @@ async def handle_complete_quest(
     if showcase_bonus_vp:
         vp_detail += f" + {showcase_bonus_vp} Audition Showcase bonus"
 
+    quest_reward = contract.bonus_resources.model_dump()
+    quest_reward["victory_points"] = (
+        contract.victory_points + plot_bonus_vp + showcase_bonus_vp
+    )
+    quest_reward_str = _format_reward(quest_reward)
     _log_event(
         state,
         action="complete_quest",
         details=(
-            f"{player.display_name} completed" f" '{contract.name}'" f" for {vp_detail}"
+            f"{player.display_name} completed '{contract.name}'"
+            f" ({quest_reward_str})"
         ),
         player_id=player.player_id,
     )
@@ -3648,12 +3691,14 @@ async def handle_reassign_worker(
                 "owner_name": owner.display_name,
                 "bonus": bonus_dict,
             }
+            reassign_owner_str = _format_reward(bonus_dict)
             _log_event(
                 state,
                 action="owner_bonus",
                 details=(
                     f"{owner.display_name} received owner bonus from"
                     f" {player.display_name} visiting {target.name}"
+                    + (f" ({reassign_owner_str})" if reassign_owner_str else "")
                 ),
                 player_id=owner.player_id,
             )
@@ -3684,12 +3729,14 @@ async def handle_reassign_worker(
             for k, v in tb["bonus_resources"].items():
                 if v and k in reward_dict:
                     reward_dict[k] = reward_dict.get(k, 0) + v
+        trigger_str = _format_reward(tb.get("bonus_resources", {}))
         _log_event(
             state,
             action="resource_trigger",
             details=(
                 f"{player.display_name} triggered"
                 f" {tb.get('contract_name', 'plot quest')} bonus"
+                + (f" ({trigger_str})" if trigger_str else "")
             ),
             player_id=player.player_id,
         )
@@ -3707,6 +3754,7 @@ async def handle_reassign_worker(
 
     state.reassignment_queue.pop(0)
 
+    reassign_reward_str = _format_reward(reward_dict)
     _log_event(
         state,
         action="reassign_worker",
@@ -3714,6 +3762,7 @@ async def handle_reassign_worker(
             f"{player.display_name} reassigned from"
             f" Backstage slot {msg.slot_number}"
             f" to {target.name}"
+            + (f" ({reassign_reward_str})" if reassign_reward_str else "")
         ),
         player_id=player.player_id,
     )
