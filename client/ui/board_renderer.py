@@ -46,9 +46,29 @@ _PLAYER_COLORS = [
     arcade.color.GREEN,
     arcade.color.ORANGE,
     arcade.color.PURPLE,
+    (255, 105, 180),  # pink
+    (186, 147, 216),  # lilac
 ]
 
-_COLOR_NAMES = ["red", "blue", "green", "orange", "purple"]
+_COLOR_NAMES = [
+    "red",
+    "blue",
+    "green",
+    "orange",
+    "purple",
+    "pink",
+    "lilac",
+]
+
+MARKER_COLOR_MAP: dict[str, tuple[int, ...]] = {
+    "green": arcade.color.GREEN,
+    "red": arcade.color.RED,
+    "purple": arcade.color.PURPLE,
+    "blue": arcade.color.BLUE,
+    "pink": (255, 105, 180),
+    "lilac": (186, 147, 216),
+    "orange": arcade.color.ORANGE,
+}
 
 _BUILDINGS_PER_PAGE = 8
 
@@ -591,12 +611,18 @@ class BoardRenderer:
     def _player_color(self, player_id: str) -> tuple:
         for i, p in enumerate(self.players):
             if p.get("player_id") == player_id:
+                mc = p.get("marker_color")
+                if mc and mc in MARKER_COLOR_MAP:
+                    return MARKER_COLOR_MAP[mc]
                 return _PLAYER_COLORS[i % len(_PLAYER_COLORS)]
         return arcade.color.GRAY
 
     def _player_color_name(self, player_id: str) -> str:
         for i, p in enumerate(self.players):
             if p.get("player_id") == player_id:
+                mc = p.get("marker_color")
+                if mc:
+                    return mc
                 return _COLOR_NAMES[i % len(_COLOR_NAMES)]
         return "red"
 

@@ -13,6 +13,7 @@ from client.ui.animation_manager import AnimationManager
 from client.ui.event_queue import AnimationEvent, DialogEvent, EventQueue
 from client.ui.board_renderer import BoardRenderer
 from client.ui.info_dialog import InfoDialog
+from client.ui.marker_selection_dialog import MarkerSelectionDialog
 from client.ui.dialogs import (
     CardSelectionDialog,
     CardSpriteSelectionDialog,
@@ -76,6 +77,7 @@ class GameView(arcade.View):
             "client/assets/sounds/card1.mp3",
         )
         self._info_dialog = InfoDialog()
+        self._marker_dialog = MarkerSelectionDialog()
         self._player_marker_positions: dict[str, tuple[float, float]] = {}
         self._player_marker_sprites: dict[str, arcade.Sprite] = {}
         self._player_marker_list: arcade.SpriteList = arcade.SpriteList()
@@ -98,8 +100,18 @@ class GameView(arcade.View):
                 self._cancel_sprite,
             )
             self._setup_done = True
-        self._sync_from_state()
-        self._store_reconnect_credentials()
+
+        marker_msg = getattr(
+            self.window,
+            "marker_selection_msg",
+            None,
+        )
+        if marker_msg is not None:
+            self.window.marker_selection_msg = None
+            self._on_marker_selection_start(marker_msg)
+        else:
+            self._sync_from_state()
+            self._store_reconnect_credentials()
 
     def on_hide_view(self) -> None:
         self.ui.disable()
@@ -243,7 +255,11 @@ class GameView(arcade.View):
         action = msg.get("action")
         _log.info("MSG received: %s", action)
 
-        if action == "worker_placed":
+        if action == "marker_selection_start":
+            self._on_marker_selection_start(msg)
+        elif action == "marker_selected":
+            self._on_marker_selected(msg)
+        elif action == "worker_placed":
             self._on_worker_placed(msg)
         elif action == "worker_placed_backstage":
             self._on_worker_placed_backstage(msg)
@@ -284,6 +300,8 @@ class GameView(arcade.View):
             self._show_final_screen = True
             self._game_over_final = True
             self._fs_card_sprites = None
+        elif action == "game_started":
+            self._on_game_started(msg)
         elif action == "state_sync":
             self.game_state = msg.get("game_state", {})
             self._sync_from_state()
@@ -337,6 +355,34 @@ class GameView(arcade.View):
                 my_id = getattr(self.window, "player_id", None)
                 if my_id:
                     self._enter_building_highlight(my_id)
+
+    # ------------------------------------------------------------------
+    # Marker selection
+    # ------------------------------------------------------------------
+
+    def _on_marker_selection_start(self, msg: dict) -> None:
+        my_id = getattr(self.window, "player_id", None)
+        self._marker_dialog.show(
+            available_colors=msg.get("available_colors", []),
+            players=msg.get("players", []),
+            my_player_id=my_id or "",
+        )
+
+    def _on_marker_selected(self, msg: dict) -> None:
+        color = msg.get("color", "")
+        name = msg.get("player_name", "")
+        pid = msg.get("player_id", "")
+        self._marker_dialog.mark_selected(color, name, pid)
+
+    def _on_game_started(self, msg: dict) -> None:
+        self.game_state = msg.get("game_state", {})
+        self._marker_dialog.hide()
+        self._sync_from_state()
+        self._store_reconnect_credentials()
+
+    # ------------------------------------------------------------------
+    # Worker placement
+    # ------------------------------------------------------------------
 
     def _on_worker_placed(self, msg: dict) -> None:
         space_id = msg.get("space_id", "")
@@ -2457,6 +2503,17 @@ class GameView(arcade.View):
                         self._show_final_screen = False
             return
 
+        if self._marker_dialog.is_visible:
+            color = self._marker_dialog.handle_click(
+                float(x),
+                float(y),
+            )
+            if color:
+                self.window.network.send(
+                    {"action": "select_marker", "color": color},
+                )
+            return
+
         if self.tabbed_panel and self.tabbed_panel.on_click(x, y):
             return
 
@@ -2948,6 +3005,7 @@ class GameView(arcade.View):
 
         self._draw_player_list(ch, status_h, s)
 
+        self._marker_dialog.draw(cw, ch)
         self._info_dialog.draw(cw, ch, s)
 
         self.ui.draw()

@@ -33,6 +33,8 @@ from shared.messages import (
     GameStartedResponse,
     IntriguePlayPromptResponse,
     LobbyPlayerInfo,
+    MarkerSelectedResponse,
+    MarkerSelectionStartResponse,
     OpponentChoicePromptResponse,
     PlayerJoinedResponse,
     PlayerReadyUpdateResponse,
@@ -226,24 +228,32 @@ async def start_game(server: GameServer, conn: ClientConnection, msg) -> None:
     # --- Initialize the game ---
     _initialize_game(state, config)
 
-    # Send game_started to each player with their filtered view
-    for player in state.players:
-        filtered = _filter_state_for_player(state, player.player_id)
-        await server.send_to_player(
-            player.player_id,
-            GameStartedResponse(game_state=filtered),
-        )
+    # Enter marker selection phase
+    state.phase = GamePhase.MARKER_SELECTION
 
-    # Broadcast initial building market
+    from shared.constants import MARKER_COLORS
+
+    players_info = [
+        {
+            "player_id": p.player_id,
+            "display_name": p.display_name,
+            "marker_color": p.marker_color,
+        }
+        for p in state.players
+    ]
     await server.broadcast_to_game(
         state.game_code,
-        BuildingMarketUpdateResponse(
-            face_up_buildings=[b.model_dump() for b in state.board.face_up_buildings],
-            deck_remaining=len(state.board.building_deck),
+        MarkerSelectionStartResponse(
+            available_colors=list(MARKER_COLORS),
+            players=players_info,
         ),
     )
 
-    logger.info("Game %s started with %d players", state.game_code, len(state.players))
+    logger.info(
+        "Game %s entering marker selection with %d players",
+        state.game_code,
+        len(state.players),
+    )
 
 
 def _initialize_game(state, config) -> None:
@@ -324,7 +334,7 @@ def _initialize_game(state, config) -> None:
         player.resources.coins = STARTING_COINS_BASE + (i * STARTING_COINS_INCREMENT)
     state.current_player_index = 0
     state.current_round = 1
-    state.phase = GamePhase.PLACEMENT
+    # Phase set to MARKER_SELECTION by start_game() caller
     state.last_activity = time.time()
 
     state.game_log.append(
@@ -368,6 +378,121 @@ def _filter_state_for_player(state, player_id: str) -> dict:
     data["board"]["building_deck"] = []
 
     return data
+
+
+async def select_marker(
+    server: GameServer,
+    conn: ClientConnection,
+    msg,
+) -> None:
+    """Handle select_marker: player picks a colored marker."""
+    if not conn.game_code:
+        await conn.send_error("INVALID_ACTION", "Not in a game.")
+        return
+
+    state = server.session_manager.get_session(conn.game_code)
+    if state is None:
+        await conn.send_error("GAME_NOT_FOUND", "Game not found.")
+        return
+
+    if state.phase != GamePhase.MARKER_SELECTION:
+        await conn.send_error(
+            "INVALID_ACTION",
+            "Not in marker selection phase.",
+        )
+        return
+
+    player = state.get_player(conn.player_id)
+    if player is None:
+        await conn.send_error("INVALID_ACTION", "Player not found.")
+        return
+
+    if player.marker_color is not None:
+        await conn.send_error(
+            "INVALID_ACTION",
+            "Already selected a marker.",
+        )
+        return
+
+    from shared.constants import MARKER_COLORS
+
+    color = msg.color
+    if color not in MARKER_COLORS:
+        await conn.send_error(
+            "INVALID_ACTION",
+            f"Invalid color: {color}",
+        )
+        return
+
+    # Check if color is already claimed
+    for p in state.players:
+        if p.marker_color == color:
+            await conn.send_error(
+                "INVALID_ACTION",
+                "Color already taken.",
+            )
+            return
+
+    player.marker_color = color
+    state.last_activity = time.time()
+
+    all_selected = all(p.marker_color is not None for p in state.players)
+
+    await server.broadcast_to_game(
+        state.game_code,
+        MarkerSelectedResponse(
+            player_id=player.player_id,
+            player_name=player.display_name,
+            color=color,
+            all_selected=all_selected,
+        ),
+    )
+
+    logger.info(
+        "Player '%s' selected %s marker in game %s",
+        player.display_name,
+        color,
+        state.game_code,
+    )
+
+    if all_selected:
+        import asyncio
+
+        asyncio.create_task(
+            _start_game_after_selection(server, state),
+        )
+
+
+async def _start_game_after_selection(server: GameServer, state) -> None:
+    """Wait 1 second then transition to placement phase."""
+    import asyncio
+
+    await asyncio.sleep(1.0)
+
+    state.phase = GamePhase.PLACEMENT
+
+    for player in state.players:
+        filtered = _filter_state_for_player(
+            state,
+            player.player_id,
+        )
+        await server.send_to_player(
+            player.player_id,
+            GameStartedResponse(game_state=filtered),
+        )
+
+    await server.broadcast_to_game(
+        state.game_code,
+        BuildingMarketUpdateResponse(
+            face_up_buildings=[b.model_dump() for b in state.board.face_up_buildings],
+            deck_remaining=len(state.board.building_deck),
+        ),
+    )
+
+    logger.info(
+        "Game %s started after marker selection",
+        state.game_code,
+    )
 
 
 async def reconnect(server: GameServer, conn: ClientConnection, msg) -> None:
@@ -416,6 +541,28 @@ async def reconnect(server: GameServer, conn: ClientConnection, msg) -> None:
 async def _resend_pending_prompts(server: GameServer, state, player: Player) -> None:
     """Re-send any pending prompt that is waiting on the reconnected player."""
     pid = player.player_id
+
+    # --- Marker selection (pre-game) ---
+    if state.phase == GamePhase.MARKER_SELECTION:
+        if player.marker_color is None:
+            from shared.constants import MARKER_COLORS
+
+            players_info = [
+                {
+                    "player_id": p.player_id,
+                    "display_name": p.display_name,
+                    "marker_color": p.marker_color,
+                }
+                for p in state.players
+            ]
+            await server.send_to_player(
+                pid,
+                MarkerSelectionStartResponse(
+                    available_colors=list(MARKER_COLORS),
+                    players=players_info,
+                ),
+            )
+        return
 
     # --- Resource choice (most common: building owner bonus, space rewards) ---
     pending = state.pending_resource_choice

@@ -18,10 +18,22 @@ class Genre(StrEnum):
 
 class GamePhase(StrEnum):
     LOBBY = "lobby"
+    MARKER_SELECTION = "marker_selection"
     PLACEMENT = "placement"
     REASSIGNMENT = "reassignment"
     ROUND_END = "round_end"
     GAME_OVER = "game_over"
+
+
+MARKER_COLORS: list[str] = [
+    "green",
+    "red",
+    "purple",
+    "blue",
+    "pink",
+    "lilac",
+    "orange",
+]
 
 
 RESOURCE_COLORS: dict[ResourceType, str] = {

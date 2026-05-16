@@ -168,6 +168,12 @@ class LobbyView(arcade.View):
                     if p.get("player_id") == pid:
                         p["ready"] = ready
                 self._update_player_list()
+            elif action == "marker_selection_start":
+                self.window.marker_selection_msg = msg
+                self.window.show_game()
+                for remaining in messages[i + 1 :]:
+                    network.incoming.put(remaining)
+                return
             elif action == "game_started":
                 self.window.game_state = msg.get("game_state", {})
                 self.window.show_game()

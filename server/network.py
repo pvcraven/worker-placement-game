@@ -111,6 +111,11 @@ class GameServer:
 
         await start_game(self, conn, msg)
 
+    async def _handle_select_marker(self, conn, msg) -> None:
+        from server.lobby import select_marker
+
+        await select_marker(self, conn, msg)
+
     # ------------------------------------------------------------------
     # Gameplay handlers
     # ------------------------------------------------------------------

@@ -79,6 +79,7 @@ class Player(BaseModel):
     has_first_player_marker: bool = False
     consecutive_timeouts: int = 0
     completed_quest_this_turn: bool = False
+    marker_color: str | None = None
     use_occupied_used_this_round: bool = False
     singer_swap_used_this_round: bool = False
 
