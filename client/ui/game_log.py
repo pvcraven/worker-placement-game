@@ -5,7 +5,7 @@ from __future__ import annotations
 import arcade
 
 _MAX_ENTRIES = 200
-_VISIBLE_LINES = 20
+_VISIBLE_LINES = 40
 
 
 class GameLogPanel:

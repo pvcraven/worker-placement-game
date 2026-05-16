@@ -161,7 +161,7 @@ class TabbedPanel:
             self._sub_tabs_dirty = True
 
         tab_bar_h = max(28, int(36 * s))
-        title_h = max(20, int(28 * s))
+        title_h = 0 if self.active_tab == "game_log" else max(20, int(28 * s))
         sub_tab_h = 0
         if self.active_tab in ("my_quests", "completed_quests"):
             sub_tab_h = max(22, int(28 * s))
@@ -172,7 +172,11 @@ class TabbedPanel:
 
         if self._shapes_dirty:
             self._rebuild_tab_bar(x, y, w, h, tab_bar_h, s)
-            self._rebuild_title(x, y + h - tab_bar_h, w, title_h, s)
+            if title_h > 0:
+                self._rebuild_title(x, y + h - tab_bar_h, w, title_h, s)
+            else:
+                self._title_text = None
+                self._page_text = None
             if self.active_tab in ("my_quests", "completed_quests") and game_state:
                 sub_tab_top = y + h - tab_bar_h - title_h
                 self._rebuild_sub_tabs(
