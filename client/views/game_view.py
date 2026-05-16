@@ -2262,8 +2262,6 @@ class GameView(arcade.View):
         modifiers: int,
     ) -> None:
         """Handle clicks on the board to place or reassign workers."""
-        if self.event_queue.is_busy():
-            return
         if self._show_final_screen:
             rect = getattr(self, "_fs_close_rect", None)
             if rect:
@@ -2289,6 +2287,9 @@ class GameView(arcade.View):
                 y,
             ):
                 return
+
+        if self.event_queue.is_busy():
+            return
 
         if self._highlight_mode:
             self._handle_highlight_click(x, y)
