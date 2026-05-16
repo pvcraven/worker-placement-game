@@ -10,6 +10,7 @@ import arcade.gui
 from arcade.anim import Easing
 
 from client.ui.animation_manager import AnimationManager
+from client.ui.event_queue import AnimationEvent, DialogEvent, EventQueue
 from client.ui.board_renderer import BoardRenderer
 from client.ui.info_dialog import InfoDialog
 from client.ui.dialogs import (
@@ -78,9 +79,8 @@ class GameView(arcade.View):
         self._player_marker_positions: dict[str, tuple[float, float]] = {}
         self._player_marker_sprites: dict[str, arcade.Sprite] = {}
         self._player_marker_list: arcade.SpriteList = arcade.SpriteList()
-        self._card_animation_active: bool = False
-        self._pending_face_up_update: dict | None = None
         self._pre_animation_slots: list[str] = []
+        self.event_queue = EventQueue()
 
     def on_show_view(self) -> None:
         self.ui.enable()
@@ -234,6 +234,7 @@ class GameView(arcade.View):
         self._info_dialog.update(delta_time)
         if hasattr(self, "animation_manager"):
             self.animation_manager.update(delta_time)
+        self.event_queue.update(delta_time, self)
         network = self.window.network
         for msg in network.poll():
             self._handle_message(msg)
@@ -670,6 +671,12 @@ class GameView(arcade.View):
         self._update_current_player(next_pid)
 
     def _on_intrigue_target_prompt(self, msg: dict) -> None:
+        dialog_event = DialogEvent(
+            lambda gv, m=msg: gv._show_intrigue_target_dialog(m, dialog_event),
+        )
+        self.event_queue.enqueue(dialog_event, self)
+
+    def _show_intrigue_target_dialog(self, msg: dict, event: DialogEvent) -> None:
         effect_type = msg.get("effect_type", "")
         effect_value = msg.get("effect_value", {})
         targets = msg.get("eligible_targets", [])
@@ -688,6 +695,7 @@ class GameView(arcade.View):
 
         def on_select(player_id: str) -> None:
             self._target_dialog = None
+            event.done = True
             self.window.network.send(
                 {
                     "action": "choose_intrigue_target",
@@ -697,6 +705,7 @@ class GameView(arcade.View):
 
         def on_cancel() -> None:
             self._target_dialog = None
+            event.done = True
             self.window.network.send(
                 {
                     "action": "cancel_intrigue_target",
@@ -718,6 +727,12 @@ class GameView(arcade.View):
         )
 
     def _on_copy_space_prompt(self, msg: dict) -> None:
+        dialog_event = DialogEvent(
+            lambda gv, m=msg: gv._show_copy_space_dialog(m, dialog_event),
+        )
+        self.event_queue.enqueue(dialog_event, self)
+
+    def _show_copy_space_dialog(self, msg: dict, event: DialogEvent) -> None:
         spaces = msg.get("eligible_spaces", [])
         targets = []
         for sp in spaces:
@@ -732,12 +747,14 @@ class GameView(arcade.View):
 
         def on_select(space_id: str) -> None:
             self._target_dialog = None
+            event.done = True
             self.window.network.send(
                 {"action": "select_copy_space", "space_id": space_id}
             )
 
         def on_cancel() -> None:
             self._target_dialog = None
+            event.done = True
             self.window.network.send({"action": "cancel_copy_space"})
 
         self._target_dialog = PlayerTargetDialog(
@@ -853,7 +870,12 @@ class GameView(arcade.View):
             name = self._player_name(pid)
             self.tabbed_panel.add_entry(f"{name} selected a quest")
 
-        self._start_card_pick_animation(card_id, pid, board, face_up)
+        anim_event = AnimationEvent(
+            lambda gv, cid=card_id, p=pid, b=board, fu=face_up: (
+                gv._start_card_pick_animation(cid, p, b, fu, anim_event)
+            ),
+        )
+        self.event_queue.enqueue(anim_event, self)
 
     def _start_card_pick_animation(
         self,
@@ -861,6 +883,7 @@ class GameView(arcade.View):
         pid: str,
         board: dict,
         face_up: list[dict],
+        event: AnimationEvent,
     ) -> None:
         card_info = (
             self.board_renderer.get_quest_card_info(card_id)
@@ -868,6 +891,7 @@ class GameView(arcade.View):
             else None
         )
         if not card_info:
+            event.done = True
             return
 
         card_x, card_y, scale = card_info
@@ -875,6 +899,7 @@ class GameView(arcade.View):
         try:
             sprite = arcade.Sprite(img, scale=scale)
         except Exception:
+            event.done = True
             return
 
         self._pre_animation_slots = [q.get("id", "") for q in face_up]
@@ -884,8 +909,6 @@ class GameView(arcade.View):
                 face_up[i] = None
                 break
         self._refresh_board(board)
-
-        self._card_animation_active = True
 
         cx = self.window.width / 2
         cy = self.window.height / 2
@@ -921,11 +944,7 @@ class GameView(arcade.View):
             )
 
         def on_complete() -> None:
-            self._card_animation_active = False
-            if self._pending_face_up_update is not None:
-                pending = self._pending_face_up_update
-                self._pending_face_up_update = None
-                self._apply_face_up_update(pending)
+            event.done = True
 
         self.animation_manager.animate(
             sprite=sprite,
@@ -952,10 +971,17 @@ class GameView(arcade.View):
             self.tabbed_panel.add_entry(f"{name} reset the quest display{extra}")
 
     def _on_face_up_quests_updated(self, msg: dict) -> None:
-        if self._card_animation_active:
-            self._pending_face_up_update = msg
+        if self.event_queue.is_busy():
+            deferred = DialogEvent(
+                lambda gv, m=msg: gv._apply_face_up_update_deferred(m, deferred),
+            )
+            self.event_queue.enqueue(deferred, self)
             return
         self._apply_face_up_update(msg)
+
+    def _apply_face_up_update_deferred(self, msg: dict, event: DialogEvent) -> None:
+        self._apply_face_up_update(msg)
+        event.done = True
 
     def _apply_face_up_update(self, msg: dict) -> None:
         quests = msg.get("face_up_quests", [])
@@ -1174,25 +1200,12 @@ class GameView(arcade.View):
         msg: dict,
     ) -> None:
         reward_type = msg.get("reward_type", "")
-        choices = msg.get("available_choices", [])
-        quest_name = msg.get("quest_name", "")
 
         if reward_type == "choose_quest":
-            from client.ui.dialogs import RewardChoiceDialog
-
-            self._reward_choice_dialog = RewardChoiceDialog(
-                title=f"Quest Reward: {quest_name}",
-                description="Choose a quest card:",
-                choices=choices,
-                label_key="name",
-                on_select=self._on_reward_quest_selected,
-                ui_manager=self.ui,
+            dialog_event = DialogEvent(
+                lambda gv, m=msg: gv._show_quest_reward_dialog(m, dialog_event),
             )
-            self._reward_choice_dialog.show(
-                self.window.width,
-                self.window.height,
-                scale=self.window.ui_scale,
-            )
+            self.event_queue.enqueue(dialog_event, self)
         elif reward_type == "choose_building":
             bld_ids = [b.get("id") for b in self._face_up_buildings if b.get("id")]
             self._enter_highlight_mode(
@@ -1201,16 +1214,34 @@ class GameView(arcade.View):
             )
             self._status_text = "Pick a building as your quest reward"
 
-    def _on_reward_quest_selected(
-        self,
-        choice_id: str,
-    ) -> None:
-        self._reward_choice_dialog = None
-        self.window.network.send(
-            {
-                "action": "quest_reward_choice",
-                "choice_id": choice_id,
-            }
+    def _show_quest_reward_dialog(self, msg: dict, event: DialogEvent) -> None:
+        from client.ui.dialogs import RewardChoiceDialog
+
+        choices = msg.get("available_choices", [])
+        quest_name = msg.get("quest_name", "")
+
+        def on_select(choice_id: str) -> None:
+            self._reward_choice_dialog = None
+            event.done = True
+            self.window.network.send(
+                {
+                    "action": "quest_reward_choice",
+                    "choice_id": choice_id,
+                }
+            )
+
+        self._reward_choice_dialog = RewardChoiceDialog(
+            title=f"Quest Reward: {quest_name}",
+            description="Choose a quest card:",
+            choices=choices,
+            label_key="name",
+            on_select=on_select,
+            ui_manager=self.ui,
+        )
+        self._reward_choice_dialog.show(
+            self.window.width,
+            self.window.height,
+            scale=self.window.ui_scale,
         )
 
     def _on_quest_reward_choice_resolved(
@@ -1323,9 +1354,16 @@ class GameView(arcade.View):
                 self.tabbed_panel.add_entry(f"Waiting on {name}: {title}")
             return
 
+        dialog_event = DialogEvent(
+            lambda gv, m=msg: gv._show_resource_choice_dialog(m, dialog_event),
+        )
+        self.event_queue.enqueue(dialog_event, self)
+
+    def _show_resource_choice_dialog(self, msg: dict, event: DialogEvent) -> None:
         prompt_id = msg.get("prompt_id", "")
 
         def on_select(p_id: str, chosen: dict) -> None:
+            event.done = True
             self.window.network.send(
                 {
                     "action": "resource_choice",
@@ -1335,6 +1373,7 @@ class GameView(arcade.View):
             )
 
         def on_skip(p_id: str) -> None:
+            event.done = True
             self.window.network.send(
                 {
                     "action": "skip_resource_choice",
@@ -1407,8 +1446,15 @@ class GameView(arcade.View):
         if not cards:
             return
 
+        dialog_event = DialogEvent(
+            lambda gv, c=cards: gv._show_intrigue_play_dialog(c, dialog_event),
+        )
+        self.event_queue.enqueue(dialog_event, self)
+
+    def _show_intrigue_play_dialog(self, cards: list[dict], event: DialogEvent) -> None:
         def on_select(card_id: str) -> None:
             self._card_sprite_dialog = None
+            event.done = True
             self.window.network.send(
                 {
                     "action": "play_intrigue_from_quest",
@@ -1429,8 +1475,19 @@ class GameView(arcade.View):
         opponents = msg.get("opponents", [])
         coins = msg.get("coins_amount", 0)
 
+        dialog_event = DialogEvent(
+            lambda gv, o=opponents, c=coins: gv._show_opponent_choice_dialog(
+                o, c, dialog_event
+            ),
+        )
+        self.event_queue.enqueue(dialog_event, self)
+
+    def _show_opponent_choice_dialog(
+        self, opponents: list[dict], coins: int, event: DialogEvent
+    ) -> None:
         def on_select(player_id: str) -> None:
             self._target_dialog = None
+            event.done = True
             self.window.network.send(
                 {
                     "action": "choose_opponent",
@@ -1581,8 +1638,22 @@ class GameView(arcade.View):
         if not quests:
             return
 
+        dialog_event = DialogEvent(
+            lambda gv, m=msg, q=quests: gv._show_quest_completion_dialog(
+                m, q, dialog_event
+            ),
+        )
+        self.event_queue.enqueue(dialog_event, self)
+
+    def _show_quest_completion_dialog(
+        self,
+        msg: dict,
+        quests: list[dict],
+        event: DialogEvent,
+    ) -> None:
         def on_select(contract_id: str) -> None:
             self._quest_completion_dialog = None
+            event.done = True
             self.window.network.send(
                 {
                     "action": "complete_quest",
@@ -1592,6 +1663,7 @@ class GameView(arcade.View):
 
         def on_skip() -> None:
             self._quest_completion_dialog = None
+            event.done = True
             self.window.network.send(
                 {
                     "action": "skip_quest_completion",
@@ -2178,8 +2250,6 @@ class GameView(arcade.View):
         modifiers: int,
     ) -> None:
         """Handle clicks on the board to place or reassign workers."""
-        if self._card_animation_active:
-            return
         if self._show_final_screen:
             rect = getattr(self, "_fs_close_rect", None)
             if rect:
@@ -2205,6 +2275,9 @@ class GameView(arcade.View):
                 y,
             ):
                 return
+
+        if self.event_queue.is_busy():
+            return
 
         if self._highlight_mode:
             self._handle_highlight_click(x, y)
