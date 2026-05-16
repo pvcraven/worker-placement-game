@@ -857,11 +857,13 @@ class GameView(arcade.View):
         if res_str:
             if effect_type == "steal_resources":
                 self._info_dialog.show(
-                    f"{name} stole {res_str} from {tname}", duration=1.5,
+                    f"{name} stole {res_str} from {tname}",
+                    duration=1.5,
                 )
             elif target_pid:
                 self._info_dialog.show(
-                    f"{tname} lost {res_str}", duration=1.5,
+                    f"{tname} lost {res_str}",
+                    duration=1.5,
                 )
 
     def _on_quest_card_selected(self, msg: dict) -> None:
