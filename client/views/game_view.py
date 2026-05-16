@@ -676,9 +676,7 @@ class GameView(arcade.View):
         )
         self.event_queue.enqueue(dialog_event, self)
 
-    def _show_intrigue_target_dialog(
-        self, msg: dict, event: DialogEvent
-    ) -> None:
+    def _show_intrigue_target_dialog(self, msg: dict, event: DialogEvent) -> None:
         effect_type = msg.get("effect_type", "")
         effect_value = msg.get("effect_value", {})
         targets = msg.get("eligible_targets", [])
@@ -734,9 +732,7 @@ class GameView(arcade.View):
         )
         self.event_queue.enqueue(dialog_event, self)
 
-    def _show_copy_space_dialog(
-        self, msg: dict, event: DialogEvent
-    ) -> None:
+    def _show_copy_space_dialog(self, msg: dict, event: DialogEvent) -> None:
         spaces = msg.get("eligible_spaces", [])
         targets = []
         for sp in spaces:
@@ -983,9 +979,7 @@ class GameView(arcade.View):
             return
         self._apply_face_up_update(msg)
 
-    def _apply_face_up_update_deferred(
-        self, msg: dict, event: DialogEvent
-    ) -> None:
+    def _apply_face_up_update_deferred(self, msg: dict, event: DialogEvent) -> None:
         self._apply_face_up_update(msg)
         event.done = True
 
@@ -1220,9 +1214,7 @@ class GameView(arcade.View):
             )
             self._status_text = "Pick a building as your quest reward"
 
-    def _show_quest_reward_dialog(
-        self, msg: dict, event: DialogEvent
-    ) -> None:
+    def _show_quest_reward_dialog(self, msg: dict, event: DialogEvent) -> None:
         from client.ui.dialogs import RewardChoiceDialog
 
         choices = msg.get("available_choices", [])
@@ -1367,9 +1359,7 @@ class GameView(arcade.View):
         )
         self.event_queue.enqueue(dialog_event, self)
 
-    def _show_resource_choice_dialog(
-        self, msg: dict, event: DialogEvent
-    ) -> None:
+    def _show_resource_choice_dialog(self, msg: dict, event: DialogEvent) -> None:
         prompt_id = msg.get("prompt_id", "")
 
         def on_select(p_id: str, chosen: dict) -> None:
@@ -1461,9 +1451,7 @@ class GameView(arcade.View):
         )
         self.event_queue.enqueue(dialog_event, self)
 
-    def _show_intrigue_play_dialog(
-        self, cards: list[dict], event: DialogEvent
-    ) -> None:
+    def _show_intrigue_play_dialog(self, cards: list[dict], event: DialogEvent) -> None:
         def on_select(card_id: str) -> None:
             self._card_sprite_dialog = None
             event.done = True
