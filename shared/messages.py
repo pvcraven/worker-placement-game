@@ -150,6 +150,11 @@ class SkipResourceChoiceRequest(BaseModel):
     prompt_id: str = ""
 
 
+class SelectMarkerRequest(BaseModel):
+    action: Literal["select_marker"] = "select_marker"
+    color: str
+
+
 class PingRequest(BaseModel):
     action: Literal["ping"] = "ping"
 
@@ -183,6 +188,7 @@ ClientMessage = Annotated[
         CancelCopySpaceRequest,
         ReconnectRequest,
         SkipResourceChoiceRequest,
+        SelectMarkerRequest,
         PingRequest,
     ],
     Field(discriminator="action"),
@@ -533,6 +539,20 @@ class CopySpacePromptResponse(BaseModel):
     source_type: str
 
 
+class MarkerSelectionStartResponse(BaseModel):
+    action: Literal["marker_selection_start"] = "marker_selection_start"
+    available_colors: list[str]
+    players: list[dict]
+
+
+class MarkerSelectedResponse(BaseModel):
+    action: Literal["marker_selected"] = "marker_selected"
+    player_id: str
+    player_name: str
+    color: str
+    all_selected: bool = False
+
+
 class TurnTimeoutResponse(BaseModel):
     action: Literal["turn_timeout"] = "turn_timeout"
     player_id: str
@@ -570,6 +590,8 @@ ServerMessage = Annotated[
         PlayerReconnectedResponse,
         QuestRewardChoicePromptResponse,
         QuestRewardChoiceResolvedResponse,
+        MarkerSelectionStartResponse,
+        MarkerSelectedResponse,
         TurnTimeoutResponse,
         IntrigueTargetPromptResponse,
         IntrigueEffectResolvedResponse,
