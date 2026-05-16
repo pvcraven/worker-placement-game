@@ -6,8 +6,6 @@ from typing import TYPE_CHECKING, Any, Callable
 
 # arcade is imported lazily at runtime to avoid pyglet display init in headless CI
 if TYPE_CHECKING:
-    import arcade
-
     from client.views.game_view import GameView
 
 
