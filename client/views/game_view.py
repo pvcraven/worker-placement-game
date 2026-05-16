@@ -854,8 +854,15 @@ class GameView(arcade.View):
             else:
                 self.tabbed_panel.add_entry(f"{tname} lost {res_str}")
 
-        if effect_type == "steal_resources" and res_str:
-            self._info_dialog.show(f"{name} stole {res_str} from {tname}", duration=1.5)
+        if res_str:
+            if effect_type == "steal_resources":
+                self._info_dialog.show(
+                    f"{name} stole {res_str} from {tname}", duration=1.5,
+                )
+            elif target_pid:
+                self._info_dialog.show(
+                    f"{tname} lost {res_str}", duration=1.5,
+                )
 
     def _on_quest_card_selected(self, msg: dict) -> None:
         pid = msg.get("player_id", "")
