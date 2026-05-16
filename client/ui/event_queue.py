@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
-import arcade
-
+# arcade is imported lazily at runtime to avoid pyglet display init in headless CI
 if TYPE_CHECKING:
+    import arcade
+
     from client.views.game_view import GameView
 
 
@@ -48,7 +49,7 @@ class DialogEvent(QueuedEvent):
     def __init__(
         self,
         show_fn: Callable[[GameView], None],
-        sound: arcade.Sound | None = None,
+        sound: Any = None,
     ) -> None:
         super().__init__()
         self.show_fn = show_fn
@@ -58,6 +59,8 @@ class DialogEvent(QueuedEvent):
     def start(self, game_view: GameView) -> None:
         super().start(game_view)
         if self.sound:
+            import arcade
+
             arcade.play_sound(self.sound)
         self.show_fn(game_view)
 
@@ -68,7 +71,7 @@ class DialogEvent(QueuedEvent):
 class SoundEvent(QueuedEvent):
     """Plays a sound and waits for a specified duration."""
 
-    def __init__(self, sound: arcade.Sound, duration: float) -> None:
+    def __init__(self, sound: Any, duration: float) -> None:
         super().__init__()
         self.sound = sound
         self.duration = duration
@@ -76,6 +79,8 @@ class SoundEvent(QueuedEvent):
 
     def start(self, game_view: GameView) -> None:
         super().start(game_view)
+        import arcade
+
         arcade.play_sound(self.sound)
 
     def is_complete(self) -> bool:

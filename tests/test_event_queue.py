@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from client.ui.event_queue import (
     AnimationEvent,
@@ -62,35 +62,23 @@ class TestDialogEvent:
         event.done = True
         assert event.is_complete()
 
-    def test_sound_plays_on_start(self) -> None:
+    @patch("arcade.play_sound")
+    def test_sound_plays_on_start(self, mock_play: MagicMock) -> None:
         gv = _make_game_view()
         sound = MagicMock()
         event = DialogEvent(show_fn=lambda g: None, sound=sound)
-        import client.ui.event_queue as eq_mod
-
-        orig = eq_mod.arcade.play_sound
-        played = []
-        eq_mod.arcade.play_sound = lambda s: played.append(s)
-        try:
-            event.start(gv)
-        finally:
-            eq_mod.arcade.play_sound = orig
-        assert played == [sound]
+        event.start(gv)
+        mock_play.assert_called_once_with(sound)
 
 
 class TestSoundEvent:
-    def test_completes_after_duration(self) -> None:
+    @patch("arcade.play_sound")
+    def test_completes_after_duration(self, mock_play: MagicMock) -> None:
         sound = MagicMock()
         event = SoundEvent(sound=sound, duration=1.0)
         gv = _make_game_view()
-        import client.ui.event_queue as eq_mod
-
-        orig = eq_mod.arcade.play_sound
-        eq_mod.arcade.play_sound = lambda s: None
-        try:
-            event.start(gv)
-        finally:
-            eq_mod.arcade.play_sound = orig
+        event.start(gv)
+        mock_play.assert_called_once_with(sound)
         assert not event.is_complete()
         event.update(0.5)
         assert not event.is_complete()
