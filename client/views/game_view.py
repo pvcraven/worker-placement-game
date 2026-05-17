@@ -1275,6 +1275,7 @@ class GameView(arcade.View):
                 for c in hand:
                     if c.get("id") == cid:
                         completed_card["genre"] = c.get("genre", "")
+                        completed_card["is_plot_quest"] = c.get("is_plot_quest", False)
                         break
                 p["contract_hand"] = [c for c in hand if c.get("id") != cid]
                 if "contract_hand_count" in p:

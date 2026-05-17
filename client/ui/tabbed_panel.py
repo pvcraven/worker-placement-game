@@ -10,6 +10,11 @@ import arcade.shape_list
 
 from client.ui.game_log import GameLogPanel
 
+
+def _sort_plot_quests_first(cards: list[dict]) -> list[dict]:
+    return sorted(cards, key=lambda c: (not c.get("is_plot_quest", False)))
+
+
 _TAB_DEFS = [
     ("game_log", "Game Log"),
     ("my_quests", "Quests"),
@@ -95,13 +100,13 @@ class TabbedPanel:
             cards = player_data.get("intrigue_hand", []) if player_data else []
         elif self.active_tab == "completed_quests":
             if self._active_sub_tab == "my_quests":
-                cards = (
+                cards = _sort_plot_quests_first(
                     player_data.get("completed_contracts", []) if player_data else []
                 )
             else:
                 opp = self._find_player(game_state, self._active_sub_tab)
                 if opp:
-                    cards = opp.get("completed_contracts", [])
+                    cards = _sort_plot_quests_first(opp.get("completed_contracts", []))
                 else:
                     cards = []
         else:
@@ -427,7 +432,7 @@ class TabbedPanel:
             if not opponent:
                 self._draw_empty(x, y, w, h, scale, "Player not found")
                 return
-            cards = opponent.get("completed_contracts", [])
+            cards = _sort_plot_quests_first(opponent.get("completed_contracts", []))
             if not cards:
                 self._draw_empty(x, y, w, h, scale, "No completed quests")
                 return
@@ -478,7 +483,7 @@ class TabbedPanel:
             card_type = "intrigue"
             empty_msg = "No intrigue cards"
         else:
-            cards = player_data.get("completed_contracts", [])
+            cards = _sort_plot_quests_first(player_data.get("completed_contracts", []))
             card_type = "quests"
             empty_msg = "No completed quests"
 

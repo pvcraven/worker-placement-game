@@ -95,7 +95,7 @@ class LobbyView(arcade.View):
             text_color=arcade.color.WHITE,
             bold=True,
             multiline=True,
-            width=400,
+            width=600,
         )
         v_box.add(self.player_list_label)
 
