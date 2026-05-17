@@ -538,7 +538,7 @@ async def _end_round(server: GameServer, state) -> None:
     # Set turn order based on first-player marker
     first_pid = state.board.first_player_id
     if first_pid:
-        pids = [p.player_id for p in state.players]
+        pids = list(state.turn_order)
         if first_pid in pids:
             idx = pids.index(first_pid)
             state.turn_order = pids[idx:] + pids[:idx]
@@ -2568,8 +2568,11 @@ def _resolve_intrigue_effect(state, player, card) -> dict:
                 )
                 if has_resource:
                     eligible.append(p.player_id)
-            effect["pending"] = True
-            effect["eligible_targets"] = eligible
+            if eligible:
+                effect["pending"] = True
+                effect["eligible_targets"] = eligible
+            else:
+                effect["details"] = {"no_valid_targets": True}
 
     elif card.effect_type == "all_players_gain":
         reward = ResourceCost(
@@ -3316,7 +3319,10 @@ async def handle_purchase_building(
         next_player = None
     else:
         await _advance_turn(server, state)
-        next_player = state.current_player()
+        if state.phase == GamePhase.PLACEMENT:
+            next_player = state.current_player()
+        else:
+            next_player = None
 
     await server.broadcast_to_game(
         state.game_code,
@@ -3579,11 +3585,31 @@ async def handle_reassign_worker(
     if target is None:
         await conn.send_error("INVALID_ACTION", "Unknown target space.")
         return
-    if target.occupied_by is not None:
-        await conn.send_error("SPACE_OCCUPIED", "Target space is occupied.")
-        return
-
     player = state.get_player(conn.player_id)
+
+    if target.occupied_by is not None:
+        if _can_use_occupied(player, target, state):
+            player.use_occupied_used_this_round = True
+            target.also_occupied_by = target.occupied_by
+        else:
+            has_ability = any(
+                c.reward_use_occupied_building for c in player.completed_contracts
+            )
+            if has_ability and player.use_occupied_used_this_round:
+                await conn.send_error(
+                    "SPACE_OCCUPIED",
+                    "Already used your occupied-space ability this round.",
+                )
+            elif has_ability and target.occupied_by == player.player_id:
+                await conn.send_error(
+                    "SPACE_OCCUPIED",
+                    "Cannot use occupied-space ability on your own worker.",
+                )
+            else:
+                await conn.send_error(
+                    "SPACE_OCCUPIED", "That space is already occupied."
+                )
+            return
 
     # Pre-validate resource choice affordability before committing reassignment
     if target.building_tile and target.building_tile.visitor_reward_choice:
@@ -4199,6 +4225,8 @@ async def handle_cancel_intrigue_target(
             plot_quest_bonus_vp=result["reversed_vp"],
         ),
     )
+
+    await _check_quest_completion(server, state)
 
 
 # ------------------------------------------------------------------
