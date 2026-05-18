@@ -1620,7 +1620,13 @@ class GameView(arcade.View):
 
         next_pid = msg.get("next_player_id")
         if next_pid:
-            self._update_current_player(next_pid)
+            anim_event = AnimationEvent(
+                lambda gv, np=next_pid: (
+                    gv._update_current_player(np),
+                    setattr(anim_event, "done", True),
+                ),
+            )
+            self.event_queue.enqueue(anim_event, self)
 
     def _on_quest_reward_choice_prompt(
         self,
