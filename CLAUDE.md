@@ -39,6 +39,8 @@ Auto-generated from all feature plans. Last updated: 2026-05-18
 - Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), websockets, Pydantic v2, Pillow (for marker PNG generation) (033-colored-marker-selection)
 - In-memory game state (server); PNG image files (marker assets) (033-colored-marker-selection)
 - Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), arcade.anim (Easing, ease), Pydantic v2 (034-quest-completion-animation)
+- Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), arcade.anim (Easing, ease) (035-building-acquisition-animation)
+- N/A (client-side animation only) (035-building-acquisition-animation)
 
 - Python 3.12+ + Arcade (graphics/client UI), websockets (async networking), Pydantic (data validation/serialization) (001-worker-placement-game)
 
@@ -58,9 +60,9 @@ cd src && pytest && ruff check .
 Python 3.12+: Follow standard conventions
 
 ## Recent Changes
+- 035-building-acquisition-animation: Added Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), arcade.anim (Easing, ease)
 - 034-quest-completion-animation: Added Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), arcade.anim (Easing, ease), Pydantic v2
 - 033-colored-marker-selection: Added Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), websockets, Pydantic v2, Pillow (for marker PNG generation)
-- 032-intrigue-card-animation: Added Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), Pillow (PIL), Pydantic v2, websockets
 
 
 <!-- MANUAL ADDITIONS START -->
