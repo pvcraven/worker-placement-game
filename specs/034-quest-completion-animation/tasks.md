@@ -26,10 +26,10 @@
 
 **Purpose**: Create the enqueue method skeleton and resource icon helper that all animation phases depend on.
 
-- [ ] T001 Add `_enqueue_quest_completion` method in `client/views/game_view.py` that creates an `AnimationEvent` wrapping `_start_quest_completion_animation` and enqueues it on `self.event_queue`. Follow the pattern from `_enqueue_intrigue_draw` (line 1051). The method should accept the quest completion message dict.
-- [ ] T002 Add `_start_quest_completion_animation` skeleton method in `client/views/game_view.py` that receives the message dict and `AnimationEvent`, extracts `contract_id`, `player_id`, `resources_spent`, `bonus_resources`, looks up `self._player_marker_positions[pid]`, computes screen center `(self.window.width / 2, self.window.height / 2)`, and creates the quest card sprite from `client/assets/card_images/quests/{contract_id}.png`. Set `event.done = True` as a placeholder completion.
-- [ ] T003 Add `_build_resource_icon_list` helper method in `client/views/game_view.py` that takes a resource dict (e.g., `{"guitarists": 3, "singers": 1}`) and returns a flat list of icon file paths by expanding each resource key by its count, using the mapping: `guitarists` → `client/assets/card_images/icons/guitarist.png`, `bass_players` → `bass_player.png`, `drummers` → `drummer.png`, `singers` → `singer.png`, `coins` → `coin.png`.
-- [ ] T004 Modify `_on_quest_completed` in `client/views/game_view.py` to call `_enqueue_quest_completion(msg)` at the start of the method (before existing state update logic), so the animation is enqueued on the event queue.
+- [x] T001 Add `_enqueue_quest_completion` method in `client/views/game_view.py` that creates an `AnimationEvent` wrapping `_start_quest_completion_animation` and enqueues it on `self.event_queue`. Follow the pattern from `_enqueue_intrigue_draw` (line 1051). The method should accept the quest completion message dict.
+- [x] T002 Add `_start_quest_completion_animation` skeleton method in `client/views/game_view.py` that receives the message dict and `AnimationEvent`, extracts `contract_id`, `player_id`, `resources_spent`, `bonus_resources`, looks up `self._player_marker_positions[pid]`, computes screen center `(self.window.width / 2, self.window.height / 2)`, and creates the quest card sprite from `client/assets/card_images/quests/{contract_id}.png`. Set `event.done = True` as a placeholder completion.
+- [x] T003 Add `_build_resource_icon_list` helper method in `client/views/game_view.py` that takes a resource dict (e.g., `{"guitarists": 3, "singers": 1}`) and returns a flat list of icon file paths by expanding each resource key by its count, using the mapping: `guitarists` → `client/assets/card_images/icons/guitarist.png`, `bass_players` → `bass_player.png`, `drummers` → `drummer.png`, `singers` → `singer.png`, `coins` → `coin.png`.
+- [x] T004 Modify `_on_quest_completed` in `client/views/game_view.py` to call `_enqueue_quest_completion(msg)` at the start of the method (before existing state update logic), so the animation is enqueued on the event queue.
 
 **Checkpoint**: Foundation ready — completing a quest should enqueue an animation event that creates a card sprite and immediately completes. Existing state updates and log entries still work. Intrigue draw animations that follow quest completion are sequenced after.
 
@@ -41,7 +41,7 @@
 
 **Independent Test**: Complete any quest → observe the card sprite animate from upper-left to center, growing to 2x size, then disappearing (placeholder exit).
 
-- [ ] T005 [US1] Implement card entrance animation in `_start_quest_completion_animation` in `client/views/game_view.py`. Use `self.animation_manager.animate()` to move the quest card sprite from the player marker position to screen center over 0.5s with `Easing.SINE`, scaling from `scale` to `scale * 2`. Set `on_complete` to a callback that will trigger the next phase (for now, set `event.done = True` in the callback as placeholder).
+- [x] T005 [US1] Implement card entrance animation in `_start_quest_completion_animation` in `client/views/game_view.py`. Use `self.animation_manager.animate()` to move the quest card sprite from the player marker position to screen center over 0.5s with `Easing.SINE`, scaling from `scale` to `scale * 2`. Set `on_complete` to a callback that will trigger the next phase (for now, set `event.done = True` in the callback as placeholder).
 
 **Checkpoint**: Completing a quest shows the card flying to center at 2x scale, then the event completes.
 
@@ -53,8 +53,8 @@
 
 **Independent Test**: Complete a quest requiring multiple resources (e.g., 4 guitarists) → observe 4 guitarist icons fly sequentially from the player area to the card center with visible stagger timing.
 
-- [ ] T006 [US2] Add `_stream_resources_to_card` method in `client/views/game_view.py`. It takes: icon file paths (from `_build_resource_icon_list`), origin position (player marker), destination position (screen center), and an `on_all_done` callback. For each icon, create an `arcade.Sprite`, then animate it. Stagger starts by using a short 0.25s "hold" animation at the origin whose `on_complete` launches the next icon's flight. Each flight icon animates from origin to destination over ~0.5s with `Easing.SINE`. Use a remaining-count integer to track completions; when the last icon arrives, call `on_all_done`.
-- [ ] T007 [US2] Wire card entrance `on_complete` in `_start_quest_completion_animation` to call `_stream_resources_to_card` with the `resources_spent` icons, player marker position as origin, screen center as destination. If `resources_spent` has all zero values (no icons), skip directly to the next phase. The `on_all_done` callback should set `event.done = True` as a placeholder for now.
+- [x] T006 [US2] Add `_stream_resources_to_card` method in `client/views/game_view.py`. It takes: icon file paths (from `_build_resource_icon_list`), origin position (player marker), destination position (screen center), and an `on_all_done` callback. For each icon, create an `arcade.Sprite`, then animate it. Stagger starts by using a short 0.25s "hold" animation at the origin whose `on_complete` launches the next icon's flight. Each flight icon animates from origin to destination over ~0.5s with `Easing.SINE`. Use a remaining-count integer to track completions; when the last icon arrives, call `on_all_done`.
+- [x] T007 [US2] Wire card entrance `on_complete` in `_start_quest_completion_animation` to call `_stream_resources_to_card` with the `resources_spent` icons, player marker position as origin, screen center as destination. If `resources_spent` has all zero values (no icons), skip directly to the next phase. The `on_all_done` callback should set `event.done = True` as a placeholder for now.
 
 **Checkpoint**: Completing a quest shows card entrance → resource icons stream to card → event completes. Quests with zero cost skip the stream.
 
@@ -66,7 +66,7 @@
 
 **Independent Test**: Complete a quest with bonus resources (check contracts.json for quests with `bonus_resources`) → observe reward icons fly from card center to the player area after the requirements stream finishes.
 
-- [ ] T008 [US3] Wire the requirements stream `on_all_done` callback in `_start_quest_completion_animation` to start the reward phase. If `bonus_resources` has any non-zero values, call `_stream_resources_to_card` with the `bonus_resources` icons, screen center as origin, player marker position as destination. If no bonus resources, skip directly to the next phase. Reuse the same `_stream_resources_to_card` method — it works in both directions since origin/destination are parameters.
+- [x] T008 [US3] Wire the requirements stream `on_all_done` callback in `_start_quest_completion_animation` to start the reward phase. If `bonus_resources` has any non-zero values, call `_stream_resources_to_card` with the `bonus_resources` icons, screen center as origin, player marker position as destination. If no bonus resources, skip directly to the next phase. Reuse the same `_stream_resources_to_card` method — it works in both directions since origin/destination are parameters.
 
 **Checkpoint**: Completing a quest with bonus resources shows card entrance → cost stream → reward stream → event completes. Quests without bonus resources skip the reward stream.
 
@@ -78,8 +78,8 @@
 
 **Independent Test**: Complete any quest → observe the full sequence: card entrance → cost stream → reward stream (if applicable) → card flies to lower-right and disappears → gameplay resumes.
 
-- [ ] T009 [US4] Add `_exit_quest_card` method in `client/views/game_view.py` that animates the quest card sprite from screen center to the lower-right corner `(self.window.width + 100, -100)` over 0.75s with `Easing.QUAD_IN`, scaling from `scale * 2` back to `scale`. The `on_complete` callback sets `event.done = True`.
-- [ ] T010 [US4] Wire the reward stream `on_all_done` (or the requirements `on_all_done` when no rewards, or the entrance `on_complete` when no costs and no rewards) to call `_exit_quest_card`. Ensure the full callback chain works for all combinations: costs+rewards, costs-only, rewards-only, neither.
+- [x] T009 [US4] Add `_exit_quest_card` method in `client/views/game_view.py` that animates the quest card sprite from screen center to the lower-right corner `(self.window.width + 100, -100)` over 0.75s with `Easing.QUAD_IN`, scaling from `scale * 2` back to `scale`. The `on_complete` callback sets `event.done = True`.
+- [x] T010 [US4] Wire the reward stream `on_all_done` (or the requirements `on_all_done` when no rewards, or the entrance `on_complete` when no costs and no rewards) to call `_exit_quest_card`. Ensure the full callback chain works for all combinations: costs+rewards, costs-only, rewards-only, neither.
 
 **Checkpoint**: Full animation sequence works end-to-end for all quest types. Event queue unblocks after exit.
 
@@ -89,9 +89,9 @@
 
 **Purpose**: Edge cases and integration validation.
 
-- [ ] T011 Verify edge case handling in `_start_quest_completion_animation` in `client/views/game_view.py`: if the quest card image file is missing, set `event.done = True` immediately and return (graceful fallback, matching the pattern in `_start_card_pick_animation` line 992). If the player marker position is not found, use fallback `(0.0, float(self.window.height))`.
+- [x] T011 Verify edge case handling in `_start_quest_completion_animation` in `client/views/game_view.py`: if the quest card image file is missing, set `event.done = True` immediately and return (graceful fallback, matching the pattern in `_start_card_pick_animation` line 992). If the player marker position is not found, use fallback `(0.0, float(self.window.height))`.
 - [ ] T012 Manual integration test: run server and client, complete quests with varying resource costs and rewards to verify the full animation sequence. Check that drawn intrigue card animations play after the quest completion animation. Check that `next_player_id` turn updates are applied correctly. Verify no stale sprites remain on screen.
-- [ ] T013 Run `cd src && pytest && ruff check .` to verify no regressions or lint errors.
+- [x] T013 Run `cd src && pytest && ruff check .` to verify no regressions or lint errors.
 
 ---
 
