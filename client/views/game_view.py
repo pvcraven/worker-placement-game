@@ -2432,9 +2432,7 @@ class GameView(arcade.View):
                     "reward": msg.get("visitor_reward", {}),
                     "owner_bonus": msg.get("owner_bonus", {}),
                     "occupied_by": None,
-                    "building_tile": msg.get(
-                        "building_tile", {"id": building_id}
-                    ),
+                    "building_tile": msg.get("building_tile", {"id": building_id}),
                 }
 
             self._refresh_board(board)
@@ -2444,9 +2442,7 @@ class GameView(arcade.View):
 
         anim_event = AnimationEvent(
             lambda gv, bid=building_id, li=lot_index: (
-                gv._start_building_purchase_animation(
-                    bid, li, anim_event, apply_state
-                )
+                gv._start_building_purchase_animation(bid, li, anim_event, apply_state)
             ),
         )
         self.event_queue.enqueue(anim_event, self)
