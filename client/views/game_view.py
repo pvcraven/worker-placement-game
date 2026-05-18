@@ -1064,6 +1064,105 @@ class GameView(arcade.View):
         )
         self.event_queue.enqueue(anim_event, self)
 
+    def _start_building_purchase_animation(
+        self,
+        building_id: str,
+        lot_index: int,
+        event: AnimationEvent,
+        apply_state: callable,
+    ) -> None:
+        origin = (
+            self.board_renderer.get_building_card_info(building_id)
+            if self.board_renderer
+            else None
+        )
+        if not origin:
+            origin = (float(self.window.width - 100), 100.0, 0.5)
+
+        dest = (
+            self.board_renderer.get_building_lot_position(lot_index)
+            if self.board_renderer
+            else None
+        )
+        if not dest:
+            apply_state()
+            event.done = True
+            return
+
+        ox, oy, o_scale = origin
+        dx, dy, d_scale = dest
+
+        img = f"client/assets/card_images/buildings/{building_id}.png"
+        try:
+            sprite = arcade.Sprite(img, scale=o_scale)
+        except Exception:
+            apply_state()
+            event.done = True
+            return
+
+        def on_complete() -> None:
+            apply_state()
+            event.done = True
+
+        self.animation_manager.animate(
+            sprite=sprite,
+            start=(ox, oy),
+            end=(dx, dy),
+            duration=0.75,
+            easing=Easing.SINE,
+            start_scale=o_scale,
+            end_scale=d_scale,
+            sound=self._card_sound,
+            on_complete=on_complete,
+        )
+
+    def _start_building_draw_animation(
+        self,
+        building_id: str,
+        lot_index: int,
+        event: AnimationEvent,
+        apply_state: callable,
+    ) -> None:
+        start_x = float(self.window.width - 100)
+        start_y = 100.0
+
+        dest = (
+            self.board_renderer.get_building_lot_position(lot_index)
+            if self.board_renderer
+            else None
+        )
+        if not dest:
+            apply_state()
+            event.done = True
+            return
+
+        dx, dy, d_scale = dest
+        start_scale = d_scale * 0.5
+
+        img = f"client/assets/card_images/buildings/{building_id}.png"
+        try:
+            sprite = arcade.Sprite(img, scale=start_scale)
+        except Exception:
+            apply_state()
+            event.done = True
+            return
+
+        def on_complete() -> None:
+            apply_state()
+            event.done = True
+
+        self.animation_manager.animate(
+            sprite=sprite,
+            start=(start_x, start_y),
+            end=(dx, dy),
+            duration=0.75,
+            easing=Easing.SINE,
+            start_scale=start_scale,
+            end_scale=d_scale,
+            sound=self._card_sound,
+            on_complete=on_complete,
+        )
+
     _RESOURCE_ICON_MAP = {
         "guitarists": "client/assets/card_images/icons/guitarist.png",
         "bass_players": "client/assets/card_images/icons/bass_player.png",
@@ -1524,36 +1623,49 @@ class GameView(arcade.View):
             )
 
         if building:
-            board = self.game_state.get("board", {})
-            sid = building.get("space_id", "")
-            if sid:
-                board.setdefault(
-                    "constructed_buildings",
-                    [],
-                ).append(sid)
-                spaces = board.get("action_spaces", {})
-                if sid not in spaces:
-                    spaces[sid] = {
-                        "name": building.get(
-                            "building_name",
-                            "?",
-                        ),
-                        "space_type": "building",
-                        "owner_id": pid,
-                        "reward": building.get(
-                            "visitor_reward",
-                            {},
-                        ),
-                        "owner_bonus": building.get(
-                            "owner_bonus",
-                            {},
-                        ),
-                        "building_tile": {
-                            "id": building.get("building_id", ""),
-                        },
-                        "occupied_by": None,
-                    }
-            self._refresh_board(board)
+            bld_id = building.get("building_id", "")
+            bld_lot = building.get("lot_index", 0)
+            bld_sid = building.get("space_id", "")
+
+            def apply_building_grant() -> None:
+                board = self.game_state.get("board", {})
+                if bld_sid:
+                    board.setdefault(
+                        "constructed_buildings",
+                        [],
+                    ).append(bld_sid)
+                    spaces = board.get("action_spaces", {})
+                    if bld_sid not in spaces:
+                        spaces[bld_sid] = {
+                            "name": building.get(
+                                "building_name",
+                                "?",
+                            ),
+                            "space_type": "building",
+                            "owner_id": pid,
+                            "reward": building.get(
+                                "visitor_reward",
+                                {},
+                            ),
+                            "owner_bonus": building.get(
+                                "owner_bonus",
+                                {},
+                            ),
+                            "building_tile": {
+                                "id": bld_id,
+                            },
+                            "occupied_by": None,
+                        }
+                self._refresh_board(board)
+
+            bld_anim_event = AnimationEvent(
+                lambda gv, bid=bld_id, li=bld_lot: (
+                    gv._start_building_draw_animation(
+                        bid, li, bld_anim_event, apply_building_grant
+                    )
+                ),
+            )
+            self.event_queue.enqueue(bld_anim_event, self)
 
         extra_workers = msg.get("extra_workers_granted", 0)
         if extra_workers > 0:
@@ -1700,44 +1812,62 @@ class GameView(arcade.View):
             board["face_up_quests"] = [q for q in face_up if q.get("id") != cid]
             self._refresh_board(board)
         elif reward_type == "choose_building":
-            board = self.game_state.get("board", {})
+            building_id = choice.get("building_id", "")
+            lot_index = choice.get("lot_index", 0)
             sid = choice.get("space_id", "")
-            if sid:
-                board.setdefault(
-                    "constructed_buildings",
-                    [],
-                ).append(sid)
-                spaces = board.get(
-                    "action_spaces",
-                    {},
-                )
-                if sid not in spaces:
-                    spaces[sid] = {
-                        "name": choice.get(
-                            "building_name",
-                            "?",
-                        ),
-                        "space_type": "building",
-                        "owner_id": pid,
-                        "reward": choice.get(
-                            "visitor_reward",
-                            {},
-                        ),
-                        "owner_bonus": choice.get(
-                            "owner_bonus",
-                            {},
-                        ),
-                        "occupied_by": None,
-                        "building_tile": {"id": choice.get("building_id", "")},
-                    }
-                bid = choice.get("building_id")
-                if bid:
-                    fub = board.get(
-                        "face_up_buildings",
+
+            def apply_building_state() -> None:
+                board = self.game_state.get("board", {})
+                if sid:
+                    board.setdefault(
+                        "constructed_buildings",
                         [],
+                    ).append(sid)
+                    spaces = board.get(
+                        "action_spaces",
+                        {},
                     )
-                    board["face_up_buildings"] = [b for b in fub if b.get("id") != bid]
-                self._refresh_board(board)
+                    if sid not in spaces:
+                        spaces[sid] = {
+                            "name": choice.get(
+                                "building_name",
+                                "?",
+                            ),
+                            "space_type": "building",
+                            "owner_id": pid,
+                            "reward": choice.get(
+                                "visitor_reward",
+                                {},
+                            ),
+                            "owner_bonus": choice.get(
+                                "owner_bonus",
+                                {},
+                            ),
+                            "occupied_by": None,
+                            "building_tile": {"id": building_id},
+                        }
+                    if building_id:
+                        fub = board.get(
+                            "face_up_buildings",
+                            [],
+                        )
+                        board["face_up_buildings"] = [
+                            b for b in fub if b.get("id") != building_id
+                        ]
+                    self._refresh_board(board)
+
+                next_pid = msg.get("next_player_id")
+                if next_pid:
+                    self._update_current_player(next_pid)
+
+            anim_event = AnimationEvent(
+                lambda gv, bid=building_id, li=lot_index: (
+                    gv._start_building_purchase_animation(
+                        bid, li, anim_event, apply_building_state
+                    )
+                ),
+            )
+            self.event_queue.enqueue(anim_event, self)
 
         if self.tabbed_panel:
             name = self._player_name(pid)
@@ -1755,9 +1885,10 @@ class GameView(arcade.View):
                     f"{name} chose building '{bn}'" f" as reward for '{quest_name}'"
                 )
 
-        next_pid = msg.get("next_player_id")
-        if next_pid:
-            self._update_current_player(next_pid)
+        if reward_type != "choose_building":
+            next_pid = msg.get("next_player_id")
+            if next_pid:
+                self._update_current_player(next_pid)
 
     def _on_resource_choice_prompt(
         self,
@@ -2258,44 +2389,8 @@ class GameView(arcade.View):
         accum_vp = msg.get("accumulated_vp", 0)
         plot_bonus = msg.get("plot_quest_bonus_vp", 0)
         total_vp = accum_vp + plot_bonus
-
-        for p in self.game_state.get("players", []):
-            if p.get("player_id") == pid:
-                if cost:
-                    res = p.get("resources", {})
-                    res["coins"] = max(0, res.get("coins", 0) - cost)
-                    my_id = getattr(self.window, "player_id", None)
-                    if pid == my_id and self.resource_bar:
-                        self.resource_bar.update_resources(res)
-                if total_vp:
-                    p["victory_points"] = p.get("victory_points", 0) + total_vp
-                break
-
-        # Update local board state
-        board = self.game_state.get("board", {})
-        constructed = board.get("constructed_buildings", [])
-        if new_space_id and new_space_id not in constructed:
-            constructed.append(new_space_id)
-
-        # Add building to local action_spaces so it renders
-        spaces = board.get("action_spaces", {})
-        if new_space_id and new_space_id not in spaces:
-            spaces[new_space_id] = {
-                "name": bname,
-                "space_type": "building",
-                "owner_id": msg.get("owner_id", ""),
-                "reward": msg.get("visitor_reward", {}),
-                "owner_bonus": msg.get("owner_bonus", {}),
-                "occupied_by": None,
-                "building_tile": msg.get(
-                    "building_tile", {"id": msg.get("building_id", "")}
-                ),
-            }
-
-        self._refresh_board(board)
-
-        next_pid = msg.get("next_player_id")
-        self._update_current_player(next_pid)
+        building_id = msg.get("building_id", "")
+        lot_index = msg.get("lot_index", 0)
 
         if self.tabbed_panel:
             name = self._player_name(pid)
@@ -2309,6 +2404,48 @@ class GameView(arcade.View):
             self.tabbed_panel.add_entry(
                 f"{name} built {bname}{vp_str}",
             )
+
+        def apply_state() -> None:
+            for p in self.game_state.get("players", []):
+                if p.get("player_id") == pid:
+                    if cost:
+                        res = p.get("resources", {})
+                        res["coins"] = max(0, res.get("coins", 0) - cost)
+                        my_id = getattr(self.window, "player_id", None)
+                        if pid == my_id and self.resource_bar:
+                            self.resource_bar.update_resources(res)
+                    if total_vp:
+                        p["victory_points"] = p.get("victory_points", 0) + total_vp
+                    break
+
+            board = self.game_state.get("board", {})
+            constructed = board.get("constructed_buildings", [])
+            if new_space_id and new_space_id not in constructed:
+                constructed.append(new_space_id)
+
+            spaces = board.get("action_spaces", {})
+            if new_space_id and new_space_id not in spaces:
+                spaces[new_space_id] = {
+                    "name": bname,
+                    "space_type": "building",
+                    "owner_id": msg.get("owner_id", ""),
+                    "reward": msg.get("visitor_reward", {}),
+                    "owner_bonus": msg.get("owner_bonus", {}),
+                    "occupied_by": None,
+                    "building_tile": msg.get("building_tile", {"id": building_id}),
+                }
+
+            self._refresh_board(board)
+
+            next_pid = msg.get("next_player_id")
+            self._update_current_player(next_pid)
+
+        anim_event = AnimationEvent(
+            lambda gv, bid=building_id, li=lot_index: (
+                gv._start_building_purchase_animation(bid, li, anim_event, apply_state)
+            ),
+        )
+        self.event_queue.enqueue(anim_event, self)
 
     def _on_reassignment_phase_start(self, msg: dict) -> None:
         slots = msg.get("backstage_slots", [])

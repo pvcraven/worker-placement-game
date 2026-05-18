@@ -762,3 +762,32 @@ class BoardRenderer:
                 x, y = self._quest_positions[i]
                 return (x, y, self._quest_scale)
         return None
+
+    def get_building_card_info(
+        self, building_id: str
+    ) -> tuple[float, float, float] | None:
+        """Return (x, y, scale) for a face-up building card, or None."""
+        g = self._grid
+        if g is None:
+            return None
+        bld_scale = g.card_scale(2, CARD_WIDTH, BUILDING_CARD_HEIGHT)
+        for i, bld in enumerate(self._face_up_buildings):
+            if bld is None:
+                continue
+            if bld.get("id") == building_id and i < len(self._bld_positions):
+                x, y = self._bld_positions[i]
+                return (x, y, bld_scale)
+        return None
+
+    def get_building_lot_position(
+        self, lot_index: int
+    ) -> tuple[float, float, float] | None:
+        """Return (x, y, scale) for a constructed building lot, or None."""
+        g = self._grid
+        if g is None:
+            return None
+        bld_scale = g.card_scale(2, CARD_WIDTH, BUILDING_CARD_HEIGHT)
+        col = 1 + (lot_index % 2)
+        row = (lot_index // 2) * 2
+        cx, cy, _, _ = g.cell_rect(col, row, 1, 2)
+        return (cx, cy, bld_scale)
