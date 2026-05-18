@@ -405,17 +405,22 @@ class GameView(arcade.View):
             if bt and bt.get("accumulation_type"):
                 bt["accumulated_stock"] = 0
 
+        # Determine next_player_id now; defer the chime until animation finishes
+        next_pid = msg.get("next_player_id")
+
         if origin and target:
             self._queue_marker_animation(
                 pid,
                 origin,
                 target,
-                on_complete=lambda: self._refresh_board(
-                    self.game_state.get("board", {}),
+                on_complete=lambda: (
+                    self._refresh_board(self.game_state.get("board", {})),
+                    self._update_current_player(next_pid),
                 ),
             )
         else:
             self._refresh_board(board)
+            self._update_current_player(next_pid)
 
         # Update player resources and worker count
         self._apply_reward_to_player(pid, reward)
@@ -485,10 +490,6 @@ class GameView(arcade.View):
         ):
             self._enter_building_highlight(pid)
             return
-
-        # Update turn
-        next_pid = msg.get("next_player_id")
-        self._update_current_player(next_pid)
 
         if self.tabbed_panel:
             name = self._player_name(pid)
@@ -702,17 +703,29 @@ class GameView(arcade.View):
                     p["victory_points"] = p.get("victory_points", 0) + plot_bonus
                     break
 
+        next_pid = msg.get("next_player_id")
+        my_id = getattr(self.window, "player_id", None)
+
+        def _on_backstage_anim_done():
+            self._refresh_board(self.game_state.get("board", {}))
+            if next_pid is None and pid != my_id and self._is_my_turn():
+                name = self._player_name(pid)
+                self._info_dialog.show(f"Waiting on {name}", duration=None)
+            self._update_current_player(next_pid)
+
         if origin and target:
             self._queue_marker_animation(
                 pid,
                 origin,
                 target,
-                on_complete=lambda: self._refresh_board(
-                    self.game_state.get("board", {}),
-                ),
+                on_complete=_on_backstage_anim_done,
             )
         else:
             self._refresh_board(board)
+            if next_pid is None and pid != my_id and self._is_my_turn():
+                name = self._player_name(pid)
+                self._info_dialog.show(f"Waiting on {name}", duration=None)
+            self._update_current_player(next_pid)
 
         if self.tabbed_panel:
             name = self._player_name(pid)
@@ -728,13 +741,6 @@ class GameView(arcade.View):
             effect_str = self._format_intrigue_effect(effect_type, details)
             if effect_str:
                 self.tabbed_panel.add_entry(f"  Effect: {effect_str}")
-
-        next_pid = msg.get("next_player_id")
-        my_id = getattr(self.window, "player_id", None)
-        if next_pid is None and pid != my_id and self._is_my_turn():
-            name = self._player_name(pid)
-            self._info_dialog.show(f"Waiting on {name}", duration=None)
-        self._update_current_player(next_pid)
 
     def _on_intrigue_target_prompt(self, msg: dict) -> None:
         dialog_event = DialogEvent(
