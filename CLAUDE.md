@@ -1,6 +1,6 @@
 # Worker Placement Game Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-05-16
+Auto-generated from all feature plans. Last updated: 2026-05-18
 
 ## Active Technologies
 - Python 3.12+ + Arcade (client UI), websockets (networking), Pydantic (validation) (002-garage-quest-display)
@@ -38,6 +38,7 @@ Auto-generated from all feature plans. Last updated: 2026-05-16
 - In-memory game state; JSON config; PNG image files (032-intrigue-card-animation)
 - Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), websockets, Pydantic v2, Pillow (for marker PNG generation) (033-colored-marker-selection)
 - In-memory game state (server); PNG image files (marker assets) (033-colored-marker-selection)
+- Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), arcade.anim (Easing, ease), Pydantic v2 (034-quest-completion-animation)
 
 - Python 3.12+ + Arcade (graphics/client UI), websockets (async networking), Pydantic (data validation/serialization) (001-worker-placement-game)
 
@@ -57,9 +58,9 @@ cd src && pytest && ruff check .
 Python 3.12+: Follow standard conventions
 
 ## Recent Changes
+- 034-quest-completion-animation: Added Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), arcade.anim (Easing, ease), Pydantic v2
 - 033-colored-marker-selection: Added Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), websockets, Pydantic v2, Pillow (for marker PNG generation)
 - 032-intrigue-card-animation: Added Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), Pillow (PIL), Pydantic v2, websockets
-- 031-event-action-queue: Added [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 
 
 <!-- MANUAL ADDITIONS START -->

@@ -10,7 +10,7 @@ import arcade.gui
 from arcade.anim import Easing
 
 from client.ui.animation_manager import AnimationManager
-from client.ui.event_queue import AnimationEvent, DialogEvent, EventQueue
+from client.ui.event_queue import AnimationEvent, DialogEvent, EventQueue, QueuedEvent
 from client.ui.board_renderer import BoardRenderer
 from client.ui.info_dialog import InfoDialog
 from client.ui.marker_selection_dialog import MarkerSelectionDialog
@@ -1064,6 +1064,192 @@ class GameView(arcade.View):
         )
         self.event_queue.enqueue(anim_event, self)
 
+    _RESOURCE_ICON_MAP = {
+        "guitarists": "client/assets/card_images/icons/guitarist.png",
+        "bass_players": "client/assets/card_images/icons/bass_player.png",
+        "drummers": "client/assets/card_images/icons/drummer.png",
+        "singers": "client/assets/card_images/icons/singer.png",
+        "coins": "client/assets/card_images/icons/coin.png",
+    }
+
+    def _enqueue_info_dialog(
+        self,
+        message: str,
+        duration: float = 1.5,
+        sound: object = None,
+    ) -> None:
+        class _InfoEvent(QueuedEvent):
+            def __init__(self_ev) -> None:
+                super().__init__()
+                self_ev._timer = 0.0
+
+            def start(self_ev, game_view: GameView) -> None:
+                super().start(game_view)
+                if sound:
+                    arcade.play_sound(sound)
+                game_view._info_dialog.show(message, duration=duration)
+
+            def update(self_ev, dt: float) -> None:
+                if self_ev.started:
+                    self_ev._timer += dt
+
+            def is_complete(self_ev) -> bool:
+                return self_ev._timer >= duration
+
+        self.event_queue.enqueue(_InfoEvent(), self)
+
+    def _enqueue_quest_completion(self, msg: dict) -> None:
+        anim_event = AnimationEvent(
+            lambda gv, m=msg: (gv._start_quest_completion_animation(m, anim_event)),
+        )
+        self.event_queue.enqueue(anim_event, self)
+
+    def _build_resource_icon_list(self, resources: dict) -> list[str]:
+        icons: list[str] = []
+        for key, path in self._RESOURCE_ICON_MAP.items():
+            count = resources.get(key, 0)
+            icons.extend([path] * count)
+        return icons
+
+    def _start_quest_completion_animation(
+        self,
+        msg: dict,
+        event: AnimationEvent,
+    ) -> None:
+        cid = msg.get("contract_id", "")
+        pid = msg.get("player_id", "")
+        spent = msg.get("resources_spent", {})
+        bonus = msg.get("bonus_resources", {})
+
+        origin = self._player_marker_positions.get(
+            pid, (0.0, float(self.window.height))
+        )
+        cx = self.window.width / 2
+        cy = self.window.height / 2
+        center = (cx, cy)
+
+        scale = self.board_renderer._quest_scale if self.board_renderer else 0.5
+        big_scale = scale * 2
+
+        img = f"client/assets/card_images/quests/{cid}.png"
+        try:
+            sprite = arcade.Sprite(img, scale=scale)
+        except Exception:
+            event.done = True
+            return
+
+        cost_icons = self._build_resource_icon_list(spent)
+        reward_icons = self._build_resource_icon_list(bonus)
+
+        def _keep_card_visible() -> None:
+            sprite.position = center
+            sprite.scale = big_scale
+            self.animation_manager._sprite_list.append(sprite)
+
+        def start_exit() -> None:
+            sprite.remove_from_sprite_lists()
+            self._exit_quest_card(sprite, center, big_scale, scale, event)
+
+        def start_rewards() -> None:
+            if reward_icons:
+                self._stream_resources(
+                    reward_icons,
+                    center,
+                    origin,
+                    start_exit,
+                )
+            else:
+                start_exit()
+
+        def start_costs() -> None:
+            _keep_card_visible()
+            if cost_icons:
+                self._stream_resources(
+                    cost_icons,
+                    origin,
+                    center,
+                    start_rewards,
+                )
+            else:
+                start_rewards()
+
+        self.animation_manager.animate(
+            sprite=sprite,
+            start=origin,
+            end=center,
+            duration=0.5,
+            easing=Easing.SINE,
+            start_scale=scale,
+            end_scale=big_scale,
+            sound=self._card_sound,
+            on_complete=start_costs,
+        )
+
+    def _stream_resources(
+        self,
+        icon_paths: list[str],
+        origin: tuple[float, float],
+        destination: tuple[float, float],
+        on_all_done: callable,
+    ) -> None:
+        remaining = len(icon_paths)
+
+        def on_icon_arrived() -> None:
+            nonlocal remaining
+            remaining -= 1
+            if remaining == 0:
+                on_all_done()
+
+        def launch_icon(index: int) -> None:
+            if index >= len(icon_paths):
+                return
+            try:
+                icon_sprite = arcade.Sprite(icon_paths[index], scale=0.5)
+            except Exception:
+                on_icon_arrived()
+                return
+            self.animation_manager.animate(
+                sprite=icon_sprite,
+                start=origin,
+                end=destination,
+                duration=1.0,
+                easing=Easing.SINE,
+                on_complete=on_icon_arrived,
+            )
+            if index + 1 < len(icon_paths):
+                delay_sprite = arcade.Sprite(icon_paths[index + 1])
+                delay_sprite.alpha = 0
+                self.animation_manager.animate(
+                    sprite=delay_sprite,
+                    start=origin,
+                    end=origin,
+                    duration=0.25,
+                    easing=Easing.LINEAR,
+                    on_complete=lambda idx=index + 1: launch_icon(idx),
+                )
+
+        launch_icon(0)
+
+    def _exit_quest_card(
+        self,
+        sprite: arcade.Sprite,
+        center: tuple[float, float],
+        big_scale: float,
+        small_scale: float,
+        event: AnimationEvent,
+    ) -> None:
+        exit_pos = (float(self.window.width + 100), -100.0)
+        self.animation_manager.animate(
+            sprite=sprite,
+            start=center,
+            end=exit_pos,
+            duration=0.75,
+            easing=Easing.QUAD_IN,
+            start_scale=big_scale,
+            end_scale=small_scale,
+            on_complete=lambda: setattr(event, "done", True),
+        )
+
     def _start_intrigue_draw_animation(
         self,
         card_id: str,
@@ -1242,6 +1428,8 @@ class GameView(arcade.View):
         self._refresh_board(board)
 
     def _on_quest_completed(self, msg: dict) -> None:
+        self._enqueue_quest_completion(msg)
+
         pid = msg.get("player_id", "")
         cname = msg.get("contract_name", "?")
         cid = msg.get("contract_id", "")
@@ -1432,7 +1620,13 @@ class GameView(arcade.View):
 
         next_pid = msg.get("next_player_id")
         if next_pid:
-            self._update_current_player(next_pid)
+            anim_event = AnimationEvent(
+                lambda gv, np=next_pid: (
+                    gv._update_current_player(np),
+                    setattr(anim_event, "done", True),
+                ),
+            )
+            self.event_queue.enqueue(anim_event, self)
 
     def _on_quest_reward_choice_prompt(
         self,
@@ -2431,8 +2625,11 @@ class GameView(arcade.View):
         else:
             self._status_text = f"Round {next_round}"
 
-        self._info_dialog.show(f"ROUND {next_round}", duration=1.5)
-        arcade.play_sound(self._round_sound)
+        self._enqueue_info_dialog(
+            f"ROUND {next_round}",
+            duration=1.5,
+            sound=self._round_sound,
+        )
 
         if self.tabbed_panel:
             self.tabbed_panel.add_entry(f"--- Round {next_round} ---")
