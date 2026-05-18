@@ -722,12 +722,19 @@ def _draw_labeled_type_icons_with_slashes(
     y += 30
 
     # Figure out how many groups fit per row
-    per_row = total
+    max_per_row = total
     for candidate in range(total, 0, -1):
         row_w = candidate * slash_group_w + (candidate - 1) * group_gap
         if row_w <= avail_w:
-            per_row = candidate
+            max_per_row = candidate
             break
+
+    # Distribute evenly across rows to avoid e.g. 3+1; prefer 2+2
+    if max_per_row >= total:
+        per_row = total
+    else:
+        num_rows = -(-total // max_per_row)
+        per_row = -(-total // num_rows)
 
     remaining = total
     while remaining > 0:
