@@ -1073,7 +1073,10 @@ class GameView(arcade.View):
     }
 
     def _enqueue_info_dialog(
-        self, message: str, duration: float = 1.5, sound: object = None,
+        self,
+        message: str,
+        duration: float = 1.5,
+        sound: object = None,
     ) -> None:
         class _InfoEvent(QueuedEvent):
             def __init__(self_ev) -> None:
@@ -1097,9 +1100,7 @@ class GameView(arcade.View):
 
     def _enqueue_quest_completion(self, msg: dict) -> None:
         anim_event = AnimationEvent(
-            lambda gv, m=msg: (
-                gv._start_quest_completion_animation(m, anim_event)
-            ),
+            lambda gv, m=msg: (gv._start_quest_completion_animation(m, anim_event)),
         )
         self.event_queue.enqueue(anim_event, self)
 
@@ -1127,11 +1128,7 @@ class GameView(arcade.View):
         cy = self.window.height / 2
         center = (cx, cy)
 
-        scale = (
-            self.board_renderer._quest_scale
-            if self.board_renderer
-            else 0.5
-        )
+        scale = self.board_renderer._quest_scale if self.board_renderer else 0.5
         big_scale = scale * 2
 
         img = f"client/assets/card_images/quests/{cid}.png"
@@ -1156,7 +1153,10 @@ class GameView(arcade.View):
         def start_rewards() -> None:
             if reward_icons:
                 self._stream_resources(
-                    reward_icons, center, origin, start_exit,
+                    reward_icons,
+                    center,
+                    origin,
+                    start_exit,
                 )
             else:
                 start_exit()
@@ -1165,7 +1165,10 @@ class GameView(arcade.View):
             _keep_card_visible()
             if cost_icons:
                 self._stream_resources(
-                    cost_icons, origin, center, start_rewards,
+                    cost_icons,
+                    origin,
+                    center,
+                    start_rewards,
                 )
             else:
                 start_rewards()
@@ -2617,7 +2620,9 @@ class GameView(arcade.View):
             self._status_text = f"Round {next_round}"
 
         self._enqueue_info_dialog(
-            f"ROUND {next_round}", duration=1.5, sound=self._round_sound,
+            f"ROUND {next_round}",
+            duration=1.5,
+            sound=self._round_sound,
         )
 
         if self.tabbed_panel:
