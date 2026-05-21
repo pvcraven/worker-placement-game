@@ -759,9 +759,6 @@ class GameView(arcade.View):
 
         def _on_backstage_anim_done():
             self._refresh_board(self.game_state.get("board", {}))
-            if next_pid is None and pid != my_id and self._is_my_turn():
-                name = self._player_name(pid)
-                self._info_dialog.show(f"Waiting on {name}", duration=None)
             self._update_current_player(next_pid)
 
         if origin and target:
@@ -773,9 +770,6 @@ class GameView(arcade.View):
             )
         else:
             self._refresh_board(board)
-            if next_pid is None and pid != my_id and self._is_my_turn():
-                name = self._player_name(pid)
-                self._info_dialog.show(f"Waiting on {name}", duration=None)
             self._update_current_player(next_pid)
 
         if self.tabbed_panel:
