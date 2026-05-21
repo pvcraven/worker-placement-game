@@ -306,9 +306,11 @@ class GameView(arcade.View):
         elif action == "state_sync":
             self.game_state = msg.get("game_state", {})
             if self.event_queue.is_busy():
+
                 def _deferred_sync(gv):
                     gv._sync_from_state()
                     _sync_ev.done = True
+
                 _sync_ev = AnimationEvent(_deferred_sync)
                 self.event_queue.enqueue(_sync_ev, self)
             else:
@@ -457,11 +459,13 @@ class GameView(arcade.View):
                     f"{name} placed worker on {space_name} ({bonus})"
                 )
             if pid == my_id:
+
                 def _enter_garage():
                     board_now = self.game_state.get("board", {})
                     quests = board_now.get("face_up_quests", [])
                     quest_ids = [q.get("id") for q in quests if q.get("id")]
                     self._enter_highlight_mode("quest_selection", quest_ids)
+
                 deferred_action = _enter_garage
 
         elif (
@@ -470,11 +474,13 @@ class GameView(arcade.View):
             in ("draw_contract", "draw_contract_and_complete")
             and pid == my_id
         ):
+
             def _enter_draw_contract():
                 board_now = self.game_state.get("board", {})
                 quests = board_now.get("face_up_quests", [])
                 quest_ids = [q.get("id") for q in quests if q.get("id")]
                 self._enter_highlight_mode("quest_selection", quest_ids)
+
             deferred_action = _enter_draw_contract
 
         elif (
@@ -482,8 +488,10 @@ class GameView(arcade.View):
             and pid == my_id
             and msg.get("next_player_id") is None
         ):
+
             def _enter_purchase():
                 self._enter_building_highlight(pid)
+
             deferred_action = _enter_purchase
 
         else:
@@ -496,9 +504,7 @@ class GameView(arcade.View):
                         f"{name} placed worker on {space_name} (+{reward_str})"
                     )
                 else:
-                    self.tabbed_panel.add_entry(
-                        f"{name} placed worker on {space_name}"
-                    )
+                    self.tabbed_panel.add_entry(f"{name} placed worker on {space_name}")
 
             if reward.get("intrigue_cards_drawn"):
                 drawn_count = reward["intrigue_cards_drawn"]
@@ -586,9 +592,7 @@ class GameView(arcade.View):
                     for br in (tb.get("bonus_resources") or {}).items():
                         k, v = br
                         if v:
-                            sym = next(
-                                (s for rk, s in RESOURCE_SYMBOLS if rk == k), k
-                            )
+                            sym = next((s for rk, s in RESOURCE_SYMBOLS if rk == k), k)
                             parts.append(f"{v}{sym}")
                     if tb.get("drawn_intrigue"):
                         parts.append(f"{len(tb['drawn_intrigue'])} intrigue")
@@ -603,10 +607,7 @@ class GameView(arcade.View):
         # If this building has a resource choice, defer ALL animation until
         # the choice is resolved so base + chosen resources animate together.
         anim_reward = reward
-        if (
-            effective_bt.get("visitor_reward_choice")
-            and pid == my_id
-        ):
+        if effective_bt.get("visitor_reward_choice") and pid == my_id:
             self._pending_choice_animation = {
                 "space_id": space_id,
                 "player_id": pid,
@@ -625,8 +626,12 @@ class GameView(arcade.View):
 
         def _after_marker():
             self._start_resource_gathering_animation(
-                space_id, pid, anim_reward, owner_bonus_data,
-                trigger_bonuses_data, _after_all_animations,
+                space_id,
+                pid,
+                anim_reward,
+                owner_bonus_data,
+                trigger_bonuses_data,
+                _after_all_animations,
             )
 
         if origin and target:
@@ -1288,7 +1293,9 @@ class GameView(arcade.View):
                 )
                 if tb_icons and origin and player_dest:
                     self._stream_resources(
-                        tb_icons, origin, player_dest,
+                        tb_icons,
+                        origin,
+                        player_dest,
                         lambda idx=index + 1: _run_triggers(idx),
                     )
                     return
@@ -1302,7 +1309,9 @@ class GameView(arcade.View):
             owner_dest = self._player_marker_positions.get(owner_id)
             if ob_icons and origin and owner_dest:
                 self._stream_resources(
-                    ob_icons, origin, owner_dest,
+                    ob_icons,
+                    origin,
+                    owner_dest,
                     lambda: _run_triggers(0),
                 )
             else:

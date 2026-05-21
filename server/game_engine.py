@@ -1474,9 +1474,7 @@ async def handle_skip_resource_choice(
                 PlacementCancelledResponse(
                     player_id=player.player_id,
                     space_id=result["space_id"],
-                    next_player_id=(
-                        next_player.player_id if next_player else None
-                    ),
+                    next_player_id=(next_player.player_id if next_player else None),
                     reversed_rewards=result["reversed_resources"],
                     reversed_owner_bonus=result["reversed_owner_bonus"],
                     accumulated_stock_restored=result["stock_restored"],
@@ -2616,8 +2614,7 @@ def _resolve_intrigue_effect(state, player, card) -> dict:
                 if p.player_id == player.player_id:
                     continue
                 has_resource = all(
-                    getattr(p.resources, k, 0) >= ev[k]
-                    for k in resource_keys
+                    getattr(p.resources, k, 0) >= ev[k] for k in resource_keys
                 )
                 if has_resource:
                     eligible.append(p.player_id)
