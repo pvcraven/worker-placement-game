@@ -5,6 +5,8 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
+import signal
+import sys
 
 from server.config_loader import load_config
 from server.game_state import SessionManager
@@ -29,6 +31,22 @@ async def cleanup_loop(session_manager: SessionManager, timeout: int) -> None:
             logging.info("Cleaned up %d expired session(s)", len(expired))
 
 
+async def stdin_listener(shutdown_event: asyncio.Event) -> None:
+    """Watch stdin for 'q' to trigger shutdown."""
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(None, _wait_for_quit, shutdown_event)
+
+
+def _wait_for_quit(shutdown_event: asyncio.Event) -> None:
+    try:
+        for line in sys.stdin:
+            if line.strip().lower() == "q":
+                shutdown_event.set()
+                return
+    except (EOFError, OSError):
+        pass
+
+
 async def main() -> None:
     args = parse_args()
     logging.basicConfig(
@@ -44,15 +62,34 @@ async def main() -> None:
 
     server = GameServer(session_manager)
 
+    shutdown_event = asyncio.Event()
+
+    loop = asyncio.get_running_loop()
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        try:
+            loop.add_signal_handler(sig, shutdown_event.set)
+        except NotImplementedError:
+            pass
+
     cleanup_task = asyncio.create_task(
         cleanup_loop(session_manager, config.rules.game_preserve_timeout_seconds)
     )
+    stdin_task = asyncio.create_task(stdin_listener(shutdown_event))
 
     try:
-        await server.start(host=args.host, port=args.port)
+        await server.start(
+            host=args.host,
+            port=args.port,
+            shutdown_event=shutdown_event,
+        )
     finally:
         cleanup_task.cancel()
+        stdin_task.cancel()
+        logging.info("Server shut down.")
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass

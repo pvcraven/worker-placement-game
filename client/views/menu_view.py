@@ -214,6 +214,7 @@ class MenuView(arcade.View):
 
         server = self.server_input.text.strip()
         self.window.player_name = name
+        self.window.is_host = True
         network = self.window.network
         network.server_url = server
         network.connect()
@@ -242,6 +243,7 @@ class MenuView(arcade.View):
 
         server = self.server_input.text.strip()
         self.window.player_name = name
+        self.window.is_host = False
         self.window.game_code = code
         network = self.window.network
         network.server_url = server

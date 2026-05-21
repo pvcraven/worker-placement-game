@@ -115,6 +115,8 @@ class LobbyView(arcade.View):
             text="Start Game", width=300, height=55, style=_BTN_STYLE
         )
         self.start_btn.on_click = self._on_start
+        is_host = getattr(self.window, "is_host", False)
+        self.start_btn.visible = True if is_host else None
         v_box.add(self.start_btn)
 
         # Status

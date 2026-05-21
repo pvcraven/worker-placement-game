@@ -82,6 +82,7 @@ class GameView(arcade.View):
         self._player_marker_sprites: dict[str, arcade.Sprite] = {}
         self._player_marker_list: arcade.SpriteList = arcade.SpriteList()
         self._pre_animation_slots: list[str] = []
+        self._pending_choice_animation: dict | None = None
         self.event_queue = EventQueue()
 
     def on_show_view(self) -> None:
@@ -304,7 +305,16 @@ class GameView(arcade.View):
             self._on_game_started(msg)
         elif action == "state_sync":
             self.game_state = msg.get("game_state", {})
-            self._sync_from_state()
+            if self.event_queue.is_busy():
+
+                def _deferred_sync(gv):
+                    gv._sync_from_state()
+                    _sync_ev.done = True
+
+                _sync_ev = AnimationEvent(_deferred_sync)
+                self.event_queue.enqueue(_sync_ev, self)
+            else:
+                self._sync_from_state()
         elif action == "player_disconnected":
             name = msg.get("player_name", "???")
             pid = msg.get("player_id")
@@ -407,29 +417,17 @@ class GameView(arcade.View):
 
         # Determine next_player_id now; defer the chime until animation finishes
         next_pid = msg.get("next_player_id")
+        owner_bonus_data = msg.get("owner_bonus", {})
+        trigger_bonuses_data = msg.get("trigger_bonuses", [])
 
-        if origin and target:
-            self._queue_marker_animation(
-                pid,
-                origin,
-                target,
-                on_complete=lambda: (
-                    self._refresh_board(self.game_state.get("board", {})),
-                    self._update_current_player(next_pid),
-                ),
-            )
-        else:
-            self._refresh_board(board)
-            self._update_current_player(next_pid)
-
-        # Update player resources and worker count
+        # Update player resources and worker count immediately
         self._apply_reward_to_player(pid, reward)
         for p in self.game_state.get("players", []):
             if p.get("player_id") == pid:
                 p["available_workers"] = max(0, p.get("available_workers", 0) - 1)
                 break
 
-        # Check if this is a garage spot requiring quest selection
+        # Determine special action to defer until after animation
         space_data = spaces.get(space_id, {})
         copied = msg.get("copied_space", {})
         my_id = getattr(self.window, "player_id", None)
@@ -437,9 +435,12 @@ class GameView(arcade.View):
         effective_reward_special = copied.get("reward_special") or space_data.get(
             "reward_special"
         )
-        effective_bt = copied.get("building_tile") or space_data.get(
-            "building_tile", {}
+        effective_bt = (
+            copied.get("building_tile") or space_data.get("building_tile") or {}
         )
+
+        deferred_action = None
+
         if effective_type == "garage" and effective_reward_special in (
             "quest_and_coins",
             "quest_and_intrigue",
@@ -458,144 +459,190 @@ class GameView(arcade.View):
                     f"{name} placed worker on {space_name} ({bonus})"
                 )
             if pid == my_id:
-                board = self.game_state.get("board", {})
-                quests = board.get("face_up_quests", [])
-                quest_ids = [q.get("id") for q in quests if q.get("id")]
-                self._enter_highlight_mode(
-                    "quest_selection",
-                    quest_ids,
-                )
-            return
 
-        # Building with draw_contract: player picks a face-up quest
-        if (
+                def _enter_garage():
+                    board_now = self.game_state.get("board", {})
+                    quests = board_now.get("face_up_quests", [])
+                    quest_ids = [q.get("id") for q in quests if q.get("id")]
+                    self._enter_highlight_mode("quest_selection", quest_ids)
+
+                deferred_action = _enter_garage
+
+        elif (
             effective_type == "building"
             and effective_bt.get("visitor_reward_special")
             in ("draw_contract", "draw_contract_and_complete")
             and pid == my_id
         ):
-            board = self.game_state.get("board", {})
-            quests = board.get("face_up_quests", [])
-            quest_ids = [q.get("id") for q in quests if q.get("id")]
-            self._enter_highlight_mode(
-                "quest_selection",
-                quest_ids,
-            )
-            return
 
-        if (
+            def _enter_draw_contract():
+                board_now = self.game_state.get("board", {})
+                quests = board_now.get("face_up_quests", [])
+                quest_ids = [q.get("id") for q in quests if q.get("id")]
+                self._enter_highlight_mode("quest_selection", quest_ids)
+
+            deferred_action = _enter_draw_contract
+
+        elif (
             effective_reward_special == "purchase_building"
             and pid == my_id
             and msg.get("next_player_id") is None
         ):
-            self._enter_building_highlight(pid)
-            return
 
-        if self.tabbed_panel:
-            name = self._player_name(pid)
-            space_name = space_data.get("name", space_id)
-            reward_str = self._resource_str(reward)
-            if reward_str:
-                self.tabbed_panel.add_entry(
-                    f"{name} placed worker on {space_name} (+{reward_str})"
-                )
-            else:
-                self.tabbed_panel.add_entry(f"{name} placed worker on {space_name}")
+            def _enter_purchase():
+                self._enter_building_highlight(pid)
 
-        if reward.get("intrigue_cards_drawn"):
-            drawn_count = reward["intrigue_cards_drawn"]
-            my_id = getattr(self.window, "player_id", None)
-            for p in self.game_state.get("players", []):
-                if p.get("player_id") == pid:
-                    p["intrigue_hand_count"] = (
-                        p.get("intrigue_hand_count", 0) + drawn_count
-                    )
-                    if pid == my_id:
-                        if reward.get("drawn_intrigue_cards"):
-                            p.setdefault("intrigue_hand", []).extend(
-                                reward["drawn_intrigue_cards"]
-                            )
-                        elif reward.get("drawn_intrigue_card"):
-                            p.setdefault("intrigue_hand", []).append(
-                                reward["drawn_intrigue_card"]
-                            )
-                    break
-            if reward.get("drawn_intrigue_cards"):
-                for card in reward["drawn_intrigue_cards"]:
-                    cid = card.get("id", "")
-                    if cid:
-                        self._enqueue_intrigue_draw(cid, pid)
-            elif reward.get("drawn_intrigue_card"):
-                cid = reward["drawn_intrigue_card"].get("id", "")
-                if cid:
-                    self._enqueue_intrigue_draw(cid, pid)
+            deferred_action = _enter_purchase
+
+        else:
             if self.tabbed_panel:
                 name = self._player_name(pid)
-                if drawn_count == 1:
-                    self.tabbed_panel.add_entry(f"{name} drew 1 intrigue card")
+                space_name = space_data.get("name", space_id)
+                reward_str = self._resource_str(reward)
+                if reward_str:
+                    self.tabbed_panel.add_entry(
+                        f"{name} placed worker on {space_name} (+{reward_str})"
+                    )
                 else:
-                    self.tabbed_panel.add_entry(
-                        f"{name} drew {drawn_count} intrigue cards"
-                    )
+                    self.tabbed_panel.add_entry(f"{name} placed worker on {space_name}")
 
-        # Owner bonus notification
-        owner_bonus = msg.get("owner_bonus", {})
-        if owner_bonus:
-            owner_id = owner_bonus.get("owner_id", "")
-            bonus = owner_bonus.get("bonus", {})
-            if owner_id and bonus:
-                self._apply_reward_to_player(owner_id, bonus)
-            if bonus.get("intrigue_card") and owner_id:
-                for p in self.game_state.get("players", []):
-                    if p.get("player_id") == owner_id:
-                        p["intrigue_hand_count"] = p.get("intrigue_hand_count", 0) + 1
-                        break
-            if self.tabbed_panel:
-                owner_name = owner_bonus.get("owner_name", "???")
-                bonus_parts = []
-                for key, sym in RESOURCE_SYMBOLS:
-                    val = bonus.get(key, 0)
-                    if val > 0:
-                        bonus_parts.append(f"{val}{sym}")
-                if bonus.get("intrigue_card"):
-                    bonus_parts.append("1 intrigue")
-                if bonus_parts:
-                    self.tabbed_panel.add_entry(
-                        f"{owner_name} earned owner bonus: {' '.join(bonus_parts)}"
-                    )
-
-        # Resource trigger plot quest bonuses
-        for tb in msg.get("trigger_bonuses", []):
-            if tb.get("drawn_intrigue"):
+            if reward.get("intrigue_cards_drawn"):
+                drawn_count = reward["intrigue_cards_drawn"]
                 my_id = getattr(self.window, "player_id", None)
-                if pid == my_id:
+                for p in self.game_state.get("players", []):
+                    if p.get("player_id") == pid:
+                        p["intrigue_hand_count"] = (
+                            p.get("intrigue_hand_count", 0) + drawn_count
+                        )
+                        if pid == my_id:
+                            if reward.get("drawn_intrigue_cards"):
+                                p.setdefault("intrigue_hand", []).extend(
+                                    reward["drawn_intrigue_cards"]
+                                )
+                            elif reward.get("drawn_intrigue_card"):
+                                p.setdefault("intrigue_hand", []).append(
+                                    reward["drawn_intrigue_card"]
+                                )
+                        break
+                if reward.get("drawn_intrigue_cards"):
+                    for card in reward["drawn_intrigue_cards"]:
+                        cid = card.get("id", "")
+                        if cid:
+                            self._enqueue_intrigue_draw(cid, pid)
+                elif reward.get("drawn_intrigue_card"):
+                    cid = reward["drawn_intrigue_card"].get("id", "")
+                    if cid:
+                        self._enqueue_intrigue_draw(cid, pid)
+                if self.tabbed_panel:
+                    name = self._player_name(pid)
+                    if drawn_count == 1:
+                        self.tabbed_panel.add_entry(f"{name} drew 1 intrigue card")
+                    else:
+                        self.tabbed_panel.add_entry(
+                            f"{name} drew {drawn_count} intrigue cards"
+                        )
+
+            # Owner bonus notification
+            owner_bonus = msg.get("owner_bonus", {})
+            if owner_bonus:
+                owner_id = owner_bonus.get("owner_id", "")
+                bonus = owner_bonus.get("bonus", {})
+                if owner_id and bonus:
+                    self._apply_reward_to_player(owner_id, bonus)
+                if bonus.get("intrigue_card") and owner_id:
                     for p in self.game_state.get("players", []):
-                        if p.get("player_id") == pid:
-                            p.setdefault("intrigue_hand", []).extend(
-                                tb["drawn_intrigue"]
+                        if p.get("player_id") == owner_id:
+                            p["intrigue_hand_count"] = (
+                                p.get("intrigue_hand_count", 0) + 1
                             )
                             break
-                for card in tb["drawn_intrigue"]:
-                    cid = card.get("id", "")
-                    if cid:
-                        self._enqueue_intrigue_draw(cid, pid)
-            if self.tabbed_panel:
-                name = self._player_name(pid)
-                parts = []
-                for br in (tb.get("bonus_resources") or {}).items():
-                    k, v = br
-                    if v:
-                        sym = next((s for rk, s in RESOURCE_SYMBOLS if rk == k), k)
-                        parts.append(f"{v}{sym}")
+                if self.tabbed_panel:
+                    owner_name = owner_bonus.get("owner_name", "???")
+                    bonus_parts = []
+                    for key, sym in RESOURCE_SYMBOLS:
+                        val = bonus.get(key, 0)
+                        if val > 0:
+                            bonus_parts.append(f"{val}{sym}")
+                    if bonus.get("intrigue_card"):
+                        bonus_parts.append("1 intrigue")
+                    if bonus_parts:
+                        self.tabbed_panel.add_entry(
+                            f"{owner_name} earned owner bonus:"
+                            f" {' '.join(bonus_parts)}"
+                        )
+
+            # Resource trigger plot quest bonuses
+            for tb in msg.get("trigger_bonuses", []):
                 if tb.get("drawn_intrigue"):
-                    parts.append(f"{len(tb['drawn_intrigue'])} intrigue")
-                if tb.get("swap_pending"):
-                    parts.append("swap pending")
-                cname = tb.get("contract_name", "plot quest")
-                if parts:
-                    self.tabbed_panel.add_entry(
-                        f"{name} triggered {cname}: {' '.join(parts)}"
-                    )
+                    my_id = getattr(self.window, "player_id", None)
+                    if pid == my_id:
+                        for p in self.game_state.get("players", []):
+                            if p.get("player_id") == pid:
+                                p.setdefault("intrigue_hand", []).extend(
+                                    tb["drawn_intrigue"]
+                                )
+                                break
+                    for card in tb["drawn_intrigue"]:
+                        cid = card.get("id", "")
+                        if cid:
+                            self._enqueue_intrigue_draw(cid, pid)
+                if self.tabbed_panel:
+                    name = self._player_name(pid)
+                    parts = []
+                    for br in (tb.get("bonus_resources") or {}).items():
+                        k, v = br
+                        if v:
+                            sym = next((s for rk, s in RESOURCE_SYMBOLS if rk == k), k)
+                            parts.append(f"{v}{sym}")
+                    if tb.get("drawn_intrigue"):
+                        parts.append(f"{len(tb['drawn_intrigue'])} intrigue")
+                    if tb.get("swap_pending"):
+                        parts.append("swap pending")
+                    cname = tb.get("contract_name", "plot quest")
+                    if parts:
+                        self.tabbed_panel.add_entry(
+                            f"{name} triggered {cname}: {' '.join(parts)}"
+                        )
+
+        # If this building has a resource choice, defer ALL animation until
+        # the choice is resolved so base + chosen resources animate together.
+        anim_reward = reward
+        if effective_bt.get("visitor_reward_choice") and pid == my_id:
+            self._pending_choice_animation = {
+                "space_id": space_id,
+                "player_id": pid,
+                "base_reward": reward,
+                "owner_bonus": owner_bonus_data,
+                "trigger_bonuses": trigger_bonuses_data,
+            }
+            anim_reward = {}
+
+        # Chain: marker animation → resource animation → final callback
+        def _after_all_animations():
+            self._refresh_board(self.game_state.get("board", {}))
+            self._update_current_player(next_pid)
+            if deferred_action:
+                deferred_action()
+
+        def _after_marker():
+            self._start_resource_gathering_animation(
+                space_id,
+                pid,
+                anim_reward,
+                owner_bonus_data,
+                trigger_bonuses_data,
+                _after_all_animations,
+            )
+
+        if origin and target:
+            self._queue_marker_animation(
+                pid,
+                origin,
+                target,
+                on_complete=_after_marker,
+            )
+        else:
+            _after_marker()
 
     def _on_worker_placed_backstage(self, msg: dict) -> None:
         slot_num = msg.get("slot_number", 0)
@@ -603,7 +650,9 @@ class GameView(arcade.View):
         card = msg.get("intrigue_card", {})
         card_id = card.get("id", "")
 
-        if card_id:
+        effect = msg.get("intrigue_effect", {})
+        pending_target = effect.get("pending", False)
+        if card_id and not pending_target:
             self._enqueue_intrigue_play(card_id, pid)
 
         origin = self._player_marker_positions.get(pid)
@@ -629,7 +678,6 @@ class GameView(arcade.View):
                 break
 
         # Apply intrigue effect cost deduction (e.g. copy_occupied_space costs 2 coins)
-        effect = msg.get("intrigue_effect", {})
         details = effect.get("details", {})
         if not isinstance(details, dict):
             details = {}
@@ -692,7 +740,16 @@ class GameView(arcade.View):
                                 if dcid:
                                     self._enqueue_intrigue_draw(dcid, pid)
                         elif etype == "draw_contracts":
-                            p.setdefault("contract_hand", []).extend(drawn)
+                            if pid == my_id:
+                                p.setdefault("contract_hand", []).extend(drawn)
+                            else:
+                                p["contract_hand_count"] = p.get(
+                                    "contract_hand_count", 0
+                                ) + len(drawn)
+                            for d in drawn:
+                                dcid = d.get("id", "")
+                                if dcid:
+                                    self._enqueue_quest_draw(dcid, pid)
                         break
 
         # Apply plot quest bonus VP for playing an intrigue card
@@ -708,9 +765,6 @@ class GameView(arcade.View):
 
         def _on_backstage_anim_done():
             self._refresh_board(self.game_state.get("board", {}))
-            if next_pid is None and pid != my_id and self._is_my_turn():
-                name = self._player_name(pid)
-                self._info_dialog.show(f"Waiting on {name}", duration=None)
             self._update_current_player(next_pid)
 
         if origin and target:
@@ -722,9 +776,6 @@ class GameView(arcade.View):
             )
         else:
             self._refresh_board(board)
-            if next_pid is None and pid != my_id and self._is_my_turn():
-                name = self._player_name(pid)
-                self._info_dialog.show(f"Waiting on {name}", duration=None)
             self._update_current_player(next_pid)
 
         if self.tabbed_panel:
@@ -1056,6 +1107,14 @@ class GameView(arcade.View):
         )
         self.event_queue.enqueue(anim_event, self)
 
+    def _enqueue_quest_draw(self, card_id: str, pid: str) -> None:
+        anim_event = AnimationEvent(
+            lambda gv, c=card_id, p=pid: (
+                gv._start_quest_draw_animation(c, p, anim_event)
+            ),
+        )
+        self.event_queue.enqueue(anim_event, self)
+
     def _enqueue_intrigue_play(self, card_id: str, pid: str) -> None:
         anim_event = AnimationEvent(
             lambda gv, c=card_id, p=pid: (
@@ -1210,6 +1269,60 @@ class GameView(arcade.View):
             icons.extend([path] * count)
         return icons
 
+    def _start_resource_gathering_animation(
+        self,
+        space_id: str,
+        player_id: str,
+        reward: dict,
+        owner_bonus: dict,
+        trigger_bonuses: list[dict],
+        on_complete: callable,
+    ) -> None:
+        origin = (
+            self.board_renderer.get_space_position(space_id)
+            if self.board_renderer
+            else None
+        )
+        player_dest = self._player_marker_positions.get(player_id)
+
+        def _run_triggers(index: int) -> None:
+            while index < len(trigger_bonuses):
+                tb = trigger_bonuses[index]
+                tb_icons = self._build_resource_icon_list(
+                    tb.get("bonus_resources", {}),
+                )
+                if tb_icons and origin and player_dest:
+                    self._stream_resources(
+                        tb_icons,
+                        origin,
+                        player_dest,
+                        lambda idx=index + 1: _run_triggers(idx),
+                    )
+                    return
+                index += 1
+            on_complete()
+
+        def _run_owner_bonus():
+            owner_id = owner_bonus.get("owner_id", "")
+            bonus = owner_bonus.get("bonus", {})
+            ob_icons = self._build_resource_icon_list(bonus)
+            owner_dest = self._player_marker_positions.get(owner_id)
+            if ob_icons and origin and owner_dest:
+                self._stream_resources(
+                    ob_icons,
+                    origin,
+                    owner_dest,
+                    lambda: _run_triggers(0),
+                )
+            else:
+                _run_triggers(0)
+
+        base_icons = self._build_resource_icon_list(reward)
+        if base_icons and origin and player_dest:
+            self._stream_resources(base_icons, origin, player_dest, _run_owner_bonus)
+        else:
+            _run_owner_bonus()
+
     def _start_quest_completion_animation(
         self,
         msg: dict,
@@ -1360,6 +1473,73 @@ class GameView(arcade.View):
             img = f"client/assets/card_images/intrigue/{card_id}.png"
         else:
             img = "client/assets/card_images/intrigue/intrigue_back.png"
+
+        scale = 0.5
+        try:
+            sprite = arcade.Sprite(img, scale=scale)
+        except Exception:
+            event.done = True
+            return
+
+        cx = self.window.width / 2
+        cy = self.window.height / 2
+        center = (cx, cy)
+        start = (float(self.window.width - 100), 100.0)
+        target = self._player_marker_positions.get(
+            pid, (0.0, float(self.window.height))
+        )
+        big_scale = scale * 2
+
+        def start_pause() -> None:
+            self.animation_manager.animate(
+                sprite=sprite,
+                start=center,
+                end=center,
+                duration=2.0,
+                easing=Easing.LINEAR,
+                start_scale=big_scale,
+                end_scale=big_scale,
+                on_complete=start_exit,
+            )
+
+        def start_exit() -> None:
+            self.animation_manager.animate(
+                sprite=sprite,
+                start=center,
+                end=target,
+                duration=0.75,
+                easing=Easing.QUAD_IN,
+                start_scale=big_scale,
+                end_scale=scale,
+                on_complete=on_complete,
+            )
+
+        def on_complete() -> None:
+            event.done = True
+
+        self.animation_manager.animate(
+            sprite=sprite,
+            start=start,
+            end=center,
+            duration=0.5,
+            easing=Easing.SINE,
+            start_scale=scale,
+            end_scale=big_scale,
+            sound=self._card_sound,
+            on_complete=start_pause,
+        )
+
+    def _start_quest_draw_animation(
+        self,
+        card_id: str,
+        pid: str,
+        event: AnimationEvent,
+    ) -> None:
+        my_id = getattr(self.window, "player_id", None)
+        if pid == my_id:
+            img = f"client/assets/card_images/quests/{card_id}.png"
+        else:
+            img = "client/assets/card_images/quests/quest_back.png"
 
         scale = 0.5
         try:
@@ -1730,6 +1910,11 @@ class GameView(arcade.View):
             if cid:
                 self._enqueue_intrigue_draw(cid, pid)
 
+        for quest_card in drawn_q:
+            qcid = quest_card.get("id", "")
+            if qcid:
+                self._enqueue_quest_draw(qcid, pid)
+
         next_pid = msg.get("next_player_id")
         if next_pid:
             anim_event = AnimationEvent(
@@ -2001,6 +2186,22 @@ class GameView(arcade.View):
             self.tabbed_panel.add_entry(f"{name} {verb} {res_str} from {source}")
 
         self._info_dialog.dismiss()
+
+        pending = self._pending_choice_animation
+        if pending and pid == my_id and not is_spend:
+            self._pending_choice_animation = None
+            combined = dict(pending["base_reward"])
+            for k, v in chosen.items():
+                combined[k] = combined.get(k, 0) + v
+            self._start_resource_gathering_animation(
+                pending["space_id"],
+                pending["player_id"],
+                combined,
+                pending["owner_bonus"],
+                pending["trigger_bonuses"],
+                lambda: None,
+            )
+
         next_pid = msg.get("next_player_id")
         if next_pid:
             self._update_current_player(next_pid)
@@ -2286,6 +2487,7 @@ class GameView(arcade.View):
         """Handle placement cancellation — free space, return worker."""
         if hasattr(self, "animation_manager"):
             self.animation_manager.clear()
+        self._pending_choice_animation = None
         space_id = msg.get("space_id", "")
         pid = msg.get("player_id", "")
 

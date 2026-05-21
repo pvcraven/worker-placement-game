@@ -226,6 +226,7 @@ class PlayerJoinedResponse(BaseModel):
     player_name: str
     slot_index: int
     players: list[LobbyPlayerInfo]
+    host_player_id: str = ""
 
 
 class PlayerReadyUpdateResponse(BaseModel):

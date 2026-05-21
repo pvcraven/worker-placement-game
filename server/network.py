@@ -293,8 +293,17 @@ class GameServer:
                             ),
                         )
 
-    async def start(self, host: str = "0.0.0.0", port: int = 8765) -> None:
+    async def start(
+        self,
+        host: str = "0.0.0.0",
+        port: int = 8765,
+        shutdown_event: asyncio.Event | None = None,
+    ) -> None:
         """Start the WebSocket server."""
         logger.info("Starting server on ws://%s:%d", host, port)
+        logger.info("Press Ctrl+C or type 'q' + Enter to stop.")
         async with websockets.serve(self.handler, host, port):
-            await asyncio.Future()  # Run forever
+            if shutdown_event:
+                await shutdown_event.wait()
+            else:
+                await asyncio.Future()
