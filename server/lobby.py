@@ -168,6 +168,7 @@ async def join_game(server: GameServer, conn: ClientConnection, msg) -> None:
             player_name=msg.player_name,
             slot_index=slot_index,
             players=players_info,
+            host_player_id=state.host_player_id,
         ),
     )
     logger.info(
