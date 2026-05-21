@@ -645,7 +645,9 @@ class GameView(arcade.View):
         card = msg.get("intrigue_card", {})
         card_id = card.get("id", "")
 
-        if card_id:
+        effect = msg.get("intrigue_effect", {})
+        pending_target = effect.get("pending", False)
+        if card_id and not pending_target:
             self._enqueue_intrigue_play(card_id, pid)
 
         origin = self._player_marker_positions.get(pid)
@@ -671,7 +673,6 @@ class GameView(arcade.View):
                 break
 
         # Apply intrigue effect cost deduction (e.g. copy_occupied_space costs 2 coins)
-        effect = msg.get("intrigue_effect", {})
         details = effect.get("details", {})
         if not isinstance(details, dict):
             details = {}
@@ -2477,6 +2478,7 @@ class GameView(arcade.View):
         """Handle placement cancellation — free space, return worker."""
         if hasattr(self, "animation_manager"):
             self.animation_manager.clear()
+        self._pending_choice_animation = None
         space_id = msg.get("space_id", "")
         pid = msg.get("player_id", "")
 

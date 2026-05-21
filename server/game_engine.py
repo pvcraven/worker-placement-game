@@ -942,6 +942,24 @@ async def handle_resource_choice(
                 "INVALID_CHOICE",
                 "You don't have those resources.",
             )
+            from shared.card_models import ResourceChoiceReward
+
+            rcr = ResourceChoiceReward(**pending["choice_reward_dump"])
+            await _send_resource_choice_prompt(
+                server,
+                state,
+                player,
+                rcr,
+                pending["source_type"],
+                pending["source_name"],
+                is_spend=True,
+                phase=pending["phase"],
+                can_skip=pending.get("can_skip", False),
+            )
+            if pending.get("pending_owner_choice") and state.pending_resource_choice:
+                state.pending_resource_choice["pending_owner_choice"] = pending[
+                    "pending_owner_choice"
+                ]
             return
         player.resources.deduct(chosen_rc)
     else:
@@ -1434,6 +1452,39 @@ async def handle_skip_resource_choice(
     if player is None:
         return
 
+    # Exchange spend-phase cancel — unwind the entire worker placement
+    if pending.get("phase") == "spend" and pending.get("is_spend"):
+        state.pending_resource_choice = None
+        placement = state.pending_placement
+        if placement:
+            result = _unwind_placement(state, player, placement)
+            state.pending_placement = None
+            _log_event(
+                state,
+                action="cancel_exchange",
+                details=(
+                    f"{player.display_name} cancelled exchange"
+                    f" at {pending.get('source_name', '')}"
+                ),
+                player_id=player.player_id,
+            )
+            next_player = state.current_player()
+            await server.broadcast_to_game(
+                state.game_code,
+                PlacementCancelledResponse(
+                    player_id=player.player_id,
+                    space_id=result["space_id"],
+                    next_player_id=(
+                        next_player.player_id if next_player else None
+                    ),
+                    reversed_rewards=result["reversed_resources"],
+                    reversed_owner_bonus=result["reversed_owner_bonus"],
+                    accumulated_stock_restored=result["stock_restored"],
+                    plot_quest_bonus_vp=result["reversed_vp"],
+                ),
+            )
+        return
+
     swap_info = state.pending_resource_trigger_swap
     state.pending_resource_trigger_swap = None
     state.pending_resource_choice = None
@@ -1879,6 +1930,7 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
                 is_spend=True,
                 phase="spend",
                 cost_deducted=cost_info,
+                can_skip=True,
             )
             if pending_owner_choice:
                 state.pending_resource_choice["pending_owner_choice"] = (
@@ -2261,7 +2313,7 @@ async def handle_place_worker_backstage(
         player.victory_points -= plot_bonus_vp
         await conn.send_error(
             "NO_VALID_TARGETS",
-            "No valid target spaces available.",
+            "No valid targets available for this card.",
         )
         return
 
@@ -2564,7 +2616,8 @@ def _resolve_intrigue_effect(state, player, card) -> dict:
                 if p.player_id == player.player_id:
                     continue
                 has_resource = all(
-                    getattr(p.resources, k, 0) >= ev[k] for k in resource_keys
+                    getattr(p.resources, k, 0) >= ev[k]
+                    for k in resource_keys
                 )
                 if has_resource:
                     eligible.append(p.player_id)
@@ -2572,7 +2625,7 @@ def _resolve_intrigue_effect(state, player, card) -> dict:
                 effect["pending"] = True
                 effect["eligible_targets"] = eligible
             else:
-                effect["details"] = {"no_valid_targets": True}
+                effect["no_valid_targets"] = True
 
     elif card.effect_type == "all_players_gain":
         reward = ResourceCost(
