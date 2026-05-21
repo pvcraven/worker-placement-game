@@ -3314,15 +3314,22 @@ async def handle_purchase_building(
 
     state.pending_placement = None
 
-    # Advance turn (deferred from placement on Real Estate Listings)
+    # Determine if the round will end so we can send building_constructed
+    # BEFORE round-end messages. The client queues a building slide animation
+    # and the round dialog must wait for it.
     if state.phase == GamePhase.REASSIGNMENT:
-        next_player = None
+        next_player_id = None
+        advance_deferred = False
+    elif state.all_workers_placed():
+        next_player_id = None
+        advance_deferred = True
     else:
+        advance_deferred = False
         await _advance_turn(server, state)
-        if state.phase == GamePhase.PLACEMENT:
-            next_player = state.current_player()
-        else:
-            next_player = None
+        next_player = (
+            state.current_player() if state.phase == GamePhase.PLACEMENT else None
+        )
+        next_player_id = next_player.player_id if next_player else None
 
     await server.broadcast_to_game(
         state.game_code,
@@ -3339,12 +3346,15 @@ async def handle_purchase_building(
             accumulated_vp=building.accumulated_vp,
             plot_quest_bonus_vp=plot_bonus_vp,
             building_tile=building.model_dump(),
-            next_player_id=(next_player.player_id if next_player else None),
+            next_player_id=next_player_id,
         ),
     )
 
     # Broadcast updated market
     await _broadcast_building_market(server, state)
+
+    if advance_deferred:
+        await _advance_turn(server, state)
 
     if state.phase == GamePhase.REASSIGNMENT:
         await _finish_reassignment(server, state)
