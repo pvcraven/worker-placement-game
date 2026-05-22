@@ -1107,7 +1107,10 @@ async def handle_resource_choice(
             return
 
     state.pending_resource_choice = None
-    await _check_quest_completion(server, state)
+    if state.phase == GamePhase.REASSIGNMENT:
+        await _finish_reassignment(server, state)
+    else:
+        await _check_quest_completion(server, state)
 
 
 def _can_use_occupied(player, space, state) -> bool:
@@ -3572,9 +3575,31 @@ async def handle_cancel_quest_selection(
     )
 
     if state.phase == GamePhase.REASSIGNMENT:
+        result = _unwind_placement(state, player, pending)
+        player.available_workers -= 1
+        from_slot = pending.get("from_slot", 0)
+        if from_slot:
+            for s in state.board.backstage_slots:
+                if s.slot_number == from_slot:
+                    s.occupied_by = player.player_id
+                    break
+            state.reassignment_queue.insert(0, from_slot)
+        state.reassignment_active_player_id = None
         state.pending_building_quest = None
         state.pending_placement = None
-        await _finish_reassignment(server, state)
+        await server.broadcast_to_game(
+            state.game_code,
+            PlacementCancelledResponse(
+                player_id=player.player_id,
+                space_id=result["space_id"],
+                next_player_id=None,
+                plot_quest_bonus_vp=result["reversed_vp"],
+                reversed_rewards=result["reversed_resources"],
+                reversed_owner_bonus=result["reversed_owner_bonus"],
+                accumulated_stock_restored=result["stock_restored"],
+                restored_slot=from_slot,
+            ),
+        )
         return
 
     result = _unwind_placement(state, player, pending)
@@ -3894,6 +3919,7 @@ async def handle_reassign_worker(
         "owner_bonus_info": owner_bonus_info,
         "trigger_bonuses": trigger_bonuses_data,
         "is_reassignment": True,
+        "from_slot": msg.slot_number,
     }
 
     # Singer swap trigger prompt (reassignment)

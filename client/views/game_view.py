@@ -604,10 +604,13 @@ class GameView(arcade.View):
                             f"{name} triggered {cname}: {' '.join(parts)}"
                         )
 
-        # If this building has a resource choice, defer ALL animation until
+        # If this space has a resource choice, defer ALL animation until
         # the choice is resolved so base + chosen resources animate together.
         anim_reward = reward
-        if effective_bt.get("visitor_reward_choice") and pid == my_id:
+        has_choice = effective_bt.get("visitor_reward_choice") or space_data.get(
+            "reward_choice"
+        )
+        if has_choice and pid == my_id:
             self._pending_choice_animation = {
                 "space_id": space_id,
                 "player_id": pid,
@@ -1535,11 +1538,7 @@ class GameView(arcade.View):
         pid: str,
         event: AnimationEvent,
     ) -> None:
-        my_id = getattr(self.window, "player_id", None)
-        if pid == my_id:
-            img = f"client/assets/card_images/quests/{card_id}.png"
-        else:
-            img = "client/assets/card_images/quests/quest_back.png"
+        img = f"client/assets/card_images/quests/{card_id}.png"
 
         scale = 0.5
         try:
@@ -2507,6 +2506,15 @@ class GameView(arcade.View):
             if space_id in spaces:
                 spaces[space_id]["occupied_by"] = None
 
+        restored_slot = msg.get("restored_slot", 0)
+        if restored_slot:
+            for s in board.get("backstage_slots", []):
+                if s.get("slot_number") == restored_slot:
+                    s["occupied_by"] = pid
+                    break
+            queue = self.game_state.get("reassignment_queue", [])
+            queue.insert(0, restored_slot)
+
         returned_card = msg.get("returned_card", {})
         reversed_bonus = msg.get("plot_quest_bonus_vp", 0)
         reversed_rewards = msg.get("reversed_rewards", {})
@@ -2514,7 +2522,8 @@ class GameView(arcade.View):
         res_keys = ("guitarists", "bass_players", "drummers", "singers", "coins")
         for p in self.game_state.get("players", []):
             if p.get("player_id") == pid:
-                p["available_workers"] = p.get("available_workers", 0) + 1
+                if not restored_slot:
+                    p["available_workers"] = p.get("available_workers", 0) + 1
                 if returned_card:
                     p.setdefault("intrigue_hand", []).append(
                         returned_card,
@@ -2560,13 +2569,24 @@ class GameView(arcade.View):
 
         self._refresh_board(board)
 
-        next_pid = msg.get("next_player_id")
-        self._update_current_player(next_pid)
+        if restored_slot:
+            my_id = getattr(self.window, "player_id", None)
+            if pid == my_id:
+                self._status_text = "Reassignment — YOUR TURN"
+                self._play_reassignment_sound_if_my_turn()
+            else:
+                name = self._player_name(pid)
+                self._status_text = f"Reassignment — {name}'s turn"
+        else:
+            next_pid = msg.get("next_player_id")
+            self._update_current_player(next_pid)
 
         if self.tabbed_panel:
             name = self._player_name(pid)
             if space_id.startswith("backstage_slot_"):
                 self.tabbed_panel.add_entry(f"{name} cancelled intrigue targeting")
+            elif restored_slot:
+                self.tabbed_panel.add_entry(f"{name} cancelled reassignment")
             else:
                 self.tabbed_panel.add_entry(f"{name} cancelled placement")
 
