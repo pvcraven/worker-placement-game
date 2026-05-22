@@ -338,6 +338,7 @@ class PlacementCancelledResponse(BaseModel):
     reversed_rewards: dict = Field(default_factory=dict)
     reversed_owner_bonus: dict = Field(default_factory=dict)
     accumulated_stock_restored: int = 0
+    restored_slot: int = 0
 
 
 class BuildingConstructedResponse(BaseModel):
