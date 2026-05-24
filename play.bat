@@ -8,12 +8,11 @@ REM Subsequent runs: pulls latest code and launches.
 set REPO_URL=https://github.com/pvcraven/Worker-Placement-Game.git
 set SERVER_PORT=8765
 
-REM Check for Python
-python --version >nul 2>&1
+REM Check for uv
+uv --version >nul 2>&1
 if errorlevel 1 (
     echo.
-    echo ERROR: Python not found. Install Python 3.12+ from https://www.python.org
-    echo Make sure to check "Add Python to PATH" during installation.
+    echo ERROR: uv not found. Install uv from https://docs.astral.sh/uv/
     pause
     exit /b 1
 )
@@ -35,11 +34,7 @@ if exist "pyproject.toml" (
 
 REM Install/update dependencies
 echo Installing dependencies...
-pip install -e ".[dev]" --quiet 2>nul
-if errorlevel 1 (
-    echo Retrying dependency install...
-    pip install -e . --quiet
-)
+uv sync --quiet
 
 REM Kill any existing server on our port
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%SERVER_PORT% " ^| findstr "LISTENING"') do (
@@ -48,14 +43,14 @@ for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":%SERVER_PORT% " ^| findstr 
 
 REM Start server in background
 echo Starting server...
-start /b "GameServer" python -m server.main --port %SERVER_PORT% >nul 2>&1
+start /b "GameServer" uv run -m server.main --port %SERVER_PORT% >nul 2>&1
 
 REM Give server a moment to start
 timeout /t 2 /nobreak >nul
 
 REM Launch client
 echo Launching game...
-python -m client.main --server ws://localhost:%SERVER_PORT%
+uv run -m client.main --server ws://localhost:%SERVER_PORT%
 
 REM When client closes, stop the server
 echo Shutting down server...

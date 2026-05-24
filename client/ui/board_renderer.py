@@ -30,7 +30,7 @@ _GRID_PLACEMENT: dict[str, tuple[float, float, float, float]] = {
     "rhythm_pit": (0, 4, 1, 1),
     "jam_session": (0, 5, 1, 1),
     "whisper_room": (0, 6, 1, 1),
-    "fastpass": (0, 7, 1, 1),
+    "vip_entrance": (0, 7, 1, 1),
     "sunset_records": (3.5, 0, 1, 1),
     "the_back_room": (4.5, 0, 1, 1),
     "the_garage": (5.5, 0, 1, 1),
