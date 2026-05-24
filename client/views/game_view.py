@@ -1851,6 +1851,9 @@ class GameView(arcade.View):
             for p in self.game_state.get("players", []):
                 if p.get("player_id") == pid:
                     p["total_workers"] = p.get("total_workers", 0) + extra_workers
+                    p["available_workers"] = (
+                        p.get("available_workers", 0) + extra_workers
+                    )
                     break
 
         opp_coins = msg.get("opponent_coins_granted")
@@ -1923,6 +1926,8 @@ class GameView(arcade.View):
                 ),
             )
             self.event_queue.enqueue(anim_event, self)
+        elif self.game_state.get("phase") == "reassignment":
+            self._update_reassignment_status()
 
     def _on_quest_reward_choice_prompt(
         self,
@@ -2204,6 +2209,24 @@ class GameView(arcade.View):
         next_pid = msg.get("next_player_id")
         if next_pid:
             self._update_current_player(next_pid)
+        elif self.game_state.get("phase") == "reassignment":
+            self._update_reassignment_status()
+
+    def _update_reassignment_status(self) -> None:
+        """Update status text for the current reassignment queue state."""
+        queue = self.game_state.get("reassignment_queue", [])
+        my_id = getattr(self.window, "player_id", None)
+        if queue:
+            next_slot = queue[0]
+            next_pid = self._reassignment_slot_owners.get(next_slot)
+            if next_pid == my_id:
+                self._status_text = "Reassignment — YOUR TURN"
+                self._play_reassignment_sound_if_my_turn()
+            elif next_pid:
+                name = self._player_name(next_pid)
+                self._status_text = f"Reassignment — {name}'s turn"
+        else:
+            self._status_text = "Reassignment — ending round..."
 
     def _on_intrigue_play_prompt(self, msg: dict) -> None:
         cards = msg.get("intrigue_hand", [])
@@ -2457,6 +2480,8 @@ class GameView(arcade.View):
         next_pid = msg.get("next_player_id")
         if next_pid:
             self._update_current_player(next_pid)
+        elif self.game_state.get("phase") == "reassignment":
+            self._update_reassignment_status()
 
     def _on_contract_acquired(self, msg: dict) -> None:
         pid = msg.get("player_id", "")

@@ -87,8 +87,8 @@
       "slots": 1
     },
     {
-      "space_id": "fastpass",
-      "name": "Fastpass",
+      "space_id": "vip_entrance",
+      "name": "VIP Entrance",
       "space_type": "castle",
       "reward_special": "first_player_marker_and_intrigue",
       "slots": 1

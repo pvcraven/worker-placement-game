@@ -2,6 +2,8 @@
 
 A multiplayer worker placement board game with a music industry theme, inspired by Lords of Waterdeep. Players run competing record labels, placing workers to collect musicians, complete contracts, construct buildings, and play intrigue cards.
 
+![Record Label screenshot](docs/screenshot.png)
+
 ## Requirements
 
 - Python 3.12+
@@ -19,13 +21,13 @@ uv pip install -e ".[dev]"
 Start the server:
 
 ```bash
-python -m server.main
+uv run -m server.main
 ```
 
 In separate terminals, launch one or more clients:
 
 ```bash
-python -m client.main
+uv run -m client.main
 ```
 
 ### Client options
@@ -69,5 +71,5 @@ specs/           Feature specifications
 ## Tests
 
 ```bash
-pytest
+uv run pytest
 ```
