@@ -2133,8 +2133,8 @@ async def handle_select_quest_card(
         )
         return
 
-    # Move card to player's hand
-    state.board.face_up_quests.remove(card)
+    # Move card to player's hand, replacing in-place
+    card_index = state.board.face_up_quests.index(card)
     player.contract_hand.append(card)
 
     # Grant bonus based on spot
@@ -2150,10 +2150,12 @@ async def handle_select_quest_card(
         else:
             bonus_reward = {}
 
-    # Draw replacement card
+    # Draw replacement card into the same slot
     replacement = _draw_from_quest_deck(state)
     if replacement:
-        state.board.face_up_quests.append(replacement)
+        state.board.face_up_quests[card_index] = replacement
+    else:
+        state.board.face_up_quests.pop(card_index)
 
     spot_num = (
         0 if is_building_draw else (1 if spot_special == "quest_and_coins" else 2)
@@ -2860,6 +2862,7 @@ async def handle_complete_quest(
     extra_workers_granted = 0
     if contract.reward_extra_worker > 0:
         player.total_workers += contract.reward_extra_worker
+        player.available_workers += contract.reward_extra_worker
         extra_workers_granted = contract.reward_extra_worker
         _log_event(
             state,
@@ -3147,10 +3150,21 @@ async def handle_skip_quest_completion(
     )
 
     if is_reassignment:
+        await server.broadcast_to_game(
+            state.game_code,
+            QuestSkippedResponse(
+                player_id=player.player_id,
+                next_player_id=None,
+            ),
+        )
         await _finish_reassignment(server, state)
         return
 
     await _advance_turn(server, state)
+
+    if state.phase != GamePhase.PLACEMENT:
+        return
+
     next_player = state.current_player()
 
     await server.broadcast_to_game(
