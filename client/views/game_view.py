@@ -1851,7 +1851,9 @@ class GameView(arcade.View):
             for p in self.game_state.get("players", []):
                 if p.get("player_id") == pid:
                     p["total_workers"] = p.get("total_workers", 0) + extra_workers
-                    p["available_workers"] = p.get("available_workers", 0) + extra_workers
+                    p["available_workers"] = (
+                        p.get("available_workers", 0) + extra_workers
+                    )
                     break
 
         opp_coins = msg.get("opponent_coins_granted")
