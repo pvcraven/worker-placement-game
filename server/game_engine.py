@@ -3656,11 +3656,15 @@ async def handle_cancel_quest_selection(
 
     space = state.board.get_space(pending.get("space_id", ""))
     if space and space.reward_special == "reset_quests":
-        await conn.send_error("INVALID_ACTION", "Cannot cancel after quests were reset.")
+        await conn.send_error(
+            "INVALID_ACTION", "Cannot cancel after quests were reset."
+        )
         return
     copied_sp = state.board.get_space(pending.get("copied_from_space_id", ""))
     if copied_sp and copied_sp.reward_special == "reset_quests":
-        await conn.send_error("INVALID_ACTION", "Cannot cancel after quests were reset.")
+        await conn.send_error(
+            "INVALID_ACTION", "Cannot cancel after quests were reset."
+        )
         return
 
     state.pending_showcase_bonus = None

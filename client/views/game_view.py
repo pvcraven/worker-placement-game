@@ -1002,9 +1002,7 @@ class GameView(arcade.View):
                     if pid == my_id:
                         p.setdefault("contract_hand", []).append(selected_card)
                     else:
-                        p["contract_hand_count"] = p.get(
-                            "contract_hand_count", 0
-                        ) + 1
+                        p["contract_hand_count"] = p.get("contract_hand_count", 0) + 1
                     break
 
         # Apply bonus to local state
