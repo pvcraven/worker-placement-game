@@ -2133,6 +2133,22 @@ async def handle_select_quest_card(
             spot_special = pending_sp.building_tile.visitor_reward_special
             is_building_draw = True
 
+    # Shadow Studio / copy_occupied_space: worker is on the copy building,
+    # but the copied target is what determines the quest selection type
+    if spot_special is None and pending.get("copied_from_space_id"):
+        copied_sp = state.board.action_spaces.get(pending["copied_from_space_id"])
+        if copied_sp:
+            if copied_sp.space_type == "garage":
+                spot_special = copied_sp.reward_special
+            elif (
+                copied_sp.space_type == "building"
+                and copied_sp.building_tile
+                and copied_sp.building_tile.visitor_reward_special
+                in ("draw_contract", "draw_contract_and_complete")
+            ):
+                spot_special = copied_sp.building_tile.visitor_reward_special
+                is_building_draw = True
+
     if spot_special is None:
         await conn.send_error(
             "INVALID_ACTION",
@@ -3588,6 +3604,10 @@ async def handle_cancel_quest_selection(
 
     space = state.board.get_space(pending.get("space_id", ""))
     if space and space.reward_special == "reset_quests":
+        await conn.send_error("INVALID_ACTION", "Cannot cancel after quests were reset.")
+        return
+    copied_sp = state.board.get_space(pending.get("copied_from_space_id", ""))
+    if copied_sp and copied_sp.reward_special == "reset_quests":
         await conn.send_error("INVALID_ACTION", "Cannot cancel after quests were reset.")
         return
 
