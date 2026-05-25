@@ -1434,7 +1434,10 @@ async def _resolve_copied_space_rewards(
             }
         return
 
-    await _check_quest_completion(server, state)
+    if pending.get("is_reassignment"):
+        await _finish_reassignment(server, state)
+    else:
+        await _check_quest_completion(server, state)
 
 
 async def handle_skip_resource_choice(
@@ -4059,6 +4062,29 @@ async def handle_reassign_worker(
                 rcr,
                 "owner_bonus",
                 pending_owner_choice["space_name"],
+            )
+            return
+
+    # Building copy_occupied_space: pause for space selection
+    if (
+        target.space_type == "building"
+        and target.building_tile
+        and target.building_tile.visitor_reward_special == "copy_occupied_space"
+    ):
+        eligible = _get_copy_eligible_spaces(state, player)
+        if eligible:
+            state.pending_placement = _pending_reassign
+            state.pending_copy_source = {
+                "player_id": player.player_id,
+                "source_space_id": msg.target_space_id,
+                "source_type": "building",
+                "eligible_spaces": [s["space_id"] for s in eligible],
+            }
+            await conn.send_model(
+                CopySpacePromptResponse(
+                    eligible_spaces=eligible,
+                    source_type="building",
+                )
             )
             return
 
