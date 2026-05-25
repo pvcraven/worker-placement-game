@@ -357,6 +357,13 @@ class GameView(arcade.View):
             self._on_round_start_bonus(msg)
         elif action == "copy_space_prompt":
             self._on_copy_space_prompt(msg)
+        elif action == "deck_reshuffled":
+            if self.tabbed_panel:
+                deck = msg.get("deck_type", "unknown")
+                count = msg.get("card_count", 0)
+                self.tabbed_panel.add_entry(
+                    f"{deck.title()} deck reshuffled ({count} cards)"
+                )
         elif action == "error":
             error_msg = msg.get("message", "Error")
             self._status_text = error_msg
@@ -459,12 +466,15 @@ class GameView(arcade.View):
                     f"{name} placed worker on {space_name} ({bonus})"
                 )
             if pid == my_id:
+                _allow_cancel = effective_reward_special != "reset_quests"
 
                 def _enter_garage():
                     board_now = self.game_state.get("board", {})
                     quests = board_now.get("face_up_quests", [])
                     quest_ids = [q.get("id") for q in quests if q.get("id")]
-                    self._enter_highlight_mode("quest_selection", quest_ids)
+                    self._enter_highlight_mode(
+                        "quest_selection", quest_ids, can_cancel=_allow_cancel
+                    )
 
                 deferred_action = _enter_garage
 
@@ -986,9 +996,13 @@ class GameView(arcade.View):
                 selected_card = q
                 break
         if selected_card:
+            my_id = getattr(self.window, "player_id", None)
             for p in self.game_state.get("players", []):
                 if p.get("player_id") == pid:
-                    p.setdefault("contract_hand", []).append(selected_card)
+                    if pid == my_id:
+                        p.setdefault("contract_hand", []).append(selected_card)
+                    else:
+                        p["contract_hand_count"] = p.get("contract_hand_count", 0) + 1
                     break
 
         # Apply bonus to local state
@@ -1068,7 +1082,7 @@ class GameView(arcade.View):
                 sprite=sprite,
                 start=center,
                 end=center,
-                duration=2.0,
+                duration=3.5,
                 easing=Easing.LINEAR,
                 start_scale=big_scale,
                 end_scale=big_scale,
@@ -1498,7 +1512,7 @@ class GameView(arcade.View):
                 sprite=sprite,
                 start=center,
                 end=center,
-                duration=2.0,
+                duration=3.5,
                 easing=Easing.LINEAR,
                 start_scale=big_scale,
                 end_scale=big_scale,
@@ -1561,7 +1575,7 @@ class GameView(arcade.View):
                 sprite=sprite,
                 start=center,
                 end=center,
-                duration=2.0,
+                duration=3.5,
                 easing=Easing.LINEAR,
                 start_scale=big_scale,
                 end_scale=big_scale,
@@ -1621,7 +1635,7 @@ class GameView(arcade.View):
                 sprite=sprite,
                 start=center,
                 end=center,
-                duration=2.0,
+                duration=3.5,
                 easing=Easing.LINEAR,
                 start_scale=big_scale,
                 end_scale=big_scale,
@@ -2910,9 +2924,11 @@ class GameView(arcade.View):
                 [],
             )
             quest_ids = [q.get("id") for q in quests if q.get("id")]
+            allow_cancel = space_data.get("reward_special") != "reset_quests"
             self._enter_highlight_mode(
                 "quest_selection",
                 quest_ids,
+                can_cancel=allow_cancel,
             )
             return
 
@@ -3362,11 +3378,12 @@ class GameView(arcade.View):
         self,
         mode: str,
         ids: list[str],
+        can_cancel: bool = True,
     ) -> None:
         self._highlight_mode = mode
         self._highlighted_ids = ids
         if self._cancel_sprite:
-            self._cancel_sprite.visible = True
+            self._cancel_sprite.visible = can_cancel
 
     def _exit_highlight_mode(self) -> None:
         self._highlight_mode = None

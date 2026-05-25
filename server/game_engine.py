@@ -19,6 +19,7 @@ from shared.messages import (
     BuildingMarketUpdateResponse,
     ContractAcquiredResponse,
     CopySpacePromptResponse,
+    DeckReshuffledResponse,
     FaceUpQuestsUpdatedResponse,
     FinalPlayerScore,
     GameOverResponse,
@@ -85,6 +86,15 @@ def _draw_from_quest_deck(state) -> ContractCard | None:
         ]
         state.board.quest_discard.clear()
         random.shuffle(state.board.quest_deck)
+        count = len(state.board.quest_deck)
+        _log_event(
+            state,
+            action="deck_reshuffle",
+            details=f"Quest discard pile reshuffled into deck ({count} cards)",
+        )
+        state.pending_reshuffle_events.append(
+            {"deck_type": "quest", "card_count": count}
+        )
     if state.board.quest_deck:
         return state.board.quest_deck.pop(0)
     return None
@@ -96,9 +106,31 @@ def _draw_from_building_deck(state):
         state.board.building_deck = list(state.board.building_discard)
         state.board.building_discard.clear()
         random.shuffle(state.board.building_deck)
+        count = len(state.board.building_deck)
+        _log_event(
+            state,
+            action="deck_reshuffle",
+            details=f"Building discard pile reshuffled into deck ({count} cards)",
+        )
+        state.pending_reshuffle_events.append(
+            {"deck_type": "building", "card_count": count}
+        )
     if state.board.building_deck:
         return state.board.building_deck.pop(0)
     return None
+
+
+async def _flush_reshuffle_events(server, state) -> None:
+    """Broadcast any pending deck reshuffle notifications and clear the list."""
+    for evt in state.pending_reshuffle_events:
+        await server.broadcast_to_game(
+            state.game_code,
+            DeckReshuffledResponse(
+                deck_type=evt["deck_type"],
+                card_count=evt["card_count"],
+            ),
+        )
+    state.pending_reshuffle_events.clear()
 
 
 def _draw_intrigue_cards(state, player, count: int) -> list[dict]:
@@ -296,6 +328,7 @@ async def _check_quest_completion(
     state,
 ) -> None:
     """Check if current player can complete quests."""
+    await _flush_reshuffle_events(server, state)
     player = state.current_player()
     if player is None or player.completed_quest_this_turn:
         logger.info(
@@ -369,6 +402,7 @@ async def _notify_turn_if_needed(
 
 async def _advance_turn(server: GameServer, state) -> None:
     """Advance to the next player, or trigger end-of-round if all placed."""
+    await _flush_reshuffle_events(server, state)
     state.last_activity = time.time()
     state.pending_showcase_bonus = None
     state.pending_placement = None
@@ -653,6 +687,24 @@ async def _end_game(server: GameServer, state) -> None:
         state.game_code,
         GameOverResponse(final_scores=scores, tiebreaker_applied=tiebreaker),
     )
+
+    for s in scores:
+        player = state.get_player(s.player_id)
+        producer_name = s.producer_card.get("name", "None")
+        genres = ", ".join(s.producer_card.get("bonus_genres", []))
+        _log_event(
+            state,
+            action="final_score",
+            details=(
+                f"{s.player_name}: {s.total_vp}VP"
+                f" (game={s.game_vp}"
+                f" genre_bonus={s.genre_bonus_vp}"
+                f" resources={s.resource_vp})"
+                f" — Producer: {producer_name} [{genres}]"
+                f" completed={len(player.completed_contracts) if player else '?'}"
+            ),
+            player_id=s.player_id,
+        )
 
     _log_event(
         state,
@@ -1306,8 +1358,6 @@ async def _resolve_copied_space_rewards(
 
     state.pending_copy_source = None
 
-    # Garage reset_quests must happen before WorkerPlacedResponse so client
-    # has updated quest IDs when entering quest selection highlight mode
     if (
         target_space.space_type == "garage"
         and target_space.reward_special == "reset_quests"
@@ -1318,12 +1368,6 @@ async def _resolve_copied_space_rewards(
             card = _draw_from_quest_deck(state)
             if card:
                 state.board.face_up_quests.append(card)
-        await server.broadcast_to_game(
-            state.game_code,
-            FaceUpQuestsUpdatedResponse(
-                face_up_quests=[q.model_dump() for q in state.board.face_up_quests]
-            ),
-        )
 
     await server.broadcast_to_game(
         state.game_code,
@@ -1337,6 +1381,18 @@ async def _resolve_copied_space_rewards(
             copied_space=copied_space_info,
         ),
     )
+
+    # Send quest reset AFTER worker placed so client sees landing first
+    if (
+        target_space.space_type == "garage"
+        and target_space.reward_special == "reset_quests"
+    ):
+        await server.broadcast_to_game(
+            state.game_code,
+            FaceUpQuestsUpdatedResponse(
+                face_up_quests=[q.model_dump() for q in state.board.face_up_quests]
+            ),
+        )
 
     # T021: Realtor space — enter building purchase flow
     if target_space.reward_special == "purchase_building":
@@ -1430,7 +1486,10 @@ async def _resolve_copied_space_rewards(
             }
         return
 
-    await _check_quest_completion(server, state)
+    if pending.get("is_reassignment"):
+        await _finish_reassignment(server, state)
+    else:
+        await _check_quest_completion(server, state)
 
 
 async def handle_skip_resource_choice(
@@ -2045,18 +2104,18 @@ async def _handle_garage_placement(
 
         await server.broadcast_to_game(
             state.game_code,
-            FaceUpQuestsUpdatedResponse(
-                face_up_quests=[q.model_dump() for q in state.board.face_up_quests]
-            ),
-        )
-
-        await server.broadcast_to_game(
-            state.game_code,
             WorkerPlacedResponse(
                 player_id=player.player_id,
                 space_id=space_id,
                 reward_granted={},
                 next_player_id=None,
+            ),
+        )
+
+        await server.broadcast_to_game(
+            state.game_code,
+            FaceUpQuestsUpdatedResponse(
+                face_up_quests=[q.model_dump() for q in state.board.face_up_quests]
             ),
         )
     else:
@@ -2125,6 +2184,22 @@ async def handle_select_quest_card(
         ):
             spot_special = pending_sp.building_tile.visitor_reward_special
             is_building_draw = True
+
+    # Shadow Studio / copy_occupied_space: worker is on the copy building,
+    # but the copied target is what determines the quest selection type
+    if spot_special is None and pending.get("copied_from_space_id"):
+        copied_sp = state.board.action_spaces.get(pending["copied_from_space_id"])
+        if copied_sp:
+            if copied_sp.space_type == "garage":
+                spot_special = copied_sp.reward_special
+            elif (
+                copied_sp.space_type == "building"
+                and copied_sp.building_tile
+                and copied_sp.building_tile.visitor_reward_special
+                in ("draw_contract", "draw_contract_and_complete")
+            ):
+                spot_special = copied_sp.building_tile.visitor_reward_special
+                is_building_draw = True
 
     if spot_special is None:
         await conn.send_error(
@@ -3579,6 +3654,19 @@ async def handle_cancel_quest_selection(
         await conn.send_error("INVALID_ACTION", "No quest selection to cancel.")
         return
 
+    space = state.board.get_space(pending.get("space_id", ""))
+    if space and space.reward_special == "reset_quests":
+        await conn.send_error(
+            "INVALID_ACTION", "Cannot cancel after quests were reset."
+        )
+        return
+    copied_sp = state.board.get_space(pending.get("copied_from_space_id", ""))
+    if copied_sp and copied_sp.reward_special == "reset_quests":
+        await conn.send_error(
+            "INVALID_ACTION", "Cannot cancel after quests were reset."
+        )
+        return
+
     state.pending_showcase_bonus = None
 
     _log_event(
@@ -3892,8 +3980,6 @@ async def handle_reassign_worker(
         player_id=player.player_id,
     )
 
-    # Reset quests before broadcasting WorkerReassignedResponse so the
-    # client enters quest_selection with the NEW quest IDs.
     if target.space_type == "garage" and target.reward_special == "reset_quests":
         state.board.quest_discard.extend(state.board.face_up_quests)
         state.board.face_up_quests.clear()
@@ -3901,12 +3987,6 @@ async def handle_reassign_worker(
             card = _draw_from_quest_deck(state)
             if card:
                 state.board.face_up_quests.append(card)
-        await server.broadcast_to_game(
-            state.game_code,
-            FaceUpQuestsUpdatedResponse(
-                face_up_quests=[q.model_dump() for q in state.board.face_up_quests]
-            ),
-        )
 
     await server.broadcast_to_game(
         state.game_code,
@@ -3919,6 +3999,15 @@ async def handle_reassign_worker(
             trigger_bonuses=trigger_bonuses_data,
         ),
     )
+
+    # Send quest reset AFTER worker reassigned so client sees landing first
+    if target.space_type == "garage" and target.reward_special == "reset_quests":
+        await server.broadcast_to_game(
+            state.game_code,
+            FaceUpQuestsUpdatedResponse(
+                face_up_quests=[q.model_dump() for q in state.board.face_up_quests]
+            ),
+        )
 
     # Build pending_placement for reassignment pause points
     _pending_reassign = {
@@ -4052,6 +4141,29 @@ async def handle_reassign_worker(
             )
             return
 
+    # Building copy_occupied_space: pause for space selection
+    if (
+        target.space_type == "building"
+        and target.building_tile
+        and target.building_tile.visitor_reward_special == "copy_occupied_space"
+    ):
+        eligible = _get_copy_eligible_spaces(state, player)
+        if eligible:
+            state.pending_placement = _pending_reassign
+            state.pending_copy_source = {
+                "player_id": player.player_id,
+                "source_space_id": msg.target_space_id,
+                "source_type": "building",
+                "eligible_spaces": [s["space_id"] for s in eligible],
+            }
+            await conn.send_model(
+                CopySpacePromptResponse(
+                    eligible_spaces=eligible,
+                    source_type="building",
+                )
+            )
+            return
+
     # Building draw_contract: pause for quest selection
     if (
         target.space_type == "building"
@@ -4083,6 +4195,7 @@ async def _finish_reassignment(
     state,
 ) -> None:
     """Continue reassignment queue or end the round."""
+    await _flush_reshuffle_events(server, state)
     state.pending_placement = None
     if state.reassignment_active_player_id:
         player = state.get_player(
