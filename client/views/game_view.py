@@ -357,6 +357,13 @@ class GameView(arcade.View):
             self._on_round_start_bonus(msg)
         elif action == "copy_space_prompt":
             self._on_copy_space_prompt(msg)
+        elif action == "deck_reshuffled":
+            if self.tabbed_panel:
+                deck = msg.get("deck_type", "unknown")
+                count = msg.get("card_count", 0)
+                self.tabbed_panel.add_entry(
+                    f"{deck.title()} deck reshuffled ({count} cards)"
+                )
         elif action == "error":
             error_msg = msg.get("message", "Error")
             self._status_text = error_msg

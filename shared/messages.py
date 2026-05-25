@@ -282,6 +282,12 @@ class QuestsResetResponse(BaseModel):
     next_player_id: str | None
 
 
+class DeckReshuffledResponse(BaseModel):
+    action: Literal["deck_reshuffled"] = "deck_reshuffled"
+    deck_type: str  # "quest" or "building"
+    card_count: int
+
+
 class QuestCompletedResponse(BaseModel):
     action: Literal["quest_completed"] = "quest_completed"
     player_id: str

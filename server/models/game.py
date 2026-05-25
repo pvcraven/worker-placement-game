@@ -179,6 +179,7 @@ class GameState(BaseModel):
     pending_building_quest: dict | None = None
     pending_placement: dict | None = None
     pending_copy_source: dict | None = None
+    pending_reshuffle_events: list[dict] = Field(default_factory=list)
 
     def get_player(self, player_id: str) -> Player | None:
         for p in self.players:

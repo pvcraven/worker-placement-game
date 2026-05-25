@@ -19,6 +19,7 @@ from shared.messages import (
     BuildingMarketUpdateResponse,
     ContractAcquiredResponse,
     CopySpacePromptResponse,
+    DeckReshuffledResponse,
     FaceUpQuestsUpdatedResponse,
     FinalPlayerScore,
     GameOverResponse,
@@ -85,6 +86,15 @@ def _draw_from_quest_deck(state) -> ContractCard | None:
         ]
         state.board.quest_discard.clear()
         random.shuffle(state.board.quest_deck)
+        count = len(state.board.quest_deck)
+        _log_event(
+            state,
+            action="deck_reshuffle",
+            details=f"Quest discard pile reshuffled into deck ({count} cards)",
+        )
+        state.pending_reshuffle_events.append(
+            {"deck_type": "quest", "card_count": count}
+        )
     if state.board.quest_deck:
         return state.board.quest_deck.pop(0)
     return None
@@ -96,9 +106,31 @@ def _draw_from_building_deck(state):
         state.board.building_deck = list(state.board.building_discard)
         state.board.building_discard.clear()
         random.shuffle(state.board.building_deck)
+        count = len(state.board.building_deck)
+        _log_event(
+            state,
+            action="deck_reshuffle",
+            details=f"Building discard pile reshuffled into deck ({count} cards)",
+        )
+        state.pending_reshuffle_events.append(
+            {"deck_type": "building", "card_count": count}
+        )
     if state.board.building_deck:
         return state.board.building_deck.pop(0)
     return None
+
+
+async def _flush_reshuffle_events(server, state) -> None:
+    """Broadcast any pending deck reshuffle notifications and clear the list."""
+    for evt in state.pending_reshuffle_events:
+        await server.broadcast_to_game(
+            state.game_code,
+            DeckReshuffledResponse(
+                deck_type=evt["deck_type"],
+                card_count=evt["card_count"],
+            ),
+        )
+    state.pending_reshuffle_events.clear()
 
 
 def _draw_intrigue_cards(state, player, count: int) -> list[dict]:
@@ -296,6 +328,7 @@ async def _check_quest_completion(
     state,
 ) -> None:
     """Check if current player can complete quests."""
+    await _flush_reshuffle_events(server, state)
     player = state.current_player()
     if player is None or player.completed_quest_this_turn:
         logger.info(
@@ -369,6 +402,7 @@ async def _notify_turn_if_needed(
 
 async def _advance_turn(server: GameServer, state) -> None:
     """Advance to the next player, or trigger end-of-round if all placed."""
+    await _flush_reshuffle_events(server, state)
     state.last_activity = time.time()
     state.pending_showcase_bonus = None
     state.pending_placement = None
@@ -653,6 +687,24 @@ async def _end_game(server: GameServer, state) -> None:
         state.game_code,
         GameOverResponse(final_scores=scores, tiebreaker_applied=tiebreaker),
     )
+
+    for s in scores:
+        player = state.get_player(s.player_id)
+        producer_name = s.producer_card.get("name", "None")
+        genres = ", ".join(s.producer_card.get("bonus_genres", []))
+        _log_event(
+            state,
+            action="final_score",
+            details=(
+                f"{s.player_name}: {s.total_vp}VP"
+                f" (game={s.game_vp}"
+                f" genre_bonus={s.genre_bonus_vp}"
+                f" resources={s.resource_vp})"
+                f" — Producer: {producer_name} [{genres}]"
+                f" completed={len(player.completed_contracts) if player else '?'}"
+            ),
+            player_id=s.player_id,
+        )
 
     _log_event(
         state,
@@ -4139,6 +4191,7 @@ async def _finish_reassignment(
     state,
 ) -> None:
     """Continue reassignment queue or end the round."""
+    await _flush_reshuffle_events(server, state)
     state.pending_placement = None
     if state.reassignment_active_player_id:
         player = state.get_player(
