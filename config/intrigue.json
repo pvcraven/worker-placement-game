@@ -299,10 +299,10 @@
     {
       "id": "intrigue_038",
       "name": "Demo Tape Discovery",
-      "description": "Unearth a stack of promising demo tapes from unsigned artists.",
+      "description": "Unearth a promising demo tape from an unsigned artist.",
       "effect_type": "draw_contracts",
       "effect_target": "self",
-      "effect_value": {"count": 2}
+      "effect_value": {"count": 1}
     },
     {
       "id": "intrigue_039",
@@ -310,7 +310,7 @@
       "description": "Expand your A&R team to uncover more signing opportunities.",
       "effect_type": "draw_contracts",
       "effect_target": "self",
-      "effect_value": {"count": 3}
+      "effect_value": {"count": 2}
     },
     {
       "id": "intrigue_040",
@@ -323,10 +323,10 @@
     {
       "id": "intrigue_041",
       "name": "Music Conference",
-      "description": "Send your team to a major music conference. They return with new leads.",
+      "description": "Send your team to a major music conference. They return with a new lead.",
       "effect_type": "draw_contracts",
       "effect_target": "self",
-      "effect_value": {"count": 2}
+      "effect_value": {"count": 1}
     },
     {
       "id": "intrigue_042",
@@ -334,7 +334,7 @@
       "description": "A retiring manager hands over their legendary contacts list.",
       "effect_type": "draw_contracts",
       "effect_target": "self",
-      "effect_value": {"count": 3}
+      "effect_value": {"count": 2}
     },
     {
       "id": "intrigue_043",
