@@ -37,7 +37,7 @@ class GameWindow(arcade.Window):
         self.content_width: float = DESIGN_WIDTH * self.ui_scale
         self.content_height: float = DESIGN_HEIGHT * self.ui_scale
         self._too_small = False
-        self.background_color = arcade.color.DARK_SLATE_GRAY
+        self.background_color = arcade.color.ARSENIC
 
     # ------------------------------------------------------------------
     # Resize handling
