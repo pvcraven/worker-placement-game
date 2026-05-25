@@ -989,9 +989,15 @@ class GameView(arcade.View):
                 selected_card = q
                 break
         if selected_card:
+            my_id = getattr(self.window, "player_id", None)
             for p in self.game_state.get("players", []):
                 if p.get("player_id") == pid:
-                    p.setdefault("contract_hand", []).append(selected_card)
+                    if pid == my_id:
+                        p.setdefault("contract_hand", []).append(selected_card)
+                    else:
+                        p["contract_hand_count"] = p.get(
+                            "contract_hand_count", 0
+                        ) + 1
                     break
 
         # Apply bonus to local state
