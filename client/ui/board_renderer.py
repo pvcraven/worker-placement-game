@@ -118,6 +118,8 @@ class BoardRenderer:
         self._constructed_sprite_list: arcade.SpriteList | None = None
         self._space_sprite_list: arcade.SpriteList | None = None
         self._backstage_sprite_list: arcade.SpriteList | None = None
+        self._backstage_closed_sprite_list: arcade.SpriteList | None = None
+        self._backstage_closed = False
         self._realtor_sprite_list: arcade.SpriteList | None = None
         self._building_vp_texts: list[arcade.Text] = []
         self._building_vp_dirty = True
@@ -514,7 +516,6 @@ class BoardRenderer:
             backstage_positions,
             scale=space_scale,
         )
-        self._backstage_closed = False
 
         # Realtor sprite
         r_col, r_row, r_cs, r_rs = _GRID_PLACEMENT["realtor"]

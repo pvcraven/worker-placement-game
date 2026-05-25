@@ -1879,8 +1879,9 @@ def generate_space_cards() -> int:
         tx = (cw - tw) // 2
         draw.text((tx, mid_y), label, fill=closed_text_color, font=big_font)
         pad = 12
+        glyph_top = mid_y + bbox[1]
         draw.rectangle(
-            [tx - pad, mid_y - pad, tx + tw + pad, mid_y + text_h + pad],
+            [tx - pad, glyph_top - pad, tx + tw + pad, glyph_top + text_h + pad],
             outline=closed_text_color,
             width=3,
         )
