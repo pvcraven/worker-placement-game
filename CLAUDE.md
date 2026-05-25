@@ -67,4 +67,14 @@ Python 3.12+: Follow standard conventions
 
 
 <!-- MANUAL ADDITIONS START -->
+
+## Game Content
+
+- **Quests** (called "contracts" in code): `config/contracts.json` — 60 quest cards defining costs, rewards, and victory points. The terms "quest" and "contract" are interchangeable; the user-facing name is "quest" but the code/data model uses "contract".
+- **Intrigue cards**: `config/intrigue.json` — intrigue card definitions.
+- **Buildings**: `config/buildings.json` — purchasable building definitions.
+- **Board spaces**: `config/board.json` — permanent board spaces and building lot count.
+- **Game rules**: `config/game_rules.json` — round count, starting resources, etc.
+- **Producers**: `config/producers.json` — producer card definitions.
+
 <!-- MANUAL ADDITIONS END -->
