@@ -1306,8 +1306,6 @@ async def _resolve_copied_space_rewards(
 
     state.pending_copy_source = None
 
-    # Garage reset_quests must happen before WorkerPlacedResponse so client
-    # has updated quest IDs when entering quest selection highlight mode
     if (
         target_space.space_type == "garage"
         and target_space.reward_special == "reset_quests"
@@ -1318,12 +1316,6 @@ async def _resolve_copied_space_rewards(
             card = _draw_from_quest_deck(state)
             if card:
                 state.board.face_up_quests.append(card)
-        await server.broadcast_to_game(
-            state.game_code,
-            FaceUpQuestsUpdatedResponse(
-                face_up_quests=[q.model_dump() for q in state.board.face_up_quests]
-            ),
-        )
 
     await server.broadcast_to_game(
         state.game_code,
@@ -1337,6 +1329,18 @@ async def _resolve_copied_space_rewards(
             copied_space=copied_space_info,
         ),
     )
+
+    # Send quest reset AFTER worker placed so client sees landing first
+    if (
+        target_space.space_type == "garage"
+        and target_space.reward_special == "reset_quests"
+    ):
+        await server.broadcast_to_game(
+            state.game_code,
+            FaceUpQuestsUpdatedResponse(
+                face_up_quests=[q.model_dump() for q in state.board.face_up_quests]
+            ),
+        )
 
     # T021: Realtor space — enter building purchase flow
     if target_space.reward_special == "purchase_building":
@@ -2045,18 +2049,18 @@ async def _handle_garage_placement(
 
         await server.broadcast_to_game(
             state.game_code,
-            FaceUpQuestsUpdatedResponse(
-                face_up_quests=[q.model_dump() for q in state.board.face_up_quests]
-            ),
-        )
-
-        await server.broadcast_to_game(
-            state.game_code,
             WorkerPlacedResponse(
                 player_id=player.player_id,
                 space_id=space_id,
                 reward_granted={},
                 next_player_id=None,
+            ),
+        )
+
+        await server.broadcast_to_game(
+            state.game_code,
+            FaceUpQuestsUpdatedResponse(
+                face_up_quests=[q.model_dump() for q in state.board.face_up_quests]
             ),
         )
     else:
@@ -3579,6 +3583,11 @@ async def handle_cancel_quest_selection(
         await conn.send_error("INVALID_ACTION", "No quest selection to cancel.")
         return
 
+    space = state.board.get_space(pending.get("space_id", ""))
+    if space and space.reward_special == "reset_quests":
+        await conn.send_error("INVALID_ACTION", "Cannot cancel after quests were reset.")
+        return
+
     state.pending_showcase_bonus = None
 
     _log_event(
@@ -3892,8 +3901,6 @@ async def handle_reassign_worker(
         player_id=player.player_id,
     )
 
-    # Reset quests before broadcasting WorkerReassignedResponse so the
-    # client enters quest_selection with the NEW quest IDs.
     if target.space_type == "garage" and target.reward_special == "reset_quests":
         state.board.quest_discard.extend(state.board.face_up_quests)
         state.board.face_up_quests.clear()
@@ -3901,12 +3908,6 @@ async def handle_reassign_worker(
             card = _draw_from_quest_deck(state)
             if card:
                 state.board.face_up_quests.append(card)
-        await server.broadcast_to_game(
-            state.game_code,
-            FaceUpQuestsUpdatedResponse(
-                face_up_quests=[q.model_dump() for q in state.board.face_up_quests]
-            ),
-        )
 
     await server.broadcast_to_game(
         state.game_code,
@@ -3919,6 +3920,15 @@ async def handle_reassign_worker(
             trigger_bonuses=trigger_bonuses_data,
         ),
     )
+
+    # Send quest reset AFTER worker reassigned so client sees landing first
+    if target.space_type == "garage" and target.reward_special == "reset_quests":
+        await server.broadcast_to_game(
+            state.game_code,
+            FaceUpQuestsUpdatedResponse(
+                face_up_quests=[q.model_dump() for q in state.board.face_up_quests]
+            ),
+        )
 
     # Build pending_placement for reassignment pause points
     _pending_reassign = {

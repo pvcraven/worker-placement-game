@@ -459,12 +459,15 @@ class GameView(arcade.View):
                     f"{name} placed worker on {space_name} ({bonus})"
                 )
             if pid == my_id:
+                _allow_cancel = effective_reward_special != "reset_quests"
 
                 def _enter_garage():
                     board_now = self.game_state.get("board", {})
                     quests = board_now.get("face_up_quests", [])
                     quest_ids = [q.get("id") for q in quests if q.get("id")]
-                    self._enter_highlight_mode("quest_selection", quest_ids)
+                    self._enter_highlight_mode(
+                        "quest_selection", quest_ids, can_cancel=_allow_cancel
+                    )
 
                 deferred_action = _enter_garage
 
@@ -2910,9 +2913,11 @@ class GameView(arcade.View):
                 [],
             )
             quest_ids = [q.get("id") for q in quests if q.get("id")]
+            allow_cancel = space_data.get("reward_special") != "reset_quests"
             self._enter_highlight_mode(
                 "quest_selection",
                 quest_ids,
+                can_cancel=allow_cancel,
             )
             return
 
@@ -3362,11 +3367,12 @@ class GameView(arcade.View):
         self,
         mode: str,
         ids: list[str],
+        can_cancel: bool = True,
     ) -> None:
         self._highlight_mode = mode
         self._highlighted_ids = ids
         if self._cancel_sprite:
-            self._cancel_sprite.visible = True
+            self._cancel_sprite.visible = can_cancel
 
     def _exit_highlight_mode(self) -> None:
         self._highlight_mode = None
