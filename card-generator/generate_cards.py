@@ -1856,6 +1856,37 @@ def generate_space_cards() -> int:
         img.save(OUTPUT_SPACES / f"backstage_slot_{slot_num}.png")
         count += 1
 
+    # Backstage slots — closed variant
+    closed_text_color = (180, 40, 40)
+    for slot_num in range(1, 4):
+        img, draw = create_card_base(cw, ch, cr)
+        band_h = 70
+        _draw_color_band(draw, cw, band_h, backstage_band_color, cr)
+        draw_text_centered(
+            draw,
+            f"Backstage {slot_num}",
+            14,
+            Q_FONT_TITLE,
+            (255, 255, 255),
+            width=cw,
+        )
+        big_font = _load_font(34, bold=True)
+        label = "CLOSED"
+        bbox = draw.textbbox((0, 0), label, font=big_font)
+        tw = bbox[2] - bbox[0]
+        text_h = bbox[3] - bbox[1]
+        mid_y = (band_h + ch) // 2 - text_h // 2 - 15
+        tx = (cw - tw) // 2
+        draw.text((tx, mid_y), label, fill=closed_text_color, font=big_font)
+        pad = 12
+        draw.rectangle(
+            [tx - pad, mid_y - pad, tx + tw + pad, mid_y + text_h + pad],
+            outline=closed_text_color,
+            width=3,
+        )
+        img.save(OUTPUT_SPACES / f"backstage_slot_{slot_num}_closed.png")
+        count += 1
+
     return count
 
 

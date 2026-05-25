@@ -222,6 +222,11 @@ class GameView(arcade.View):
                     self._building_deck_remaining,
                 )
 
+        if self.board_renderer:
+            self.board_renderer.swap_backstage_cards(
+                closed=self.game_state.get("phase") == "reassignment",
+            )
+
         # Update turn indicator
         turn_order = self.game_state.get("turn_order", [])
         idx = self.game_state.get("current_player_index", 0)
@@ -2729,6 +2734,7 @@ class GameView(arcade.View):
 
         if self.tabbed_panel:
             self.tabbed_panel.add_entry("--- Reassignment Phase ---")
+        self.board_renderer.swap_backstage_cards(closed=True)
         self._play_reassignment_sound_if_my_turn()
 
     def _on_worker_reassigned(self, msg: dict) -> None:
@@ -2958,6 +2964,7 @@ class GameView(arcade.View):
         self.game_state["current_player_index"] = 0
         self.game_state["phase"] = "placement"
         self.game_state.pop("reassignment_queue", None)
+        self.board_renderer.swap_backstage_cards(closed=False)
         if turn_order:
             self.game_state["turn_order"] = turn_order
 

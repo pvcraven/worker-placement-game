@@ -164,6 +164,9 @@ class BoardRenderer:
         self._building_vp_dirty = True
         self._shapes_dirty = True
 
+    def swap_backstage_cards(self, closed: bool) -> None:
+        self._backstage_closed = closed
+
     def scroll_buildings(self, direction: int) -> None:
         new_page = self._building_page + direction
         if 0 <= new_page < self._building_page_count:
@@ -227,7 +230,9 @@ class BoardRenderer:
         if self._space_sprite_list:
             self._space_sprite_list.draw()
 
-        if self._backstage_sprite_list:
+        if self._backstage_closed and self._backstage_closed_sprite_list:
+            self._backstage_closed_sprite_list.draw()
+        elif self._backstage_sprite_list:
             self._backstage_sprite_list.draw()
 
         face_up_quests = self.board_data.get("face_up_quests", [])
@@ -502,6 +507,14 @@ class BoardRenderer:
             backstage_positions,
             scale=space_scale,
         )
+        closed_cards = [{"id": f"{c['id']}_closed"} for c in backstage_cards]
+        self._backstage_closed_sprite_list = _build_card_sprite_list(
+            closed_cards,
+            "spaces",
+            backstage_positions,
+            scale=space_scale,
+        )
+        self._backstage_closed = False
 
         # Realtor sprite
         r_col, r_row, r_cs, r_rs = _GRID_PLACEMENT["realtor"]
