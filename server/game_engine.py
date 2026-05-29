@@ -1737,6 +1737,47 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
         "trigger_bonuses": trigger_bonuses_data,
     }
 
+    # Handle The Green Room (play intrigue card + quest selection)
+    if space.reward_special == "play_intrigue_and_quest":
+        if not player.intrigue_hand:
+            await conn.send_error(
+                "INVALID_ACTION",
+                "You need at least one intrigue card to use The Green Room.",
+            )
+            space.occupied_by = None
+            player.available_workers += 1
+            return
+        state.pending_placement = _pending
+        state.pending_play_intrigue = {
+            "player_id": player.player_id,
+            "source": "green_room",
+        }
+        _log_event(
+            state,
+            action="place_worker",
+            details=(
+                f"{player.display_name} placed worker on"
+                f" {space.name} — awaiting intrigue play"
+            ),
+            player_id=player.player_id,
+        )
+        await server.broadcast_to_game(
+            state.game_code,
+            WorkerPlacedResponse(
+                player_id=player.player_id,
+                space_id=msg.space_id,
+                reward_granted={},
+                next_player_id=None,
+            ),
+        )
+        await server.send_to_player(
+            player.player_id,
+            IntriguePlayPromptResponse(
+                intrigue_hand=[c.model_dump() for c in player.intrigue_hand]
+            ),
+        )
+        return
+
     # Handle Garage spots (quest selection)
     if space.space_type == "garage":
         state.pending_placement = _pending
@@ -2176,6 +2217,8 @@ async def handle_select_quest_card(
     if pending_sp and pending_sp.occupied_by == player.player_id:
         if pending_sp.space_type == "garage":
             spot_special = pending_sp.reward_special
+        elif pending_sp.reward_special == "play_intrigue_and_quest":
+            spot_special = pending_sp.reward_special
         elif (
             pending_sp.space_type == "building"
             and pending_sp.building_tile
@@ -2232,10 +2275,21 @@ async def handle_select_quest_card(
     else:
         state.board.face_up_quests.pop(card_index)
 
-    spot_num = (
-        0 if is_building_draw else (1 if spot_special == "quest_and_coins" else 2)
-    )
-    source = "a building" if is_building_draw else "The Garage"
+    if is_building_draw:
+        spot_num = 0
+    elif spot_special == "quest_and_coins":
+        spot_num = 1
+    elif spot_special == "play_intrigue_and_quest":
+        spot_num = 3
+    else:
+        spot_num = 2
+
+    if is_building_draw:
+        source = "a building"
+    elif spot_special == "play_intrigue_and_quest":
+        source = "The Green Room"
+    else:
+        source = "The Garage"
 
     bonus_str = _format_reward(bonus_reward)
     _log_event(
@@ -3654,6 +3708,35 @@ async def handle_cancel_quest_selection(
         await conn.send_error("INVALID_ACTION", "No quest selection to cancel.")
         return
 
+    # Green Room: cancel before intrigue card play
+    ppi = state.pending_play_intrigue
+    if ppi and ppi.get("source") == "green_room" and ppi["player_id"] == conn.player_id:
+        state.pending_play_intrigue = None
+        result = _unwind_placement(state, player, pending)
+        state.pending_placement = None
+
+        _log_event(
+            state,
+            action="cancel_quest_selection",
+            details=f"{player.display_name} cancelled The Green Room placement",
+            player_id=player.player_id,
+        )
+
+        next_player = state.current_player()
+        await server.broadcast_to_game(
+            state.game_code,
+            PlacementCancelledResponse(
+                player_id=player.player_id,
+                space_id=result["space_id"],
+                next_player_id=(next_player.player_id if next_player else None),
+                plot_quest_bonus_vp=result["reversed_vp"],
+                reversed_rewards=result["reversed_resources"],
+                reversed_owner_bonus=result["reversed_owner_bonus"],
+                accumulated_stock_restored=result["stock_restored"],
+            ),
+        )
+        return
+
     space = state.board.get_space(pending.get("space_id", ""))
     if space and space.reward_special == "reset_quests":
         await conn.send_error(
@@ -4270,8 +4353,10 @@ async def handle_choose_intrigue_target(
                 setattr(player.resources, k, current + actual)
             resources_affected[k] = actual
 
+    intrigue_source = pending.get("source", "")
     state.pending_intrigue_target = None
-    state.pending_placement = None
+    if intrigue_source != "green_room":
+        state.pending_placement = None
 
     _log_event(
         state,
@@ -4365,7 +4450,9 @@ async def handle_choose_intrigue_target(
                 )
                 return
 
-    if pending.get("source") == "quest_completion":
+    if intrigue_source == "green_room":
+        return
+    elif intrigue_source == "quest_completion":
         await _advance_after_quest_rewards(server, state, player)
     else:
         await _check_quest_completion(server, state)
@@ -4410,6 +4497,7 @@ async def handle_cancel_intrigue_target(
         await _advance_after_quest_rewards(server, state, player)
         return
 
+    # Green Room and backstage both unwind placement below
     placement = state.pending_placement
     if placement is None or placement["player_id"] != conn.player_id:
         await conn.send_error("INVALID_ACTION", "No pending placement to cancel.")
@@ -4664,7 +4752,11 @@ async def handle_play_intrigue_from_quest(
             plot_bonus_vp += completed.bonus_vp_per_intrigue_played
     player.victory_points += plot_bonus_vp
 
+    source = state.pending_play_intrigue.get("source", "quest_completion")
+
     log_detail = f"{player.display_name} played {card.name} from quest reward"
+    if source == "green_room":
+        log_detail = f"{player.display_name} played {card.name} at The Green Room"
     if plot_bonus_vp:
         log_detail += f" (+{plot_bonus_vp} plot quest bonus)"
 
@@ -4686,7 +4778,7 @@ async def handle_play_intrigue_from_quest(
             "effect_value": card.effect_value,
             "eligible_targets": eligible,
             "plot_bonus_vp": plot_bonus_vp,
-            "source": "quest_completion",
+            "source": source,
         }
 
         target_info = []
@@ -4722,6 +4814,9 @@ async def handle_play_intrigue_from_quest(
             intrigue_card_name=card.name,
         ),
     )
+
+    if source == "green_room":
+        return
 
     await _advance_after_quest_rewards(server, state, player)
 

@@ -23,20 +23,25 @@ _RESOURCE_ABBREV = dict(RESOURCE_SYMBOLS)
 _log = logging.getLogger(__name__)
 
 _GRID_PLACEMENT: dict[str, tuple[float, float, float, float]] = {
+    # 3x3 permanent space grid
     "merch_store": (0, 0, 1, 1),
-    "motown": (0, 1, 1, 1),
-    "guitar_center": (0, 2, 1, 1),
-    "talent_show": (0, 3, 1, 1),
-    "rhythm_pit": (0, 4, 1, 1),
-    "jam_session": (0, 5, 1, 1),
-    "whisper_room": (0, 6, 1, 1),
-    "vip_entrance": (0, 7, 1, 1),
+    "motown": (1, 0, 1, 1),
+    "guitar_center": (2, 0, 1, 1),
+    "talent_show": (0, 1, 1, 1),
+    "rhythm_pit": (1, 1, 1, 1),
+    "jam_session": (2, 1, 1, 1),
+    "whisper_room": (0, 2, 1, 1),
+    "vip_entrance": (1, 2, 1, 1),
+    "the_green_room": (2, 2, 1, 1),
+    # Garage spaces
     "sunset_records": (3.5, 0, 1, 1),
     "the_back_room": (4.5, 0, 1, 1),
     "the_garage": (5.5, 0, 1, 1),
+    # Backstage slots
     "backstage_slot_1": (3, 4, 1, 1),
     "backstage_slot_2": (3, 5, 1, 1),
     "backstage_slot_3": (3, 6, 1, 1),
+    # Realtor
     "realtor": (5, 4, 1, 1),
 }
 
@@ -70,7 +75,7 @@ MARKER_COLOR_MAP: dict[str, tuple[int, ...]] = {
     "orange": arcade.color.ORANGE,
 }
 
-_BUILDINGS_PER_PAGE = 8
+_BUILDINGS_PER_PAGE = 9
 
 
 def _build_card_sprite_list(
@@ -361,9 +366,9 @@ class BoardRenderer:
                 self._building_owner_texts = []
             for j, space_id in enumerate(page_buildings):
                 space_data = spaces.get(space_id, {})
-                col = 1 + (j % 2)
-                row = (j // 2) * 2
-                cx, cy, _, _ = g.cell_rect(col, row, 1, 2)
+                col = j % 3
+                row = 3 + (j // 3) * 1.75
+                cx, cy, _, _ = g.cell_rect(col, row, 1, 1.75)
                 if self._building_owner_dirty:
                     owner_id = space_data.get("owner_id", "")
                     if owner_id:
@@ -389,9 +394,9 @@ class BoardRenderer:
                     if bt:
                         stock = bt.get("accumulated_stock", 0)
                     if stock > 0:
-                        col = 1 + (j % 2)
-                        row = (j // 2) * 2
-                        cx, cy, _, _ = g.cell_rect(col, row, 1, 2)
+                        col = j % 3
+                        row = 3 + (j // 3) * 1.75
+                        cx, cy, _, _ = g.cell_rect(col, row, 1, 1.75)
                         tx = cx - con_cw / 2 + 8 * s
                         ty = cy - con_ch / 2 + 20 * s
                         atype = bt.get("accumulation_type", "")
@@ -417,7 +422,7 @@ class BoardRenderer:
                 # Page indicator
                 if self._building_page_count > 1:
                     pg_label = f"{self._building_page + 1}/{self._building_page_count}"
-                    pg_cx, pg_cy, _, _ = g.cell_rect(1, 7, 2, 1)
+                    pg_cx, pg_cy, _, _ = g.cell_rect(1, 7.5, 1, 1)
                     self._building_page_text = arcade.Text(
                         pg_label,
                         pg_cx,
@@ -527,7 +532,7 @@ class BoardRenderer:
             scale=space_scale,
         )
 
-        # Constructed buildings — columns 1-2, paginated
+        # Constructed buildings — columns 0-2, below 3x3 grid, paginated
         all_constructed = self.board_data.get("constructed_buildings", [])
         self._building_page_count = max(
             1, math.ceil(len(all_constructed) / _BUILDINGS_PER_PAGE)
@@ -542,9 +547,9 @@ class BoardRenderer:
         constructed_positions = []
         for j, space_id in enumerate(page_buildings):
             data = spaces.get(space_id, {})
-            col = 1 + (j % 2)
-            row = (j // 2) * 2
-            cx, cy, _, _ = g.cell_rect(col, row, 1, 2)
+            col = j % 3
+            row = 3 + (j // 3) * 1.75
+            cx, cy, _, _ = g.cell_rect(col, row, 1, 1.75)
             scaled_w = img_w * bld_scale
             scaled_h = BUILDING_CARD_HEIGHT * 2 * bld_scale
             self._space_rects[space_id] = self._click_rect(cx, cy, scaled_w, scaled_h)
@@ -702,9 +707,9 @@ class BoardRenderer:
         for j, space_id in enumerate(all_constructed[bld_start:bld_end]):
             occupied = spaces.get(space_id, {}).get("occupied_by")
             if occupied:
-                col = 1 + (j % 2)
-                row = (j // 2) * 2
-                cx, cy, _, _ = g.cell_rect(col, row, 1, 2)
+                col = j % 3
+                row = 3 + (j // 3) * 1.75
+                cx, cy, _, _ = g.cell_rect(col, row, 1, 1.75)
                 color_name = self._player_color_name(occupied)
                 wanted[f"bld_{space_id}"] = (
                     color_name,
@@ -759,9 +764,9 @@ class BoardRenderer:
             bld_scale = g.card_scale(2, CARD_WIDTH, BUILDING_CARD_HEIGHT)
             bld_cw = CARD_WIDTH * 2 * bld_scale
             j = all_constructed.index(space_id)
-            col = 1 + (j % 2)
-            row = (j // 2) * 2
-            cx, cy, _, _ = g.cell_rect(col, row, 1, 2)
+            col = j % 3
+            row = 3 + (j // 3) * 1.75
+            cx, cy, _, _ = g.cell_rect(col, row, 1, 1.75)
             return (cx + bld_cw / 2 - 14 * s, cy)
 
         return None
@@ -796,12 +801,21 @@ class BoardRenderer:
     def get_building_lot_position(
         self, lot_index: int
     ) -> tuple[float, float, float] | None:
-        """Return (x, y, scale) for a constructed building lot, or None."""
+        """Return (x, y, scale) for a constructed building lot.
+
+        lot_index is the raw lot number from the server. We convert
+        it to a sequential position based on how many buildings are
+        already constructed on the current page.
+        """
         g = self._grid
         if g is None:
             return None
+        all_constructed = self.board_data.get(
+            "constructed_buildings", []
+        )
+        seq = len(all_constructed)
         bld_scale = g.card_scale(2, CARD_WIDTH, BUILDING_CARD_HEIGHT)
-        col = 1 + (lot_index % 2)
-        row = (lot_index // 2) * 2
-        cx, cy, _, _ = g.cell_rect(col, row, 1, 2)
+        col = seq % 3
+        row = 3 + (seq // 3) * 1.75
+        cx, cy, _, _ = g.cell_rect(col, row, 1, 1.75)
         return (cx, cy, bld_scale)

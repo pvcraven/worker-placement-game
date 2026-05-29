@@ -1713,6 +1713,26 @@ def generate_space_cards() -> int:
             _draw_intrigue_card_icon(
                 draw, cw // 2 + total_w // 2 - _CARD_ICON_W // 2, icon_cy
             )
+        elif reward_special == "play_intrigue_and_quest":
+            y = band_h + 10
+            draw_text_centered(
+                draw, "Play", y, Q_FONT_LABEL, TEXT_COLOR, width=cw
+            )
+            bbox = draw.textbbox((0, 0), "Play", font=Q_FONT_LABEL)
+            text_h = bbox[3] - bbox[1]
+            icon_row_y = y + text_h + 12 + _CARD_ICON_H // 2
+            icon_gap = 16
+            total_w = _CARD_ICON_W * 2 + icon_gap
+            _draw_intrigue_card_icon(
+                draw,
+                cw // 2 - total_w // 2 + _CARD_ICON_W // 2,
+                icon_row_y,
+            )
+            _draw_quest_card_icon(
+                draw,
+                cw // 2 + total_w // 2 - _CARD_ICON_W // 2,
+                icon_row_y,
+            )
         elif reward_special == "draw_intrigue_2":
             icon_gap = 16
             total_w = _CARD_ICON_W * 2 + icon_gap
