@@ -183,7 +183,7 @@ class GameView(arcade.View):
         board_w = cw - log_w
         cell_w = board_w / 7
         btn_center_x = int(6 * cell_w)
-        bar_h = int(100 * s)
+        bar_h = int(80 * s)
 
         self._btn_anchor = arcade.gui.UIAnchorLayout()
         self._btn_anchor.add(
@@ -643,6 +643,7 @@ class GameView(arcade.View):
                 deferred_action()
 
         def _after_marker():
+            self._refresh_board(self.game_state.get("board", {}))
             self._start_resource_gathering_animation(
                 space_id,
                 pid,
@@ -3064,7 +3065,7 @@ class GameView(arcade.View):
         s = self.window.ui_scale
         cw = self.window.content_width
         ch = self.window.content_height
-        bar_h = int(100 * s)
+        bar_h = int(80 * s)
         status_h = int(50 * s)
         log_w = int(2 * cw / 9)
         board_w = cw - log_w
@@ -3494,7 +3495,7 @@ class GameView(arcade.View):
         cw = self.window.content_width
         ch = self.window.content_height
 
-        bar_h = int(100 * s)
+        bar_h = int(80 * s)
         status_h = int(50 * s)
         log_w = int(2 * cw / 9)
         board_w = cw - log_w
