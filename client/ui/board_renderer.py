@@ -810,9 +810,7 @@ class BoardRenderer:
         g = self._grid
         if g is None:
             return None
-        all_constructed = self.board_data.get(
-            "constructed_buildings", []
-        )
+        all_constructed = self.board_data.get("constructed_buildings", [])
         seq = len(all_constructed)
         bld_scale = g.card_scale(2, CARD_WIDTH, BUILDING_CARD_HEIGHT)
         col = seq % 3

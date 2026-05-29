@@ -1715,9 +1715,7 @@ def generate_space_cards() -> int:
             )
         elif reward_special == "play_intrigue_and_quest":
             y = band_h + 10
-            draw_text_centered(
-                draw, "Play", y, Q_FONT_LABEL, TEXT_COLOR, width=cw
-            )
+            draw_text_centered(draw, "Play", y, Q_FONT_LABEL, TEXT_COLOR, width=cw)
             bbox = draw.textbbox((0, 0), "Play", font=Q_FONT_LABEL)
             text_h = bbox[3] - bbox[1]
             icon_row_y = y + text_h + 12 + _CARD_ICON_H // 2

@@ -152,8 +152,5 @@ def test_intrigue_target_with_green_room_source():
 def test_nine_permanent_spaces():
     """Board has 9 permanent/castle spaces for the 3x3 grid."""
     spaces = BOARD["permanent_spaces"]
-    perm = [
-        s for s in spaces
-        if s["space_type"] in ("permanent", "castle")
-    ]
+    perm = [s for s in spaces if s["space_type"] in ("permanent", "castle")]
     assert len(perm) == 9

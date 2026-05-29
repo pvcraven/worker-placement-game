@@ -39,3 +39,4 @@ uv.lock
 
 # Generated card images
 client/assets/card_images/
+.specify/workflows/.cache/
