@@ -367,7 +367,7 @@ class BoardRenderer:
             for j, space_id in enumerate(page_buildings):
                 space_data = spaces.get(space_id, {})
                 col = j % 3
-                row = 3 + (j // 3) * 1.75
+                row = 3 + (j // 3) * 2
                 cx, cy, _, _ = g.cell_rect(col, row, 1, 1.75)
                 if self._building_owner_dirty:
                     owner_id = space_data.get("owner_id", "")
@@ -395,7 +395,7 @@ class BoardRenderer:
                         stock = bt.get("accumulated_stock", 0)
                     if stock > 0:
                         col = j % 3
-                        row = 3 + (j // 3) * 1.75
+                        row = 3 + (j // 3) * 2
                         cx, cy, _, _ = g.cell_rect(col, row, 1, 1.75)
                         tx = cx - con_cw / 2 + 8 * s
                         ty = cy - con_ch / 2 + 20 * s
@@ -548,7 +548,7 @@ class BoardRenderer:
         for j, space_id in enumerate(page_buildings):
             data = spaces.get(space_id, {})
             col = j % 3
-            row = 3 + (j // 3) * 1.75
+            row = 3 + (j // 3) * 2
             cx, cy, _, _ = g.cell_rect(col, row, 1, 1.75)
             scaled_w = img_w * bld_scale
             scaled_h = BUILDING_CARD_HEIGHT * 2 * bld_scale
@@ -708,7 +708,7 @@ class BoardRenderer:
             occupied = spaces.get(space_id, {}).get("occupied_by")
             if occupied:
                 col = j % 3
-                row = 3 + (j // 3) * 1.75
+                row = 3 + (j // 3) * 2
                 cx, cy, _, _ = g.cell_rect(col, row, 1, 1.75)
                 color_name = self._player_color_name(occupied)
                 wanted[f"bld_{space_id}"] = (
@@ -765,7 +765,7 @@ class BoardRenderer:
             bld_cw = CARD_WIDTH * 2 * bld_scale
             j = all_constructed.index(space_id)
             col = j % 3
-            row = 3 + (j // 3) * 1.75
+            row = 3 + (j // 3) * 2
             cx, cy, _, _ = g.cell_rect(col, row, 1, 1.75)
             return (cx + bld_cw / 2 - 14 * s, cy)
 
@@ -816,6 +816,6 @@ class BoardRenderer:
         seq = len(all_constructed)
         bld_scale = g.card_scale(2, CARD_WIDTH, BUILDING_CARD_HEIGHT)
         col = seq % 3
-        row = 3 + (seq // 3) * 1.75
+        row = 3 + (seq // 3) * 2
         cx, cy, _, _ = g.cell_rect(col, row, 1, 1.75)
         return (cx, cy, bld_scale)

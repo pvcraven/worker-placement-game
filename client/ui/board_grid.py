@@ -12,7 +12,7 @@ class BoardGrid:
         w: float,
         h: float,
         cols: int = 7,
-        rows: int = 8,
+        rows: int = 9,
         margin_pct: float = 0.06,
     ):
         self._x = x
