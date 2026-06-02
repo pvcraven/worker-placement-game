@@ -1,6 +1,6 @@
 # Worker Placement Game Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2026-05-29
+Auto-generated from all feature plans. Last updated: 2026-06-02
 
 ## Active Technologies
 - Python 3.12+ + Arcade (client UI), websockets (networking), Pydantic (validation) (002-garage-quest-display)
@@ -45,6 +45,7 @@ Auto-generated from all feature plans. Last updated: 2026-05-29
 - Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), Pillow (PIL) for card image generation, Pydantic v2 (037-backstage-closed-cards)
 - File system — reads/writes PNGs in `client/assets/card_images/spaces/` (037-backstage-closed-cards)
 - Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), websockets, Pydantic v2, Pillow (card generation) (038-intrigue-quest-space)
+- Python 3.12+ + Pydantic v2, Pillow (card image generation), Arcade (local source) (039-tier1-quest-expansion)
 
 - Python 3.12+ + Arcade (graphics/client UI), websockets (async networking), Pydantic (data validation/serialization) (001-worker-placement-game)
 
@@ -64,9 +65,9 @@ cd src && pytest && ruff check .
 Python 3.12+: Follow standard conventions
 
 ## Recent Changes
+- 039-tier1-quest-expansion: Added Python 3.12+ + Pydantic v2, Pillow (card image generation), Arcade (local source)
 - 038-intrigue-quest-space: Added Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), websockets, Pydantic v2, Pillow (card generation)
 - 037-backstage-closed-cards: Added Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), Pillow (PIL) for card image generation, Pydantic v2
-- 036-resource-gathering-animation: Added Python 3.12+ + Arcade (local source at C:\Users\PaCra\Projects\arcade), arcade.anim (Easing, ease)
 
 
 <!-- MANUAL ADDITIONS START -->
