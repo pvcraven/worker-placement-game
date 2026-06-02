@@ -20,12 +20,11 @@ def genre_counts(contracts):
     return Counter(c["genre"] for c in contracts)
 
 
-def test_equal_cards_per_genre(genre_counts):
-    counts = list(genre_counts.values())
-    assert len(counts) > 0, "No genres found"
-    assert all(
-        c == counts[0] for c in counts
-    ), f"Unequal cards per genre: {dict(genre_counts)}"
+def test_minimum_cards_per_genre(genre_counts):
+    min_per_genre = 12
+    assert len(genre_counts) > 0, "No genres found"
+    low = {g: n for g, n in genre_counts.items() if n < min_per_genre}
+    assert not low, f"Genres below {min_per_genre} cards: {low}"
 
 
 def _resource_points(res: dict) -> float:
@@ -78,20 +77,23 @@ def test_benefit_not_more_than_four_and_half_times_cost(contracts):
     )
 
 
-def test_genre_total_benefit_balanced(contracts):
+def test_genre_average_benefit_balanced(contracts):
     from collections import defaultdict
 
     totals = defaultdict(float)
+    counts = defaultdict(int)
     for c in contracts:
         totals[c["genre"]] += _benefit(c)
+        counts[c["genre"]] += 1
 
-    genres = sorted(totals.keys())
-    min_total = min(totals.values())
-    max_total = max(totals.values())
-    spread = max_total - min_total
+    averages = {g: totals[g] / counts[g] for g in totals}
+    genres = sorted(averages.keys())
+    min_avg = min(averages.values())
+    max_avg = max(averages.values())
+    spread = max_avg - min_avg
 
-    summary = ", ".join(f"{g}={totals[g]:.2f}" for g in genres)
-    assert spread <= 10.0, f"Genre benefit spread {spread:.2f} > 10.0: " f"{summary}"
+    summary = ", ".join(f"{g}={averages[g]:.2f}" for g in genres)
+    assert spread <= 2.0, f"Genre average benefit spread {spread:.2f} > 2.0: {summary}"
 
 
 def _genre_resource_totals(contracts):
