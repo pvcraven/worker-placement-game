@@ -93,9 +93,7 @@ def test_genre_average_benefit_balanced(contracts):
     spread = max_avg - min_avg
 
     summary = ", ".join(f"{g}={averages[g]:.2f}" for g in genres)
-    assert spread <= 2.0, (
-        f"Genre average benefit spread {spread:.2f} > 2.0: {summary}"
-    )
+    assert spread <= 2.0, f"Genre average benefit spread {spread:.2f} > 2.0: {summary}"
 
 
 def _genre_resource_totals(contracts):
