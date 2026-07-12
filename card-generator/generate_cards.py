@@ -1112,6 +1112,13 @@ def generate_building_cards() -> int:
         if card.visitor_reward_special:
             y = _draw_special_icon(draw, card.visitor_reward_special, y, cw)
 
+        if card.distribute_resource_type and card.distribute_space_count > 0:
+            total = card.distribute_per_space * card.distribute_space_count
+            label = f"Place on {card.distribute_space_count}:"
+            y = _draw_labeled_resource_icons(
+                draw, label, card.distribute_resource_type, total, y, cw
+            )
+
         # Owner bonus
         has_own_resources = card.owner_bonus.total() > 0
         simple_owner = (

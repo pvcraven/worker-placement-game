@@ -20,6 +20,15 @@ from shared.constants import (
 
 _RESOURCE_ABBREV = dict(RESOURCE_SYMBOLS)
 
+_ICONS_DIR = Path("client/assets/card_images/icons")
+_RESOURCE_ICON_FILES = {
+    "guitarists": "guitarist.png",
+    "bass_players": "bass_player.png",
+    "drummers": "drummer.png",
+    "singers": "singer.png",
+    "coins": "coin.png",
+}
+
 _log = logging.getLogger(__name__)
 
 _GRID_PLACEMENT: dict[str, tuple[float, float, float, float]] = {
@@ -131,6 +140,7 @@ class BoardRenderer:
         self._building_owner_texts: list[arcade.Text] = []
         self._building_owner_dirty = True
         self._building_accum_texts: list[arcade.Text] = []
+        self._placed_resource_sprites = arcade.SpriteList()
         self._turn_order: list[str] = []
         self._current_player_id: str | None = None
         self._worker_sprite_list = arcade.SpriteList()
@@ -417,6 +427,37 @@ class BoardRenderer:
                                 bold=True,
                             ),
                         )
+                self._placed_resource_sprites = arcade.SpriteList()
+                icon_sz = int(12 * s)
+                icon_gap = int(2 * s)
+
+                for j, space_id in enumerate(page_buildings):
+                    space_data = spaces.get(space_id, {})
+                    placed = space_data.get("placed_resources", {})
+                    if placed:
+                        col = j % 3
+                        row = 3 + (j // 3) * 2
+                        cx, cy, _, _ = g.cell_rect(col, row, 1, 1.75)
+                        bx = cx - con_cw / 2 + 8 * s + icon_sz / 2
+                        by = cy - con_ch / 2 + 34 * s + icon_sz / 2
+                        self._add_placed_icons(
+                            placed, bx, by, icon_sz, icon_gap,
+                        )
+                for space_id, (col, row, cs, rs) in _GRID_PLACEMENT.items():
+                    if space_id.startswith("backstage_slot_") or space_id == "realtor":
+                        continue
+                    placed = spaces.get(space_id, {}).get("placed_resources", {})
+                    if placed:
+                        cx, cy, _, _ = g.cell_rect(col, row, cs, rs)
+                        space_scale = g.card_scale(1, CARD_WIDTH, SPACE_CARD_HEIGHT)
+                        sp_cw = CARD_WIDTH * 2 * space_scale
+                        sp_ch = SPACE_CARD_HEIGHT * 2 * space_scale
+                        bx = cx - sp_cw / 2 + 4 * s + icon_sz / 2
+                        by = cy - sp_ch / 2 + 4 * s + icon_sz / 2
+                        self._add_placed_icons(
+                            placed, bx, by, icon_sz, icon_gap,
+                        )
+
                 self._building_owner_dirty = False
 
                 # Page indicator
@@ -440,12 +481,37 @@ class BoardRenderer:
                 ot.draw()
             for at in self._building_accum_texts:
                 at.draw()
+            self._placed_resource_sprites.draw()
             if self._building_page_text:
                 self._building_page_text.draw()
 
         if self._workers_dirty:
             self._update_workers(s)
         self._worker_sprite_list.draw()
+
+    def _add_placed_icons(
+        self,
+        placed: dict,
+        start_x: float,
+        start_y: float,
+        icon_sz: int,
+        gap: int,
+    ) -> None:
+        """Add resource icon sprites for placed_resources on a space."""
+        ix = start_x
+        for rtype, qty in placed.items():
+            png_name = _RESOURCE_ICON_FILES.get(rtype)
+            if not png_name:
+                continue
+            png_path = _ICONS_DIR / png_name
+            if not png_path.exists():
+                continue
+            for _ in range(qty):
+                sprite = arcade.Sprite(str(png_path))
+                sprite.scale = icon_sz / sprite.texture.width
+                sprite.position = (ix, start_y)
+                self._placed_resource_sprites.append(sprite)
+                ix += icon_sz + gap
 
     def _rebuild_shapes(
         self,

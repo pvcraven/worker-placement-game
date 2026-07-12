@@ -41,6 +41,8 @@ from shared.messages import (
     StateSyncResponse,
     RoundStartBonusResponse,
     RoundStartResourceChoicePromptResponse,
+    ResourceDistributionPromptResponse,
+    ResourceDistributionResolvedResponse,
     WorkerPlacedBackstageResponse,
     WorkerPlacedResponse,
     WorkerReassignedResponse,
@@ -1675,6 +1677,20 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
                 reward_dict[atype] = reward_dict.get(atype, 0) + stock
             tile.accumulated_stock = 0
 
+    # Grant placed resources (from resource distribution buildings)
+    collected_placed = None
+    if space.placed_resources:
+        collected_placed = dict(space.placed_resources)
+        for rtype, qty in collected_placed.items():
+            if hasattr(player.resources, rtype):
+                setattr(
+                    player.resources,
+                    rtype,
+                    getattr(player.resources, rtype) + qty,
+                )
+                reward_dict[rtype] = reward_dict.get(rtype, 0) + qty
+        space.placed_resources = {}
+
     # Grant visitor VP reward from building
     if space.building_tile and space.building_tile.visitor_reward_vp > 0:
         player.victory_points += space.building_tile.visitor_reward_vp
@@ -1966,6 +1982,7 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
             owner_bonus=owner_bonus_info,
             trigger_bonuses=trigger_bonuses_data,
             next_player_id=None,
+            collected_placed_resources=collected_placed,
         ),
     )
 
@@ -2109,7 +2126,135 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
             }
         return
 
+    # Resource distribution building: owner selects spaces to place resources
+    if (
+        space.space_type == "building"
+        and space.building_tile
+        and space.building_tile.distribute_resource_type
+    ):
+        tile = space.building_tile
+        selecting_id = space.owner_id if space.owner_id else player.player_id
+        eligible = _get_distribution_eligible_spaces(state, msg.space_id, [])
+        if eligible and tile.distribute_space_count > 0:
+            state.pending_placement = _pending
+            state.pending_resource_distribution = {
+                "player_id": selecting_id,
+                "building_space_id": msg.space_id,
+                "resource_type": tile.distribute_resource_type,
+                "per_space": tile.distribute_per_space,
+                "remaining_selections": tile.distribute_space_count,
+                "selected_spaces": [],
+            }
+            await server.broadcast_to_game(
+                state.game_code,
+                ResourceDistributionPromptResponse(
+                    player_id=selecting_id,
+                    resource_type=tile.distribute_resource_type,
+                    per_space=tile.distribute_per_space,
+                    remaining_selections=tile.distribute_space_count,
+                    eligible_spaces=eligible,
+                    selected_spaces=[],
+                ),
+            )
+            return
+
     await _check_quest_completion(server, state)
+
+
+def _get_distribution_eligible_spaces(
+    state, building_space_id: str, selected_spaces: list[str]
+) -> list[dict]:
+    """Return eligible spaces for resource distribution (all except the building and already-selected)."""
+    eligible = []
+    for sid, space in state.board.action_spaces.items():
+        if sid == building_space_id:
+            continue
+        if sid in selected_spaces:
+            continue
+        eligible.append({"space_id": sid, "name": space.name})
+    return eligible
+
+
+async def handle_resource_distribution_select(
+    server: GameServer, conn: ClientConnection, msg
+) -> None:
+    """Handle a player selecting a space for resource distribution."""
+    state = _get_game_state(server, conn)
+    if state is None:
+        await conn.send_error("GAME_NOT_FOUND", "Not in a game.")
+        return
+
+    prd = state.pending_resource_distribution
+    if not prd:
+        await conn.send_error(
+            "INVALID_ACTION", "No resource distribution pending."
+        )
+        return
+
+    player_id = conn.player_id
+    if player_id != prd["player_id"]:
+        await conn.send_error(
+            "NOT_YOUR_TURN",
+            "You are not the selecting player for this distribution.",
+        )
+        return
+
+    space_id = msg.space_id
+    if space_id == prd["building_space_id"]:
+        await conn.send_error(
+            "INVALID_ACTION",
+            "Cannot place resources on the building being visited.",
+        )
+        return
+
+    if space_id in prd["selected_spaces"]:
+        await conn.send_error(
+            "INVALID_ACTION",
+            "This space has already been selected.",
+        )
+        return
+
+    target = state.board.action_spaces.get(space_id)
+    if target is None:
+        await conn.send_error("INVALID_ACTION", "Unknown action space.")
+        return
+
+    rtype = prd["resource_type"]
+    qty = prd["per_space"]
+    target.placed_resources[rtype] = (
+        target.placed_resources.get(rtype, 0) + qty
+    )
+    prd["selected_spaces"].append(space_id)
+    prd["remaining_selections"] -= 1
+
+    await server.broadcast_to_game(
+        state.game_code,
+        ResourceDistributionResolvedResponse(
+            space_id=space_id,
+            resource_type=rtype,
+            quantity=qty,
+            all_placed_resources=dict(target.placed_resources),
+        ),
+    )
+
+    if prd["remaining_selections"] > 0:
+        eligible = _get_distribution_eligible_spaces(
+            state, prd["building_space_id"], prd["selected_spaces"]
+        )
+        await server.broadcast_to_game(
+            state.game_code,
+            ResourceDistributionPromptResponse(
+                player_id=prd["player_id"],
+                resource_type=rtype,
+                per_space=qty,
+                remaining_selections=prd["remaining_selections"],
+                eligible_spaces=eligible,
+                selected_spaces=list(prd["selected_spaces"]),
+            ),
+        )
+    else:
+        state.pending_resource_distribution = None
+        await _check_quest_completion(server, state)
 
 
 # ------------------------------------------------------------------
@@ -3617,12 +3762,32 @@ def _unwind_placement(state, player, pending: dict) -> dict:
                 setattr(player.resources, res, max(0, cur - amt))
                 reversed_resources[res] = reversed_resources.get(res, 0) + amt
 
+    reversed_distribution: list[dict] = []
+    prd = state.pending_resource_distribution
+    if prd and prd.get("building_space_id") == space_id:
+        rtype = prd["resource_type"]
+        per_space = prd["per_space"]
+        for sel_sid in prd.get("selected_spaces", []):
+            sel_space = state.board.action_spaces.get(sel_sid)
+            if sel_space:
+                cur_placed = sel_space.placed_resources.get(rtype, 0)
+                remove = min(per_space, cur_placed)
+                if remove > 0:
+                    sel_space.placed_resources[rtype] = cur_placed - remove
+                    if sel_space.placed_resources[rtype] <= 0:
+                        del sel_space.placed_resources[rtype]
+                    reversed_distribution.append(
+                        {"space_id": sel_sid, "resource_type": rtype, "qty": remove}
+                    )
+        state.pending_resource_distribution = None
+
     return {
         "space_id": space_id,
         "reversed_vp": reversed_vp,
         "reversed_resources": reversed_resources,
         "reversed_owner_bonus": reversed_owner_bonus,
         "stock_restored": stock_restored,
+        "reversed_distribution": reversed_distribution,
     }
 
 
@@ -3821,6 +3986,12 @@ async def handle_reassign_worker(
 
     if state.phase != GamePhase.REASSIGNMENT:
         await conn.send_error("INVALID_ACTION", "Not in reassignment phase.")
+        return
+
+    if state.waiting_for_quest_completion:
+        await conn.send_error(
+            "INVALID_ACTION", "Waiting for quest completion response."
+        )
         return
 
     if not state.reassignment_queue:

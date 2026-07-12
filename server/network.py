@@ -230,6 +230,11 @@ class GameServer:
 
         await handle_cancel_copy_space(self, conn, msg)
 
+    async def _handle_resource_distribution_select(self, conn, msg) -> None:
+        from server.game_engine import handle_resource_distribution_select
+
+        await handle_resource_distribution_select(self, conn, msg)
+
     # ------------------------------------------------------------------
     # System handlers
     # ------------------------------------------------------------------
