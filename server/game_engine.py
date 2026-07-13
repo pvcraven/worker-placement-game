@@ -33,6 +33,7 @@ from shared.messages import (
     QuestCompletionPromptResponse,
     QuestRewardChoicePromptResponse,
     QuestRewardChoiceResolvedResponse,
+    QuestSelectionPromptResponse,
     QuestSkippedResponse,
     ReassignmentPhaseStartResponse,
     ResourceChoicePromptResponse,
@@ -2329,6 +2330,23 @@ async def _handle_garage_placement(
         )
 
 
+async def _prompt_green_room_quest_selection(server: GameServer, state, player) -> None:
+    """After the intrigue effect at The Green Room resolves, prompt the
+    player to select a face-up quest card (second half of the space)."""
+    _log_event(
+        state,
+        action="place_worker",
+        details=f"{player.display_name} awaiting quest selection at The Green Room",
+        player_id=player.player_id,
+    )
+    await server.send_to_player(
+        player.player_id,
+        QuestSelectionPromptResponse(
+            face_up_quests=[q.model_dump() for q in state.board.face_up_quests]
+        ),
+    )
+
+
 async def handle_select_quest_card(
     server: GameServer, conn: ClientConnection, msg
 ) -> None:
@@ -4622,7 +4640,7 @@ async def handle_choose_intrigue_target(
                 return
 
     if intrigue_source == "green_room":
-        return
+        await _prompt_green_room_quest_selection(server, state, player)
     elif intrigue_source == "quest_completion":
         await _advance_after_quest_rewards(server, state, player)
     else:
@@ -4987,6 +5005,7 @@ async def handle_play_intrigue_from_quest(
     )
 
     if source == "green_room":
+        await _prompt_green_room_quest_selection(server, state, player)
         return
 
     await _advance_after_quest_rewards(server, state, player)

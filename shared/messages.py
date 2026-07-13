@@ -515,6 +515,11 @@ class IntriguePlayPromptResponse(BaseModel):
     intrigue_hand: list[dict] = Field(default_factory=list)
 
 
+class QuestSelectionPromptResponse(BaseModel):
+    action: Literal["quest_selection_prompt"] = "quest_selection_prompt"
+    face_up_quests: list[dict] = Field(default_factory=list)
+
+
 class OpponentChoicePromptResponse(BaseModel):
     action: Literal["opponent_choice_prompt"] = "opponent_choice_prompt"
     opponents: list[dict] = Field(default_factory=list)
@@ -633,6 +638,7 @@ ServerMessage = Annotated[
         ResourceChoicePromptResponse,
         ResourceChoiceResolvedResponse,
         IntriguePlayPromptResponse,
+        QuestSelectionPromptResponse,
         OpponentChoicePromptResponse,
         WorkerRecallPromptResponse,
         WorkerRecalledResponse,
