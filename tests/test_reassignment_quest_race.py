@@ -21,9 +21,7 @@ def _make_player(name: str, pid: str) -> Player:
         player_id=pid,
         display_name=name,
         slot_index=0,
-        resources=PlayerResources(
-            guitarists=1, bass_players=3, singers=1, coins=10
-        ),
+        resources=PlayerResources(guitarists=1, bass_players=3, singers=1, coins=10),
     )
 
 

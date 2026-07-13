@@ -441,7 +441,11 @@ class BoardRenderer:
                         bx = cx - con_cw / 2 + 8 * s + icon_sz / 2
                         by = cy - con_ch / 2 + 34 * s + icon_sz / 2
                         self._add_placed_icons(
-                            placed, bx, by, icon_sz, icon_gap,
+                            placed,
+                            bx,
+                            by,
+                            icon_sz,
+                            icon_gap,
                         )
                 for space_id, (col, row, cs, rs) in _GRID_PLACEMENT.items():
                     if space_id.startswith("backstage_slot_") or space_id == "realtor":
@@ -455,7 +459,11 @@ class BoardRenderer:
                         bx = cx - sp_cw / 2 + 4 * s + icon_sz / 2
                         by = cy - sp_ch / 2 + 4 * s + icon_sz / 2
                         self._add_placed_icons(
-                            placed, bx, by, icon_sz, icon_gap,
+                            placed,
+                            bx,
+                            by,
+                            icon_sz,
+                            icon_gap,
                         )
 
                 self._building_owner_dirty = False

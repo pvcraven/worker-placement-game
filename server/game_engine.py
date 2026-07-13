@@ -2187,9 +2187,7 @@ async def handle_resource_distribution_select(
 
     prd = state.pending_resource_distribution
     if not prd:
-        await conn.send_error(
-            "INVALID_ACTION", "No resource distribution pending."
-        )
+        await conn.send_error("INVALID_ACTION", "No resource distribution pending.")
         return
 
     player_id = conn.player_id
@@ -2222,9 +2220,7 @@ async def handle_resource_distribution_select(
 
     rtype = prd["resource_type"]
     qty = prd["per_space"]
-    target.placed_resources[rtype] = (
-        target.placed_resources.get(rtype, 0) + qty
-    )
+    target.placed_resources[rtype] = target.placed_resources.get(rtype, 0) + qty
     prd["selected_spaces"].append(space_id)
     prd["remaining_selections"] -= 1
 

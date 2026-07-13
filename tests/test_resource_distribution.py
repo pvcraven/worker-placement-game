@@ -89,7 +89,9 @@ def test_non_distribution_buildings_have_no_distribute_fields(buildings):
             "building_027",
             "building_028",
         ):
-            assert b.distribute_resource_type is None, f"{b.id} has distribute_resource_type"
+            assert (
+                b.distribute_resource_type is None
+            ), f"{b.id} has distribute_resource_type"
             assert b.distribute_per_space == 0, f"{b.id} has distribute_per_space"
             assert b.distribute_space_count == 0, f"{b.id} has distribute_space_count"
 
@@ -211,7 +213,9 @@ def test_placed_resources_stacking():
         placed_resources={"guitarists": 1},
     )
 
-    space.placed_resources["guitarists"] = space.placed_resources.get("guitarists", 0) + 2
+    space.placed_resources["guitarists"] = (
+        space.placed_resources.get("guitarists", 0) + 2
+    )
     space.placed_resources["coins"] = space.placed_resources.get("coins", 0) + 3
 
     assert space.placed_resources == {"guitarists": 3, "coins": 3}
@@ -306,9 +310,7 @@ def test_eligible_spaces_excludes_building():
             }
         ),
     )
-    eligible = _get_distribution_eligible_spaces(
-        state, "bldg_1", []
-    )
+    eligible = _get_distribution_eligible_spaces(state, "bldg_1", [])
     ids = [e["space_id"] for e in eligible]
     assert "bldg_1" not in ids
     assert "space_a" in ids
@@ -342,9 +344,7 @@ def test_eligible_spaces_excludes_already_selected():
             }
         ),
     )
-    eligible = _get_distribution_eligible_spaces(
-        state, "bldg_1", ["space_a"]
-    )
+    eligible = _get_distribution_eligible_spaces(state, "bldg_1", ["space_a"])
     ids = [e["space_id"] for e in eligible]
     assert "space_a" not in ids
     assert "space_b" in ids
@@ -374,14 +374,10 @@ def test_distribution_selection_places_resources():
     )
     rtype = "guitarists"
     qty = 1
-    target.placed_resources[rtype] = (
-        target.placed_resources.get(rtype, 0) + qty
-    )
+    target.placed_resources[rtype] = target.placed_resources.get(rtype, 0) + qty
     assert target.placed_resources == {"guitarists": 1}
 
-    target.placed_resources[rtype] = (
-        target.placed_resources.get(rtype, 0) + qty
-    )
+    target.placed_resources[rtype] = target.placed_resources.get(rtype, 0) + qty
     assert target.placed_resources == {"guitarists": 2}
 
 
@@ -404,9 +400,7 @@ def test_distribution_owner_selects_when_owned():
         building_tile=tile,
         owner_id="owner1",
     )
-    selecting_id = (
-        space.owner_id if space.owner_id else "visitor1"
-    )
+    selecting_id = space.owner_id if space.owner_id else "visitor1"
     assert selecting_id == "owner1"
 
 
@@ -430,9 +424,7 @@ def test_distribution_visitor_selects_when_unowned():
         owner_id=None,
     )
     visitor_id = "visitor1"
-    selecting_id = (
-        space.owner_id if space.owner_id else visitor_id
-    )
+    selecting_id = space.owner_id if space.owner_id else visitor_id
     assert selecting_id == "visitor1"
 
 
@@ -679,7 +671,8 @@ def test_unwind_preserves_pre_existing_placed_resources():
     _unwind_placement(state, player, pending)
 
     assert state.board.action_spaces["space_a"].placed_resources == {
-        "guitarists": 2, "coins": 2
+        "guitarists": 2,
+        "coins": 2,
     }
 
 
@@ -724,9 +717,7 @@ def test_unwind_no_distribution_is_noop():
 # --- Helper to simulate the collection logic ---
 
 
-def _collect_placed_resources(
-    space: ActionSpace, player: Player
-) -> dict | None:
+def _collect_placed_resources(space: ActionSpace, player: Player) -> dict | None:
     """Simulate the placed resource collection logic from game_engine.py."""
     if not space.placed_resources:
         return None

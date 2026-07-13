@@ -584,9 +584,7 @@ class ResourceDistributionPromptResponse(BaseModel):
 
 
 class ResourceDistributionResolvedResponse(BaseModel):
-    action: Literal["resource_distribution_resolved"] = (
-        "resource_distribution_resolved"
-    )
+    action: Literal["resource_distribution_resolved"] = "resource_distribution_resolved"
     space_id: str
     resource_type: str
     quantity: int
