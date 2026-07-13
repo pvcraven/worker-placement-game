@@ -1112,6 +1112,13 @@ def generate_building_cards() -> int:
         if card.visitor_reward_special:
             y = _draw_special_icon(draw, card.visitor_reward_special, y, cw)
 
+        if card.distribute_resource_type and card.distribute_space_count > 0:
+            total = card.distribute_per_space * card.distribute_space_count
+            label = f"Place on {card.distribute_space_count}:"
+            y = _draw_labeled_resource_icons(
+                draw, label, card.distribute_resource_type, total, y, cw
+            )
+
         # Owner bonus
         has_own_resources = card.owner_bonus.total() > 0
         simple_owner = (
@@ -1715,22 +1722,29 @@ def generate_space_cards() -> int:
             )
         elif reward_special == "play_intrigue_and_quest":
             y = band_h + 10
-            draw_text_centered(draw, "Play", y, Q_FONT_LABEL, TEXT_COLOR, width=cw)
-            bbox = draw.textbbox((0, 0), "Play", font=Q_FONT_LABEL)
-            text_h = bbox[3] - bbox[1]
-            icon_row_y = y + text_h + 12 + _CARD_ICON_H // 2
-            icon_gap = 16
+            icon_gap = 48
             total_w = _CARD_ICON_W * 2 + icon_gap
-            _draw_intrigue_card_icon(
-                draw,
-                cw // 2 - total_w // 2 + _CARD_ICON_W // 2,
-                icon_row_y,
+            left_cx = cw // 2 - total_w // 2 + _CARD_ICON_W // 2
+            right_cx = cw // 2 + total_w // 2 - _CARD_ICON_W // 2
+
+            play_bbox = draw.textbbox((0, 0), "Play", font=Q_FONT_LABEL)
+            play_w = play_bbox[2] - play_bbox[0]
+            draw.text(
+                (left_cx - play_w // 2, y), "Play", fill=TEXT_COLOR, font=Q_FONT_LABEL
             )
-            _draw_quest_card_icon(
-                draw,
-                cw // 2 + total_w // 2 - _CARD_ICON_W // 2,
-                icon_row_y,
+            select_bbox = draw.textbbox((0, 0), "Select", font=Q_FONT_LABEL)
+            select_w = select_bbox[2] - select_bbox[0]
+            draw.text(
+                (right_cx - select_w // 2, y),
+                "Select",
+                fill=TEXT_COLOR,
+                font=Q_FONT_LABEL,
             )
+
+            text_h = play_bbox[3] - play_bbox[1]
+            icon_row_y = y + text_h + 12 + _CARD_ICON_H // 2
+            _draw_intrigue_card_icon(draw, left_cx, icon_row_y)
+            _draw_quest_card_icon(draw, right_cx, icon_row_y)
         elif reward_special == "draw_intrigue_2":
             icon_gap = 16
             total_w = _CARD_ICON_W * 2 + icon_gap

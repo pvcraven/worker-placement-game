@@ -20,7 +20,8 @@
       "Bash(bash .specify/extensions/git/scripts/bash/create-new-feature.sh \"intrigue-draw-building\")",
       "Bash(python -m pytest tests/)",
       "Bash(uv run *)",
-      "Bash(bash .specify/scripts/bash/check-prerequisites.sh --json)"
+      "Bash(bash .specify/scripts/bash/check-prerequisites.sh --json)",
+      "Bash(.venv/Scripts/python.exe -m ruff check .)"
     ]
   }
 }

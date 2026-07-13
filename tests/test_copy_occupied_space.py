@@ -634,4 +634,4 @@ def test_resource_trigger_fires_on_copied_reward():
 
 
 def test_building_count_includes_shadow_studio(buildings):
-    assert len(buildings) == 23
+    assert len(buildings) == 28

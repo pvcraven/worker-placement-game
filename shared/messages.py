@@ -155,6 +155,11 @@ class SelectMarkerRequest(BaseModel):
     color: str
 
 
+class ResourceDistributionSelectRequest(BaseModel):
+    action: Literal["resource_distribution_select"] = "resource_distribution_select"
+    space_id: str
+
+
 class PingRequest(BaseModel):
     action: Literal["ping"] = "ping"
 
@@ -189,6 +194,7 @@ ClientMessage = Annotated[
         ReconnectRequest,
         SkipResourceChoiceRequest,
         SelectMarkerRequest,
+        ResourceDistributionSelectRequest,
         PingRequest,
     ],
     Field(discriminator="action"),
@@ -249,6 +255,7 @@ class WorkerPlacedResponse(BaseModel):
     trigger_bonuses: list[dict] = Field(default_factory=list)
     next_player_id: str | None
     copied_space: dict = Field(default_factory=dict)
+    collected_placed_resources: dict | None = None
 
 
 class WorkerPlacedBackstageResponse(BaseModel):
@@ -345,6 +352,7 @@ class PlacementCancelledResponse(BaseModel):
     reversed_owner_bonus: dict = Field(default_factory=dict)
     accumulated_stock_restored: int = 0
     restored_slot: int = 0
+    restored_placed_resources: dict = Field(default_factory=dict)
 
 
 class BuildingConstructedResponse(BaseModel):
@@ -474,6 +482,8 @@ class IntrigueEffectResolvedResponse(BaseModel):
     target_player_id: str
     effect_type: str
     resources_affected: dict
+    effect_details: dict = Field(default_factory=dict)
+    plot_bonus_vp: int = 0
     intrigue_card_id: str = ""
     intrigue_card_name: str = ""
 
@@ -506,6 +516,7 @@ class ResourceChoiceResolvedResponse(BaseModel):
 class IntriguePlayPromptResponse(BaseModel):
     action: Literal["intrigue_play_prompt"] = "intrigue_play_prompt"
     intrigue_hand: list[dict] = Field(default_factory=list)
+    source: str = "quest_completion"
 
 
 class QuestSelectionPromptResponse(BaseModel):
@@ -566,6 +577,24 @@ class MarkerSelectedResponse(BaseModel):
     all_selected: bool = False
 
 
+class ResourceDistributionPromptResponse(BaseModel):
+    action: Literal["resource_distribution_prompt"] = "resource_distribution_prompt"
+    player_id: str
+    resource_type: str
+    per_space: int
+    remaining_selections: int
+    eligible_spaces: list[dict] = Field(default_factory=list)
+    selected_spaces: list[str] = Field(default_factory=list)
+
+
+class ResourceDistributionResolvedResponse(BaseModel):
+    action: Literal["resource_distribution_resolved"] = "resource_distribution_resolved"
+    space_id: str
+    resource_type: str
+    quantity: int
+    all_placed_resources: dict = Field(default_factory=dict)
+
+
 class TurnTimeoutResponse(BaseModel):
     action: Literal["turn_timeout"] = "turn_timeout"
     player_id: str
@@ -618,6 +647,8 @@ ServerMessage = Annotated[
         RoundStartResourceChoicePromptResponse,
         RoundStartBonusResponse,
         CopySpacePromptResponse,
+        ResourceDistributionPromptResponse,
+        ResourceDistributionResolvedResponse,
     ],
     Field(discriminator="action"),
 ]

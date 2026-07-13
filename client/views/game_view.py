@@ -50,6 +50,7 @@ class GameView(arcade.View):
         self._game_over_final = False
         self._final_scores: list | None = None
         self._target_dialog: PlayerTargetDialog | None = None
+        self._pending_distribution: dict | None = None
         self._text_pool = arcade.TextPool(font_name="Tahoma")
         self._sprite_cache: dict[str, arcade.Sprite] = {}
         self._fs_card_sprites: arcade.SpriteList | None = None
@@ -364,6 +365,10 @@ class GameView(arcade.View):
             self._on_round_start_bonus(msg)
         elif action == "copy_space_prompt":
             self._on_copy_space_prompt(msg)
+        elif action == "resource_distribution_prompt":
+            self._on_resource_distribution_prompt(msg)
+        elif action == "resource_distribution_resolved":
+            self._on_resource_distribution_resolved(msg)
         elif action == "deck_reshuffled":
             if self.tabbed_panel:
                 deck = msg.get("deck_type", "unknown")
@@ -428,6 +433,9 @@ class GameView(arcade.View):
             bt = spaces[space_id].get("building_tile")
             if bt and bt.get("accumulation_type"):
                 bt["accumulated_stock"] = 0
+            if msg.get("collected_placed_resources"):
+                spaces[space_id]["placed_resources"] = {}
+                self.board_renderer._building_owner_dirty = True
 
         # Determine next_player_id now; defer the chime until animation finishes
         next_pid = msg.get("next_player_id")
@@ -915,6 +923,74 @@ class GameView(arcade.View):
             scale=self.window.ui_scale,
         )
 
+    def _on_resource_distribution_prompt(self, msg: dict) -> None:
+        my_id = getattr(self.window, "player_id", None)
+        selecting_id = msg.get("player_id")
+        rtype = msg.get("resource_type", "")
+        remaining = msg.get("remaining_selections", 0)
+        if self.tabbed_panel:
+            name = self._player_name(selecting_id) if selecting_id else "?"
+            self.tabbed_panel.add_entry(
+                f"{name} selecting space for {rtype} placement"
+                f" ({remaining} remaining)"
+            )
+        if selecting_id == my_id:
+            self._pending_distribution = msg
+            eligible = msg.get("eligible_spaces", [])
+            targets = [
+                {
+                    "player_id": sp["space_id"],
+                    "player_name": sp.get("name", sp["space_id"]),
+                    "resources": {},
+                }
+                for sp in eligible
+            ]
+
+            def on_select(space_id: str) -> None:
+                self._target_dialog = None
+                self._pending_distribution = None
+                self.window.network.send(
+                    {
+                        "action": "resource_distribution_select",
+                        "space_id": space_id,
+                    }
+                )
+
+            self._target_dialog = PlayerTargetDialog(
+                title=f"Place {rtype.replace('_', ' ').title()}",
+                effect_description=(
+                    f"Select a space to place {msg.get('per_space', 1)}"
+                    f" {rtype.replace('_', ' ')}"
+                    f" ({remaining} selection(s) remaining)"
+                ),
+                eligible_targets=targets,
+                on_select=on_select,
+                on_cancel=lambda: None,
+                ui_manager=self.ui,
+            )
+            self._target_dialog.show(
+                self.window.width,
+                self.window.height,
+                scale=self.window.ui_scale,
+            )
+
+    def _on_resource_distribution_resolved(self, msg: dict) -> None:
+        space_id = msg.get("space_id", "")
+        rtype = msg.get("resource_type", "")
+        qty = msg.get("quantity", 0)
+        board = self.game_state.get("board", {})
+        spaces = board.get("action_spaces", {})
+        if space_id in spaces:
+            pr = spaces[space_id].get("placed_resources", {})
+            pr[rtype] = pr.get(rtype, 0) + qty
+            spaces[space_id]["placed_resources"] = pr
+        self.board_renderer._building_owner_dirty = True
+        if self.tabbed_panel:
+            space_name = spaces.get(space_id, {}).get("name", space_id)
+            self.tabbed_panel.add_entry(
+                f"{qty} {rtype.replace('_', ' ')} placed on {space_name}"
+            )
+
     def _on_intrigue_effect_resolved(
         self,
         msg: dict,
@@ -923,6 +999,8 @@ class GameView(arcade.View):
         target_pid = msg.get("target_player_id", "")
         effect_type = msg.get("effect_type", "")
         affected = msg.get("resources_affected", {})
+        effect_details = msg.get("effect_details", {})
+        plot_bonus_vp = msg.get("plot_bonus_vp", 0)
 
         card_id = msg.get("intrigue_card_id", "")
         if card_id:
@@ -953,6 +1031,49 @@ class GameView(arcade.View):
                         res[k] = res.get(k, 0) + amt
                         break
 
+        # Apply a self/all-player effect (vp_bonus, gain_resources, gain_coins,
+        # all_players_gain, draw_contracts, draw_intrigue) — used by intrigue
+        # cards played at The Green Room or as a quest completion reward.
+        if effect_details:
+            all_gained = effect_details.get("all_gained")
+            if all_gained:
+                for p in self.game_state.get("players", []):
+                    self._apply_reward_to_player(p.get("player_id", ""), all_gained)
+            else:
+                self._apply_reward_to_player(pid, effect_details)
+
+            drawn = effect_details.get("drawn", [])
+            if drawn:
+                my_id = getattr(self.window, "player_id", None)
+                for p in self.game_state.get("players", []):
+                    if p.get("player_id") == pid:
+                        if effect_type == "draw_intrigue":
+                            if pid == my_id:
+                                p.setdefault("intrigue_hand", []).extend(drawn)
+                            else:
+                                p["intrigue_hand_count"] = p.get(
+                                    "intrigue_hand_count", 0
+                                ) + len(drawn)
+                            for d in drawn:
+                                dcid = d.get("id", "")
+                                if dcid:
+                                    self._enqueue_intrigue_draw(dcid, pid)
+                        elif effect_type == "draw_contracts":
+                            if pid == my_id:
+                                p.setdefault("contract_hand", []).extend(drawn)
+                            else:
+                                p["contract_hand_count"] = p.get(
+                                    "contract_hand_count", 0
+                                ) + len(drawn)
+                            for d in drawn:
+                                dcid = d.get("id", "")
+                                if dcid:
+                                    self._enqueue_quest_draw(dcid, pid)
+                        break
+
+        if plot_bonus_vp:
+            self._apply_reward_to_player(pid, {"victory_points": plot_bonus_vp})
+
         # Update resource bar if local player is involved
         my_id = getattr(self.window, "player_id", None)
         if my_id in (pid, target_pid) and self.resource_bar:
@@ -973,18 +1094,22 @@ class GameView(arcade.View):
         res_str = " ".join(parts)
 
         if self.tabbed_panel:
-            if effect_type == "steal_resources":
+            if effect_type == "steal_resources" and target_pid:
                 self.tabbed_panel.add_entry(f"{name} stole {res_str} from {tname}")
-            else:
+            elif target_pid:
                 self.tabbed_panel.add_entry(f"{tname} lost {res_str}")
+            else:
+                effect_str = self._format_intrigue_effect(effect_type, effect_details)
+                if effect_str:
+                    self.tabbed_panel.add_entry(f"{name} played: {effect_str}")
 
-        if res_str:
+        if res_str and target_pid:
             if effect_type == "steal_resources":
                 self._info_dialog.show(
                     f"{name} stole {res_str} from {tname}",
                     duration=1.5,
                 )
-            elif target_pid:
+            else:
                 self._info_dialog.show(
                     f"{tname} lost {res_str}",
                     duration=1.5,
@@ -2270,13 +2395,18 @@ class GameView(arcade.View):
         cards = msg.get("intrigue_hand", [])
         if not cards:
             return
+        source = msg.get("source", "quest_completion")
 
         dialog_event = DialogEvent(
-            lambda gv, c=cards: gv._show_intrigue_play_dialog(c, dialog_event),
+            lambda gv, c=cards, s=source: gv._show_intrigue_play_dialog(
+                c, dialog_event, s
+            ),
         )
         self.event_queue.enqueue(dialog_event, self)
 
-    def _show_intrigue_play_dialog(self, cards: list[dict], event: DialogEvent) -> None:
+    def _show_intrigue_play_dialog(
+        self, cards: list[dict], event: DialogEvent, source: str = "quest_completion"
+    ) -> None:
         def on_select(card_id: str) -> None:
             self._card_sprite_dialog = None
             event.done = True
@@ -2287,13 +2417,20 @@ class GameView(arcade.View):
                 }
             )
 
+        can_cancel = source == "green_room"
+
+        def on_cancel() -> None:
+            self._card_sprite_dialog = None
+            event.done = True
+            self.window.network.send({"action": "cancel_quest_selection"})
+
         self._card_sprite_dialog = CardSpriteSelectionDialog(
-            title="Play an Intrigue Card (Quest Reward)",
+            title="Play an Intrigue Card",
             cards=cards,
             card_type="intrigue",
             on_select=on_select,
-            on_cancel=None,
-            cancel_label="",
+            on_cancel=on_cancel if can_cancel else None,
+            cancel_label="Cancel" if can_cancel else "",
         )
 
     def _on_opponent_choice_prompt(self, msg: dict) -> None:
@@ -2629,6 +2766,13 @@ class GameView(arcade.View):
             bt = sp.get("building_tile", {})
             if bt:
                 bt["accumulated_stock"] = stock_restored
+
+        restored_placed = msg.get("restored_placed_resources", {})
+        if restored_placed and not space_id.startswith("backstage"):
+            placed = sp.setdefault("placed_resources", {})
+            for rtype, amt in restored_placed.items():
+                if amt:
+                    placed[rtype] = placed.get(rtype, 0) + amt
 
         self._refresh_board(board)
 
@@ -2975,6 +3119,8 @@ class GameView(arcade.View):
 
     def _on_round_end(self, msg: dict) -> None:
         self._info_dialog.dismiss()
+        if self._quest_completion_dialog:
+            self._quest_completion_dialog = None
         next_round = msg.get("next_round", 0)
         bonus = msg.get("bonus_worker_granted", False)
         turn_order = msg.get("turn_order", [])

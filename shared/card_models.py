@@ -117,6 +117,9 @@ class BuildingTile(BaseModel):
     accumulation_initial: int = 0
     accumulated_stock: int = 0
     visitor_reward_vp: int = 0
+    distribute_resource_type: str | None = None
+    distribute_per_space: int = 0
+    distribute_space_count: int = 0
 
 
 class ProducerCard(BaseModel):

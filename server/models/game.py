@@ -102,6 +102,7 @@ class ActionSpace(BaseModel):
     reward_special: str | None = None  # Non-resource effects
     reward_choice: ResourceChoiceReward | None = None
     also_occupied_by: str | None = None
+    placed_resources: dict[str, int] = Field(default_factory=dict)
 
 
 class BackstageSlot(BaseModel):
@@ -179,6 +180,7 @@ class GameState(BaseModel):
     pending_building_quest: dict | None = None
     pending_placement: dict | None = None
     pending_copy_source: dict | None = None
+    pending_resource_distribution: dict | None = None
     pending_reshuffle_events: list[dict] = Field(default_factory=list)
 
     def get_player(self, player_id: str) -> Player | None:
