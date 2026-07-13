@@ -6,16 +6,20 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 from server.game_engine import (
+    handle_cancel_quest_selection,
     handle_choose_intrigue_target,
     handle_play_intrigue_from_quest,
+    handle_reassign_worker,
 )
 from server.models.game import (
     ActionSpace,
+    BackstageSlot,
     GameState,
     Player,
     PlayerResources,
 )
 from shared.card_models import IntrigueCard
+from shared.constants import GamePhase
 
 CONF = Path(__file__).resolve().parent.parent / "config"
 CONFIG_BOARD = CONF / "board.json"
@@ -241,6 +245,66 @@ def test_non_targeted_intrigue_prompts_quest_selection():
     assert state.pending_placement["space_id"] == "the_green_room"
     assert state.pending_play_intrigue is None
 
+    # Regression: the resolved-effect broadcast must carry the actual
+    # effect payload (previously always empty for non-targeted effects).
+    server.broadcast_to_game.assert_called_once()
+    _, effect_response = server.broadcast_to_game.call_args[0]
+    assert effect_response.action == "intrigue_effect_resolved"
+    assert effect_response.effect_details == {"coins": 2}
+    assert effect_response.plot_bonus_vp == 0
+
+
+def test_vp_bonus_intrigue_conveys_victory_points():
+    """Regression: playing a vp_bonus card (e.g. 'Hall of Fame Induction')
+    at Green Room must both grant the VP (already worked) and tell the
+    client about it, so the on-screen total updates."""
+    state, card = _make_green_room_state(
+        effect_type="vp_bonus",
+        effect_value={"victory_points": 3},
+    )
+    player = state.get_player("p1")
+    starting_vp = player.victory_points
+
+    server = _make_server(state)
+    conn = _make_conn("p1")
+    msg = MagicMock()
+    msg.intrigue_card_id = card.id
+
+    asyncio.run(handle_play_intrigue_from_quest(server, conn, msg))
+
+    assert player.victory_points == starting_vp + 3
+
+    server.broadcast_to_game.assert_called_once()
+    _, effect_response = server.broadcast_to_game.call_args[0]
+    assert effect_response.effect_details == {"victory_points": 3}
+
+
+def test_cancel_before_intrigue_play_unwinds_placement():
+    """Regression: the cancel button shown while awaiting an intrigue play
+    at Green Room must actually unwind the worker placement (previously it
+    was rendered but wired to nothing)."""
+    state, card = _make_green_room_state()
+    player = state.get_player("p1")
+    player.available_workers = 2
+    green_room = state.board.action_spaces["the_green_room"]
+
+    server = _make_server(state)
+    conn = _make_conn("p1")
+    msg = MagicMock()
+
+    asyncio.run(handle_cancel_quest_selection(server, conn, msg))
+
+    assert state.pending_play_intrigue is None
+    assert state.pending_placement is None
+    assert green_room.occupied_by is None
+    assert player.available_workers == 3
+    assert card in player.intrigue_hand
+
+    server.broadcast_to_game.assert_called_once()
+    _, response = server.broadcast_to_game.call_args[0]
+    assert response.action == "placement_cancelled"
+    assert response.space_id == "the_green_room"
+
 
 def test_targeted_intrigue_prompts_quest_selection():
     """Same as above, but for a targeted effect resolved via
@@ -281,3 +345,86 @@ def test_targeted_intrigue_prompts_quest_selection():
     assert state.pending_placement is not None
     assert state.pending_placement["space_id"] == "the_green_room"
     assert state.pending_intrigue_target is None
+
+    server.broadcast_to_game.assert_called_once()
+    _, effect_response = server.broadcast_to_game.call_args[0]
+    assert effect_response.action == "intrigue_effect_resolved"
+    assert effect_response.plot_bonus_vp == 0
+
+
+# --- Regression: reassigning a backstage worker to Green Room did nothing ---
+# Bug: during the reassignment phase, moving a worker onto The Green Room
+# silently completed the reassignment without ever prompting for an
+# intrigue play or a quest selection.
+
+
+def _make_reassignment_state(intrigue_cards: int = 1):
+    state = GameState(game_code="test", game_id="test-id")
+    state.phase = GamePhase.REASSIGNMENT
+    player = _make_player()
+    for i in range(intrigue_cards):
+        player.intrigue_hand.append(
+            IntrigueCard(
+                id=f"card_{i}",
+                name=f"Card {i}",
+                description="test",
+                effect_type="gain_coins",
+                effect_value={"coins": 1},
+            )
+        )
+    state.players = [player]
+
+    green_room = _make_green_room()
+    state.board.action_spaces["the_green_room"] = green_room
+    state.board.backstage_slots = [BackstageSlot(slot_number=1, occupied_by="p1")]
+    state.reassignment_queue = [1]
+
+    return state, player, green_room
+
+
+def test_reassign_worker_to_green_room_prompts_intrigue_play():
+    state, player, green_room = _make_reassignment_state()
+    server = _make_server(state)
+    conn = _make_conn("p1")
+    msg = MagicMock()
+    msg.slot_number = 1
+    msg.target_space_id = "the_green_room"
+
+    asyncio.run(handle_reassign_worker(server, conn, msg))
+
+    server.send_to_player.assert_called_once()
+    sent_player_id, response = server.send_to_player.call_args[0]
+    assert sent_player_id == "p1"
+    assert response.action == "intrigue_play_prompt"
+    assert response.source == "green_room"
+
+    assert green_room.occupied_by == "p1"
+    assert state.board.backstage_slots[0].occupied_by is None
+    assert state.reassignment_queue == []
+    assert state.pending_play_intrigue == {"player_id": "p1", "source": "green_room"}
+    assert state.pending_placement is not None
+    assert state.pending_placement["space_id"] == "the_green_room"
+    assert state.pending_placement["is_reassignment"] is True
+    assert state.pending_placement["from_slot"] == 1
+
+
+def test_reassign_worker_to_green_room_without_intrigue_cards_rejected():
+    """Regression guard: if the pre-check is ever skipped, we'd rather see
+    an explicit error than silently commit a broken reassignment."""
+    state, player, green_room = _make_reassignment_state(intrigue_cards=0)
+    server = _make_server(state)
+    conn = _make_conn("p1")
+    msg = MagicMock()
+    msg.slot_number = 1
+    msg.target_space_id = "the_green_room"
+
+    asyncio.run(handle_reassign_worker(server, conn, msg))
+
+    conn.send_error.assert_called_once()
+    server.broadcast_to_game.assert_not_called()
+    server.send_to_player.assert_not_called()
+
+    assert green_room.occupied_by is None
+    assert state.board.backstage_slots[0].occupied_by == "p1"
+    assert state.reassignment_queue == [1]
+    assert state.pending_placement is None

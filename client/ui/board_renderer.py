@@ -466,6 +466,23 @@ class BoardRenderer:
                             icon_gap,
                         )
 
+                realtor_placed = spaces.get("realtor", {}).get("placed_resources", {})
+                if realtor_placed:
+                    r_col, r_row, r_cs, r_rs = _GRID_PLACEMENT["realtor"]
+                    cx, cy, _, _ = g.cell_rect(r_col, r_row, r_cs, r_rs)
+                    space_scale = g.card_scale(1, CARD_WIDTH, SPACE_CARD_HEIGHT)
+                    sp_cw = CARD_WIDTH * 2 * space_scale
+                    sp_ch = SPACE_CARD_HEIGHT * 2 * space_scale
+                    bx = cx - sp_cw / 2 + 4 * s + icon_sz / 2
+                    by = cy - sp_ch / 2 + 4 * s + icon_sz / 2
+                    self._add_placed_icons(
+                        realtor_placed,
+                        bx,
+                        by,
+                        icon_sz,
+                        icon_gap,
+                    )
+
                 self._building_owner_dirty = False
 
                 # Page indicator

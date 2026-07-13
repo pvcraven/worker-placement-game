@@ -352,6 +352,7 @@ class PlacementCancelledResponse(BaseModel):
     reversed_owner_bonus: dict = Field(default_factory=dict)
     accumulated_stock_restored: int = 0
     restored_slot: int = 0
+    restored_placed_resources: dict = Field(default_factory=dict)
 
 
 class BuildingConstructedResponse(BaseModel):
@@ -481,6 +482,8 @@ class IntrigueEffectResolvedResponse(BaseModel):
     target_player_id: str
     effect_type: str
     resources_affected: dict
+    effect_details: dict = Field(default_factory=dict)
+    plot_bonus_vp: int = 0
     intrigue_card_id: str = ""
     intrigue_card_name: str = ""
 
@@ -513,6 +516,7 @@ class ResourceChoiceResolvedResponse(BaseModel):
 class IntriguePlayPromptResponse(BaseModel):
     action: Literal["intrigue_play_prompt"] = "intrigue_play_prompt"
     intrigue_hand: list[dict] = Field(default_factory=list)
+    source: str = "quest_completion"
 
 
 class QuestSelectionPromptResponse(BaseModel):

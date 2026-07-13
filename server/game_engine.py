@@ -262,10 +262,12 @@ def _assign_building_to_player(
     state.board.action_spaces[space_id] = space
     state.board.constructed_buildings.append(space_id)
     if tile in state.board.face_up_buildings:
-        state.board.face_up_buildings.remove(tile)
+        building_index = state.board.face_up_buildings.index(tile)
         new_b = _draw_from_building_deck(state)
         if new_b:
-            state.board.face_up_buildings.append(new_b)
+            state.board.face_up_buildings[building_index] = new_b
+        else:
+            state.board.face_up_buildings.pop(building_index)
     player.victory_points += tile.accumulated_vp
     return {
         "building_id": tile.id,
@@ -1543,6 +1545,7 @@ async def handle_skip_resource_choice(
                     reversed_rewards=result["reversed_resources"],
                     reversed_owner_bonus=result["reversed_owner_bonus"],
                     accumulated_stock_restored=result["stock_restored"],
+                    restored_placed_resources=result["restored_placed_resources"],
                     plot_quest_bonus_vp=result["reversed_vp"],
                 ),
             )
@@ -1752,6 +1755,7 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
         ),
         "owner_bonus_info": {},
         "trigger_bonuses": trigger_bonuses_data,
+        "collected_placed_resources": collected_placed or {},
     }
 
     # Handle The Green Room (play intrigue card + quest selection)
@@ -1790,7 +1794,8 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
         await server.send_to_player(
             player.player_id,
             IntriguePlayPromptResponse(
-                intrigue_hand=[c.model_dump() for c in player.intrigue_hand]
+                intrigue_hand=[c.model_dump() for c in player.intrigue_hand],
+                source="green_room",
             ),
         )
         return
@@ -1821,6 +1826,7 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
                 reward_granted=reward_dict,
                 trigger_bonuses=trigger_bonuses_data,
                 next_player_id=None,
+                collected_placed_resources=collected_placed,
             ),
         )
         return
@@ -3626,13 +3632,16 @@ async def handle_purchase_building(
             plot_bonus_vp += completed.bonus_vp_per_building_purchased
     player.victory_points += plot_bonus_vp
 
-    state.board.face_up_buildings.remove(building)
+    building_index = state.board.face_up_buildings.index(building)
     state.board.building_lots.remove(lot_id)
 
-    # Draw replacement from deck
+    # Draw a replacement into the same market slot so the other face-up
+    # buildings don't shift position.
     replacement = _draw_from_building_deck(state)
     if replacement:
-        state.board.face_up_buildings.append(replacement)
+        state.board.face_up_buildings[building_index] = replacement
+    else:
+        state.board.face_up_buildings.pop(building_index)
 
     # Set initial accumulated stock for accumulating buildings
     if building.accumulation_type:
@@ -3753,6 +3762,18 @@ def _unwind_placement(state, player, pending: dict) -> dict:
             space.building_tile.accumulated_stock += stock_consumed
             stock_restored = space.building_tile.accumulated_stock
 
+    restored_placed_resources: dict = {}
+    collected = pending.get("collected_placed_resources", {})
+    if collected and not space_id.startswith("backstage"):
+        space = state.board.action_spaces.get(space_id)
+        if space is not None:
+            for rtype, amt in collected.items():
+                if amt:
+                    space.placed_resources[rtype] = (
+                        space.placed_resources.get(rtype, 0) + amt
+                    )
+            restored_placed_resources = dict(collected)
+
     reversed_owner_bonus = {}
     owner_info = pending.get("owner_bonus_info", {})
     if owner_info:
@@ -3802,6 +3823,7 @@ def _unwind_placement(state, player, pending: dict) -> dict:
         "reversed_owner_bonus": reversed_owner_bonus,
         "stock_restored": stock_restored,
         "reversed_distribution": reversed_distribution,
+        "restored_placed_resources": restored_placed_resources,
     }
 
 
@@ -3824,34 +3846,43 @@ async def handle_cancel_purchase_building(
         await conn.send_error("INVALID_ACTION", "No building purchase to cancel.")
         return
 
-    if state.phase == GamePhase.REASSIGNMENT:
-        _log_event(
-            state,
-            action="cancel_purchase_building",
-            details=f"{player.display_name} skipped building purchase",
-            player_id=player.player_id,
-        )
-        state.pending_placement = None
-        await server.broadcast_to_game(
-            state.game_code,
-            PlacementCancelledResponse(
-                player_id=player.player_id,
-                space_id=pending["space_id"],
-                next_player_id=None,
-            ),
-        )
-        await _finish_reassignment(server, state)
-        return
-
-    result = _unwind_placement(state, player, pending)
-    state.pending_placement = None
-
     _log_event(
         state,
         action="cancel_purchase_building",
         details=f"{player.display_name} cancelled building purchase",
         player_id=player.player_id,
     )
+
+    if state.phase == GamePhase.REASSIGNMENT:
+        result = _unwind_placement(state, player, pending)
+        player.available_workers -= 1
+        from_slot = pending.get("from_slot", 0)
+        if from_slot:
+            for s in state.board.backstage_slots:
+                if s.slot_number == from_slot:
+                    s.occupied_by = player.player_id
+                    break
+            state.reassignment_queue.insert(0, from_slot)
+        state.reassignment_active_player_id = None
+        state.pending_placement = None
+        await server.broadcast_to_game(
+            state.game_code,
+            PlacementCancelledResponse(
+                player_id=player.player_id,
+                space_id=result["space_id"],
+                next_player_id=None,
+                plot_quest_bonus_vp=result["reversed_vp"],
+                reversed_rewards=result["reversed_resources"],
+                reversed_owner_bonus=result["reversed_owner_bonus"],
+                accumulated_stock_restored=result["stock_restored"],
+                restored_slot=from_slot,
+                restored_placed_resources=result["restored_placed_resources"],
+            ),
+        )
+        return
+
+    result = _unwind_placement(state, player, pending)
+    state.pending_placement = None
 
     next_player = state.current_player()
     await server.broadcast_to_game(
@@ -3864,6 +3895,7 @@ async def handle_cancel_purchase_building(
             reversed_rewards=result["reversed_resources"],
             reversed_owner_bonus=result["reversed_owner_bonus"],
             accumulated_stock_restored=result["stock_restored"],
+            restored_placed_resources=result["restored_placed_resources"],
         ),
     )
 
@@ -3912,17 +3944,18 @@ async def handle_cancel_quest_selection(
                 reversed_rewards=result["reversed_resources"],
                 reversed_owner_bonus=result["reversed_owner_bonus"],
                 accumulated_stock_restored=result["stock_restored"],
+                restored_placed_resources=result["restored_placed_resources"],
             ),
         )
         return
 
-    space = state.board.get_space(pending.get("space_id", ""))
+    space = state.board.action_spaces.get(pending.get("space_id", ""))
     if space and space.reward_special == "reset_quests":
         await conn.send_error(
             "INVALID_ACTION", "Cannot cancel after quests were reset."
         )
         return
-    copied_sp = state.board.get_space(pending.get("copied_from_space_id", ""))
+    copied_sp = state.board.action_spaces.get(pending.get("copied_from_space_id", ""))
     if copied_sp and copied_sp.reward_special == "reset_quests":
         await conn.send_error(
             "INVALID_ACTION", "Cannot cancel after quests were reset."
@@ -3962,6 +3995,7 @@ async def handle_cancel_quest_selection(
                 reversed_owner_bonus=result["reversed_owner_bonus"],
                 accumulated_stock_restored=result["stock_restored"],
                 restored_slot=from_slot,
+                restored_placed_resources=result["restored_placed_resources"],
             ),
         )
         return
@@ -3981,6 +4015,7 @@ async def handle_cancel_quest_selection(
             reversed_rewards=result["reversed_resources"],
             reversed_owner_bonus=result["reversed_owner_bonus"],
             accumulated_stock_restored=result["stock_restored"],
+            restored_placed_resources=result["restored_placed_resources"],
         ),
     )
 
@@ -4091,6 +4126,14 @@ async def handle_reassign_worker(
                     "Not enough non-coin resources.",
                 )
                 return
+
+    # Pre-validate The Green Room needs an intrigue card to play
+    if target.reward_special == "play_intrigue_and_quest" and not player.intrigue_hand:
+        await conn.send_error(
+            "INVALID_ACTION",
+            "You need at least one intrigue card to use The Green Room.",
+        )
+        return
 
     state.reassignment_active_player_id = player.player_id
 
@@ -4328,6 +4371,23 @@ async def handle_reassign_worker(
         state.pending_placement = _pending_reassign
         return
 
+    # Handle The Green Room during reassignment (play intrigue card + quest
+    # selection). Intrigue-hand check already happened before committing.
+    if target.reward_special == "play_intrigue_and_quest":
+        state.pending_placement = _pending_reassign
+        state.pending_play_intrigue = {
+            "player_id": player.player_id,
+            "source": "green_room",
+        }
+        await server.send_to_player(
+            player.player_id,
+            IntriguePlayPromptResponse(
+                intrigue_hand=[c.model_dump() for c in player.intrigue_hand],
+                source="green_room",
+            ),
+        )
+        return
+
     # Handle Garage spots: pause for quest selection (reset already
     # happened above for reset_quests before WorkerReassignedResponse)
     if target.space_type == "garage":
@@ -4561,6 +4621,7 @@ async def handle_choose_intrigue_target(
             target_player_id=target.player_id,
             effect_type=effect_type,
             resources_affected=resources_affected,
+            plot_bonus_vp=pending.get("plot_bonus_vp", 0),
             intrigue_card_id=intrigue_card.get("id", ""),
             intrigue_card_name=intrigue_card.get("name", ""),
         ),
@@ -4709,6 +4770,7 @@ async def handle_cancel_intrigue_target(
             next_player_id=None,
             returned_card=pending["intrigue_card"],
             plot_quest_bonus_vp=result["reversed_vp"],
+            restored_placed_resources=result["restored_placed_resources"],
         ),
     )
 
@@ -4827,6 +4889,7 @@ async def handle_cancel_copy_space(
             returned_card=returned_card,
             reversed_rewards=reversed_resources,
             accumulated_stock_restored=result.get("stock_restored", 0),
+            restored_placed_resources=result.get("restored_placed_resources", {}),
         ),
     )
 
@@ -4995,6 +5058,8 @@ async def handle_play_intrigue_from_quest(
             target_player_id="",
             effect_type=card.effect_type,
             resources_affected=effect_details.get("resources_affected", {}),
+            effect_details=effect_details.get("details", {}),
+            plot_bonus_vp=plot_bonus_vp,
             intrigue_card_id=card.id,
             intrigue_card_name=card.name,
         ),

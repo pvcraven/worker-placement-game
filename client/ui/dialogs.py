@@ -599,8 +599,8 @@ class PlayerTargetDialog:
                     val = res.get(key, 0)
                     if val > 0:
                         res_parts.append(f"{val}{sym}")
-                res_str = " ".join(res_parts) if res_parts else "no resources"
-                btn_text = f"{name} ({res_str})"
+                res_str = " ".join(res_parts)
+                btn_text = f"{name} ({res_str})" if res_str else name
                 btn = arcade.gui.UIFlatButton(
                     text=btn_text,
                     width=btn_w,
