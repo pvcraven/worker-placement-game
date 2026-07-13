@@ -297,6 +297,8 @@ class GameView(arcade.View):
             self._on_intrigue_target_prompt(msg)
         elif action == "intrigue_effect_resolved":
             self._on_intrigue_effect_resolved(msg)
+        elif action == "quest_selection_prompt":
+            self._on_quest_selection_prompt(msg)
         elif action == "round_end":
             self._on_round_end(msg)
         elif action == "bonus_workers_granted":
@@ -987,6 +989,22 @@ class GameView(arcade.View):
                     f"{tname} lost {res_str}",
                     duration=1.5,
                 )
+
+    def _on_quest_selection_prompt(self, msg: dict) -> None:
+        quests = msg.get("face_up_quests")
+
+        def _show(gv, q=quests) -> None:
+            board = gv.game_state.get("board", {})
+            if q is not None:
+                board["face_up_quests"] = q
+            quest_ids = [
+                c.get("id") for c in board.get("face_up_quests", []) if c.get("id")
+            ]
+            gv._enter_highlight_mode("quest_selection", quest_ids, can_cancel=False)
+            anim_event.done = True
+
+        anim_event = AnimationEvent(_show)
+        self.event_queue.enqueue(anim_event, self)
 
     def _on_quest_card_selected(self, msg: dict) -> None:
         pid = msg.get("player_id", "")
