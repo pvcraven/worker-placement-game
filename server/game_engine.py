@@ -3933,6 +3933,33 @@ async def handle_cancel_quest_selection(
             player_id=player.player_id,
         )
 
+        if pending.get("is_reassignment"):
+            player.available_workers -= 1
+            from_slot = pending.get("from_slot", 0)
+            if from_slot:
+                for s in state.board.backstage_slots:
+                    if s.slot_number == from_slot:
+                        s.occupied_by = player.player_id
+                        break
+                state.reassignment_queue.insert(0, from_slot)
+            state.reassignment_active_player_id = None
+            state.pending_building_quest = None
+            await server.broadcast_to_game(
+                state.game_code,
+                PlacementCancelledResponse(
+                    player_id=player.player_id,
+                    space_id=result["space_id"],
+                    next_player_id=None,
+                    plot_quest_bonus_vp=result["reversed_vp"],
+                    reversed_rewards=result["reversed_resources"],
+                    reversed_owner_bonus=result["reversed_owner_bonus"],
+                    accumulated_stock_restored=result["stock_restored"],
+                    restored_slot=from_slot,
+                    restored_placed_resources=result["restored_placed_resources"],
+                ),
+            )
+            return
+
         next_player = state.current_player()
         await server.broadcast_to_game(
             state.game_code,
