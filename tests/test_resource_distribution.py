@@ -16,11 +16,13 @@ from server.models.game import (
     Player,
     PlayerResources,
 )
+from shared.card_models import IntrigueCard
 from server.game_engine import (
     _get_distribution_eligible_spaces,
     _unwind_placement,
     handle_cancel_quest_selection,
     handle_place_worker,
+    handle_place_worker_backstage,
     handle_reassign_worker,
     handle_resource_distribution_select,
 )
@@ -936,3 +938,243 @@ def _collect_placed_resources(space: ActionSpace, player: Player) -> dict | None
             )
     space.placed_resources = {}
     return collected
+
+
+# --- Backstage slots as distribution targets ---
+
+
+def test_eligible_spaces_includes_backstage_slots():
+    """Backstage slots must be offered as distribution targets, same as action spaces."""
+    state = GameState(
+        game_id="test",
+        game_code="TEST",
+        board=BoardState(
+            action_spaces={
+                "bldg_1": ActionSpace(
+                    space_id="bldg_1",
+                    name="Distribution Bldg",
+                    space_type="building",
+                    reward=ResourceCost(),
+                ),
+            },
+            backstage_slots=[
+                BackstageSlot(slot_number=1),
+                BackstageSlot(slot_number=2),
+                BackstageSlot(slot_number=3),
+            ],
+        ),
+    )
+    eligible = _get_distribution_eligible_spaces(state, "bldg_1", [])
+    ids = [e["space_id"] for e in eligible]
+    assert "backstage_slot_1" in ids
+    assert "backstage_slot_2" in ids
+    assert "backstage_slot_3" in ids
+
+
+def test_eligible_spaces_excludes_already_selected_backstage_slot():
+    state = GameState(
+        game_id="test",
+        game_code="TEST",
+        board=BoardState(
+            action_spaces={
+                "bldg_1": ActionSpace(
+                    space_id="bldg_1",
+                    name="Bldg",
+                    space_type="building",
+                    reward=ResourceCost(),
+                ),
+            },
+            backstage_slots=[
+                BackstageSlot(slot_number=1),
+                BackstageSlot(slot_number=2),
+            ],
+        ),
+    )
+    eligible = _get_distribution_eligible_spaces(
+        state, "bldg_1", ["backstage_slot_1"]
+    )
+    ids = [e["space_id"] for e in eligible]
+    assert "backstage_slot_1" not in ids
+    assert "backstage_slot_2" in ids
+
+
+def _make_backstage_target_state():
+    state = GameState(game_code="test", game_id="test-id")
+    state.phase = GamePhase.PLACEMENT
+    player = Player(
+        player_id="p1",
+        display_name="Alice",
+        slot_index=0,
+        resources=PlayerResources(),
+        available_workers=4,
+    )
+    state.players = [player]
+    state.board.backstage_slots = [
+        BackstageSlot(slot_number=1),
+        BackstageSlot(slot_number=2),
+    ]
+
+    tile = BuildingTile(
+        id="building_028",
+        name="Beat Drop Outpost",
+        description="test",
+        cost_coins=7,
+        distribute_resource_type="drummers",
+        distribute_per_space=1,
+        distribute_space_count=1,
+    )
+    space = ActionSpace(
+        space_id="beat_drop_outpost",
+        name="Beat Drop Outpost",
+        space_type="building",
+        building_tile=tile,
+        reward=ResourceCost(drummers=2),
+        owner_id="p1",
+    )
+    state.board.action_spaces["beat_drop_outpost"] = space
+    return state, player, space
+
+
+def test_distribution_select_backstage_slot_places_resources():
+    """Selecting a Backstage slot as a distribution target mutates
+    BackstageSlot.placed_resources, not an ActionSpace."""
+    state, player, space = _make_backstage_target_state()
+    state.pending_placement = {
+        "player_id": "p1",
+        "space_id": "beat_drop_outpost",
+        "granted_resources": {"drummers": 2},
+    }
+    state.pending_resource_distribution = {
+        "player_id": "p1",
+        "building_space_id": "beat_drop_outpost",
+        "resource_type": "drummers",
+        "per_space": 1,
+        "remaining_selections": 1,
+        "selected_spaces": [],
+    }
+    server = _make_garage_server(state)
+    conn = _make_garage_conn("p1")
+    msg = MagicMock()
+    msg.space_id = "backstage_slot_1"
+
+    asyncio.run(handle_resource_distribution_select(server, conn, msg))
+
+    slot = next(
+        s for s in state.board.backstage_slots if s.slot_number == 1
+    )
+    assert slot.placed_resources == {"drummers": 1}
+    assert state.pending_resource_distribution is None
+
+
+def test_unwind_reverses_backstage_slot_distribution_selection():
+    """Cancelling a placement whose selection targeted a Backstage slot rolls
+    the resource back off the slot."""
+    state, player, space = _make_backstage_target_state()
+    state.board.backstage_slots[0].placed_resources = {"drummers": 1}
+    state.board.action_spaces["beat_drop_outpost"].occupied_by = "p1"
+    state.pending_resource_distribution = {
+        "player_id": "p1",
+        "building_space_id": "beat_drop_outpost",
+        "resource_type": "drummers",
+        "per_space": 1,
+        "remaining_selections": 0,
+        "selected_spaces": ["backstage_slot_1"],
+    }
+    player.resources.drummers = 2
+    pending = {
+        "player_id": "p1",
+        "space_id": "beat_drop_outpost",
+        "granted_resources": {"drummers": 2},
+    }
+    result = _unwind_placement(state, player, pending)
+
+    assert state.board.backstage_slots[0].placed_resources == {}
+    assert state.pending_resource_distribution is None
+    assert len(result["reversed_distribution"]) == 1
+    assert player.resources.drummers == 0
+
+
+def _make_backstage_placement_state():
+    state = GameState(game_code="test", game_id="test-id")
+    state.phase = GamePhase.PLACEMENT
+    card1 = IntrigueCard(
+        id="card_1",
+        name="Test Card 1",
+        description="test",
+        effect_type="gain_resources",
+        effect_value={"coins": 1},
+    )
+    card2 = IntrigueCard(
+        id="card_2",
+        name="Test Card 2",
+        description="test",
+        effect_type="gain_resources",
+        effect_value={"coins": 1},
+    )
+    player = Player(
+        player_id="p1",
+        display_name="Alice",
+        slot_index=0,
+        resources=PlayerResources(),
+        available_workers=4,
+        intrigue_hand=[card1, card2],
+    )
+    state.players = [player]
+    state.turn_order = ["p1"]
+    state.current_player_index = 0
+    state.board.backstage_slots = [
+        BackstageSlot(slot_number=1, placed_resources={"drummers": 2}),
+        BackstageSlot(slot_number=2),
+        BackstageSlot(slot_number=3),
+    ]
+    return state, player, card1, card2
+
+
+def test_backstage_placement_collects_placed_resources():
+    """Filling a Backstage slot that has placed_resources (from a
+    distribution building) grants those resources to the player and clears
+    the slot, reporting collected_placed_resources on the broadcast."""
+    state, player, card1, _card2 = _make_backstage_placement_state()
+    server = _make_garage_server(state)
+    conn = _make_garage_conn("p1")
+    msg = MagicMock()
+    msg.slot_number = 1
+    msg.intrigue_card_id = card1.id
+
+    asyncio.run(handle_place_worker_backstage(server, conn, msg))
+
+    assert player.resources.drummers == 2
+    slot = next(s for s in state.board.backstage_slots if s.slot_number == 1)
+    assert slot.placed_resources == {}
+
+    placed_call = next(
+        c
+        for c in server.broadcast_to_game.call_args_list
+        if c.args[1].action == "worker_placed_backstage"
+    )
+    assert placed_call.args[1].collected_placed_resources == {"drummers": 2}
+
+
+def test_backstage_placement_no_placed_resources_reports_none():
+    """A Backstage slot with no placed_resources reports None, not {}."""
+    state, player, card1, card2 = _make_backstage_placement_state()
+    server = _make_garage_server(state)
+
+    conn1 = _make_garage_conn("p1")
+    msg1 = MagicMock()
+    msg1.slot_number = 1
+    msg1.intrigue_card_id = card1.id
+    asyncio.run(handle_place_worker_backstage(server, conn1, msg1))
+
+    conn2 = _make_garage_conn("p1")
+    msg2 = MagicMock()
+    msg2.slot_number = 2
+    msg2.intrigue_card_id = card2.id
+    asyncio.run(handle_place_worker_backstage(server, conn2, msg2))
+
+    placed_calls = [
+        c
+        for c in server.broadcast_to_game.call_args_list
+        if c.args[1].action == "worker_placed_backstage"
+    ]
+    assert placed_calls[-1].args[1].collected_placed_resources is None

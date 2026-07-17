@@ -266,6 +266,7 @@ class WorkerPlacedBackstageResponse(BaseModel):
     intrigue_effect: dict
     plot_quest_bonus_vp: int = 0
     next_player_id: str | None
+    collected_placed_resources: dict | None = None
 
 
 class QuestCardSelectedResponse(BaseModel):

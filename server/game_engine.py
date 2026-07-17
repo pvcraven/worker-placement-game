@@ -2181,7 +2181,25 @@ def _get_distribution_eligible_spaces(
         if sid in selected_spaces:
             continue
         eligible.append({"space_id": sid, "name": space.name})
+    for slot in state.board.backstage_slots:
+        sid = f"backstage_slot_{slot.slot_number}"
+        if sid == building_space_id:
+            continue
+        if sid in selected_spaces:
+            continue
+        eligible.append({"space_id": sid, "name": f"Backstage Slot {slot.slot_number}"})
     return eligible
+
+
+def _resolve_distribution_target(state, space_id: str):
+    """Resolve a distribution target space_id to its ActionSpace or BackstageSlot."""
+    if space_id.startswith("backstage_slot_"):
+        slot_num = int(space_id.split("_")[-1])
+        for slot in state.board.backstage_slots:
+            if slot.slot_number == slot_num:
+                return slot
+        return None
+    return state.board.action_spaces.get(space_id)
 
 
 async def handle_resource_distribution_select(
@@ -2221,7 +2239,7 @@ async def handle_resource_distribution_select(
         )
         return
 
-    target = state.board.action_spaces.get(space_id)
+    target = _resolve_distribution_target(state, space_id)
     if target is None:
         await conn.send_error("INVALID_ACTION", "Unknown action space.")
         return
@@ -2627,6 +2645,19 @@ async def handle_place_worker_backstage(
         )
         return
 
+    # Grant placed resources (from resource distribution buildings)
+    collected_placed = None
+    if slot.placed_resources:
+        collected_placed = dict(slot.placed_resources)
+        for rtype, qty in collected_placed.items():
+            if hasattr(player.resources, rtype):
+                setattr(
+                    player.resources,
+                    rtype,
+                    getattr(player.resources, rtype) + qty,
+                )
+        slot.placed_resources = {}
+
     if effect_details.get("eligible_spaces"):
         state.pending_placement = {
             "player_id": player.player_id,
@@ -2637,6 +2668,7 @@ async def handle_place_worker_backstage(
             "accumulation_type": None,
             "owner_bonus_info": {},
             "trigger_bonuses": [],
+            "collected_placed_resources": collected_placed or {},
         }
         state.pending_copy_source = {
             "player_id": player.player_id,
@@ -2669,6 +2701,7 @@ async def handle_place_worker_backstage(
                 },
                 plot_quest_bonus_vp=plot_bonus_vp,
                 next_player_id=None,
+                collected_placed_resources=collected_placed,
             ),
         )
 
@@ -2693,6 +2726,7 @@ async def handle_place_worker_backstage(
             "accumulation_type": None,
             "owner_bonus_info": {},
             "trigger_bonuses": [],
+            "collected_placed_resources": collected_placed or {},
         }
 
         state.pending_intrigue_target = {
@@ -2745,6 +2779,7 @@ async def handle_place_worker_backstage(
                 },
                 plot_quest_bonus_vp=plot_bonus_vp,
                 next_player_id=None,
+                collected_placed_resources=collected_placed,
             ),
         )
         return
@@ -2762,6 +2797,7 @@ async def handle_place_worker_backstage(
             intrigue_effect=effect_details,
             plot_quest_bonus_vp=plot_bonus_vp,
             next_player_id=None,
+            collected_placed_resources=collected_placed,
         ),
     )
 
@@ -3777,13 +3813,13 @@ def _unwind_placement(state, player, pending: dict) -> dict:
 
     restored_placed_resources: dict = {}
     collected = pending.get("collected_placed_resources", {})
-    if collected and not space_id.startswith("backstage"):
-        space = state.board.action_spaces.get(space_id)
-        if space is not None:
+    if collected:
+        target_space = _resolve_distribution_target(state, space_id)
+        if target_space is not None:
             for rtype, amt in collected.items():
                 if amt:
-                    space.placed_resources[rtype] = (
-                        space.placed_resources.get(rtype, 0) + amt
+                    target_space.placed_resources[rtype] = (
+                        target_space.placed_resources.get(rtype, 0) + amt
                     )
             restored_placed_resources = dict(collected)
 
@@ -3816,7 +3852,7 @@ def _unwind_placement(state, player, pending: dict) -> dict:
         rtype = prd["resource_type"]
         per_space = prd["per_space"]
         for sel_sid in prd.get("selected_spaces", []):
-            sel_space = state.board.action_spaces.get(sel_sid)
+            sel_space = _resolve_distribution_target(state, sel_sid)
             if sel_space:
                 cur_placed = sel_space.placed_resources.get(rtype, 0)
                 remove = min(per_space, cur_placed)
