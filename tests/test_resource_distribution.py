@@ -912,13 +912,9 @@ def test_reassign_distribution_selection_resumes_reassignment():
     select_conn = _make_garage_conn("p1")
     select_msg = MagicMock()
     select_msg.space_id = "other_space"
-    asyncio.run(
-        handle_resource_distribution_select(server, select_conn, select_msg)
-    )
+    asyncio.run(handle_resource_distribution_select(server, select_conn, select_msg))
 
-    assert state.board.action_spaces["other_space"].placed_resources == {
-        "drummers": 1
-    }
+    assert state.board.action_spaces["other_space"].placed_resources == {"drummers": 1}
     assert state.pending_resource_distribution is None
     assert state.pending_placement is None
     assert state.reassignment_queue == []
@@ -990,9 +986,7 @@ def test_eligible_spaces_excludes_already_selected_backstage_slot():
             ],
         ),
     )
-    eligible = _get_distribution_eligible_spaces(
-        state, "bldg_1", ["backstage_slot_1"]
-    )
+    eligible = _get_distribution_eligible_spaces(state, "bldg_1", ["backstage_slot_1"])
     ids = [e["space_id"] for e in eligible]
     assert "backstage_slot_1" not in ids
     assert "backstage_slot_2" in ids
@@ -1059,9 +1053,7 @@ def test_distribution_select_backstage_slot_places_resources():
 
     asyncio.run(handle_resource_distribution_select(server, conn, msg))
 
-    slot = next(
-        s for s in state.board.backstage_slots if s.slot_number == 1
-    )
+    slot = next(s for s in state.board.backstage_slots if s.slot_number == 1)
     assert slot.placed_resources == {"drummers": 1}
     assert state.pending_resource_distribution is None
 

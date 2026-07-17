@@ -4599,9 +4599,7 @@ async def handle_reassign_worker(
     ):
         tile = target.building_tile
         selecting_id = target.owner_id if target.owner_id else player.player_id
-        eligible = _get_distribution_eligible_spaces(
-            state, msg.target_space_id, []
-        )
+        eligible = _get_distribution_eligible_spaces(state, msg.target_space_id, [])
         if eligible and tile.distribute_space_count > 0:
             state.pending_placement = _pending_reassign
             state.pending_resource_distribution = {
