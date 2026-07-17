@@ -1803,7 +1803,9 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
     # Handle Garage spots (quest selection)
     if space.space_type == "garage":
         state.pending_placement = _pending
-        await _handle_garage_placement(server, state, player, space, msg.space_id)
+        await _handle_garage_placement(
+            server, state, player, space, msg.space_id, reward_dict, collected_placed
+        )
         return
 
     # Handle Real Estate Listings (building purchase — deferred turn)
@@ -2179,7 +2181,25 @@ def _get_distribution_eligible_spaces(
         if sid in selected_spaces:
             continue
         eligible.append({"space_id": sid, "name": space.name})
+    for slot in state.board.backstage_slots:
+        sid = f"backstage_slot_{slot.slot_number}"
+        if sid == building_space_id:
+            continue
+        if sid in selected_spaces:
+            continue
+        eligible.append({"space_id": sid, "name": f"Backstage Slot {slot.slot_number}"})
     return eligible
+
+
+def _resolve_distribution_target(state, space_id: str):
+    """Resolve a distribution target space_id to its ActionSpace or BackstageSlot."""
+    if space_id.startswith("backstage_slot_"):
+        slot_num = int(space_id.split("_")[-1])
+        for slot in state.board.backstage_slots:
+            if slot.slot_number == slot_num:
+                return slot
+        return None
+    return state.board.action_spaces.get(space_id)
 
 
 async def handle_resource_distribution_select(
@@ -2219,7 +2239,7 @@ async def handle_resource_distribution_select(
         )
         return
 
-    target = state.board.action_spaces.get(space_id)
+    target = _resolve_distribution_target(state, space_id)
     if target is None:
         await conn.send_error("INVALID_ACTION", "Unknown action space.")
         return
@@ -2257,7 +2277,10 @@ async def handle_resource_distribution_select(
         )
     else:
         state.pending_resource_distribution = None
-        await _check_quest_completion(server, state)
+        if state.pending_placement and state.pending_placement.get("is_reassignment"):
+            await _finish_reassignment(server, state)
+        else:
+            await _check_quest_completion(server, state)
 
 
 # ------------------------------------------------------------------
@@ -2266,7 +2289,13 @@ async def handle_resource_distribution_select(
 
 
 async def _handle_garage_placement(
-    server: GameServer, state, player, space, space_id: str
+    server: GameServer,
+    state,
+    player,
+    space,
+    space_id: str,
+    reward_dict: dict | None = None,
+    collected_placed: dict | None = None,
 ) -> None:
     """Handle placement on a Garage action space."""
     special = space.reward_special
@@ -2296,8 +2325,9 @@ async def _handle_garage_placement(
             WorkerPlacedResponse(
                 player_id=player.player_id,
                 space_id=space_id,
-                reward_granted={},
+                reward_granted=reward_dict or {},
                 next_player_id=None,
+                collected_placed_resources=collected_placed or None,
             ),
         )
 
@@ -2326,8 +2356,9 @@ async def _handle_garage_placement(
             WorkerPlacedResponse(
                 player_id=player.player_id,
                 space_id=space_id,
-                reward_granted={},
+                reward_granted=reward_dict or {},
                 next_player_id=None,
+                collected_placed_resources=collected_placed or None,
             ),
         )
 
@@ -2614,6 +2645,19 @@ async def handle_place_worker_backstage(
         )
         return
 
+    # Grant placed resources (from resource distribution buildings)
+    collected_placed = None
+    if slot.placed_resources:
+        collected_placed = dict(slot.placed_resources)
+        for rtype, qty in collected_placed.items():
+            if hasattr(player.resources, rtype):
+                setattr(
+                    player.resources,
+                    rtype,
+                    getattr(player.resources, rtype) + qty,
+                )
+        slot.placed_resources = {}
+
     if effect_details.get("eligible_spaces"):
         state.pending_placement = {
             "player_id": player.player_id,
@@ -2624,6 +2668,7 @@ async def handle_place_worker_backstage(
             "accumulation_type": None,
             "owner_bonus_info": {},
             "trigger_bonuses": [],
+            "collected_placed_resources": collected_placed or {},
         }
         state.pending_copy_source = {
             "player_id": player.player_id,
@@ -2656,6 +2701,7 @@ async def handle_place_worker_backstage(
                 },
                 plot_quest_bonus_vp=plot_bonus_vp,
                 next_player_id=None,
+                collected_placed_resources=collected_placed,
             ),
         )
 
@@ -2680,6 +2726,7 @@ async def handle_place_worker_backstage(
             "accumulation_type": None,
             "owner_bonus_info": {},
             "trigger_bonuses": [],
+            "collected_placed_resources": collected_placed or {},
         }
 
         state.pending_intrigue_target = {
@@ -2732,6 +2779,7 @@ async def handle_place_worker_backstage(
                 },
                 plot_quest_bonus_vp=plot_bonus_vp,
                 next_player_id=None,
+                collected_placed_resources=collected_placed,
             ),
         )
         return
@@ -2749,6 +2797,7 @@ async def handle_place_worker_backstage(
             intrigue_effect=effect_details,
             plot_quest_bonus_vp=plot_bonus_vp,
             next_player_id=None,
+            collected_placed_resources=collected_placed,
         ),
     )
 
@@ -3764,13 +3813,13 @@ def _unwind_placement(state, player, pending: dict) -> dict:
 
     restored_placed_resources: dict = {}
     collected = pending.get("collected_placed_resources", {})
-    if collected and not space_id.startswith("backstage"):
-        space = state.board.action_spaces.get(space_id)
-        if space is not None:
+    if collected:
+        target_space = _resolve_distribution_target(state, space_id)
+        if target_space is not None:
             for rtype, amt in collected.items():
                 if amt:
-                    space.placed_resources[rtype] = (
-                        space.placed_resources.get(rtype, 0) + amt
+                    target_space.placed_resources[rtype] = (
+                        target_space.placed_resources.get(rtype, 0) + amt
                     )
             restored_placed_resources = dict(collected)
 
@@ -3803,7 +3852,7 @@ def _unwind_placement(state, player, pending: dict) -> dict:
         rtype = prd["resource_type"]
         per_space = prd["per_space"]
         for sel_sid in prd.get("selected_spaces", []):
-            sel_space = state.board.action_spaces.get(sel_sid)
+            sel_space = _resolve_distribution_target(state, sel_sid)
             if sel_space:
                 cur_placed = sel_space.placed_resources.get(rtype, 0)
                 remove = min(per_space, cur_placed)
@@ -3932,6 +3981,33 @@ async def handle_cancel_quest_selection(
             details=f"{player.display_name} cancelled The Green Room placement",
             player_id=player.player_id,
         )
+
+        if pending.get("is_reassignment"):
+            player.available_workers -= 1
+            from_slot = pending.get("from_slot", 0)
+            if from_slot:
+                for s in state.board.backstage_slots:
+                    if s.slot_number == from_slot:
+                        s.occupied_by = player.player_id
+                        break
+                state.reassignment_queue.insert(0, from_slot)
+            state.reassignment_active_player_id = None
+            state.pending_building_quest = None
+            await server.broadcast_to_game(
+                state.game_code,
+                PlacementCancelledResponse(
+                    player_id=player.player_id,
+                    space_id=result["space_id"],
+                    next_player_id=None,
+                    plot_quest_bonus_vp=result["reversed_vp"],
+                    reversed_rewards=result["reversed_resources"],
+                    reversed_owner_bonus=result["reversed_owner_bonus"],
+                    accumulated_stock_restored=result["stock_restored"],
+                    restored_slot=from_slot,
+                    restored_placed_resources=result["restored_placed_resources"],
+                ),
+            )
+            return
 
         next_player = state.current_player()
         await server.broadcast_to_game(
@@ -4514,6 +4590,38 @@ async def handle_reassign_worker(
             "bonus_vp": 4,
         }
         return
+
+    # Resource distribution building: owner selects spaces to place resources
+    if (
+        target.space_type == "building"
+        and target.building_tile
+        and target.building_tile.distribute_resource_type
+    ):
+        tile = target.building_tile
+        selecting_id = target.owner_id if target.owner_id else player.player_id
+        eligible = _get_distribution_eligible_spaces(state, msg.target_space_id, [])
+        if eligible and tile.distribute_space_count > 0:
+            state.pending_placement = _pending_reassign
+            state.pending_resource_distribution = {
+                "player_id": selecting_id,
+                "building_space_id": msg.target_space_id,
+                "resource_type": tile.distribute_resource_type,
+                "per_space": tile.distribute_per_space,
+                "remaining_selections": tile.distribute_space_count,
+                "selected_spaces": [],
+            }
+            await server.broadcast_to_game(
+                state.game_code,
+                ResourceDistributionPromptResponse(
+                    player_id=selecting_id,
+                    resource_type=tile.distribute_resource_type,
+                    per_space=tile.distribute_per_space,
+                    remaining_selections=tile.distribute_space_count,
+                    eligible_spaces=eligible,
+                    selected_spaces=[],
+                ),
+            )
+            return
 
     await _finish_reassignment(server, state)
 

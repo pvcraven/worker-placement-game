@@ -483,6 +483,31 @@ class BoardRenderer:
                         icon_gap,
                     )
 
+                backstage_slots = self.board_data.get("backstage_slots", [])
+                for space_id, (col, row, cs, rs) in _GRID_PLACEMENT.items():
+                    if not space_id.startswith("backstage_slot_"):
+                        continue
+                    slot_num = int(space_id.split("_")[-1])
+                    slot_placed = {}
+                    for slot in backstage_slots:
+                        if slot.get("slot_number") == slot_num:
+                            slot_placed = slot.get("placed_resources", {})
+                            break
+                    if slot_placed:
+                        cx, cy, _, _ = g.cell_rect(col, row, cs, rs)
+                        space_scale = g.card_scale(1, CARD_WIDTH, SPACE_CARD_HEIGHT)
+                        sp_cw = CARD_WIDTH * 2 * space_scale
+                        sp_ch = SPACE_CARD_HEIGHT * 2 * space_scale
+                        bx = cx - sp_cw / 2 + 4 * s + icon_sz / 2
+                        by = cy - sp_ch / 2 + 4 * s + icon_sz / 2
+                        self._add_placed_icons(
+                            slot_placed,
+                            bx,
+                            by,
+                            icon_sz,
+                            icon_gap,
+                        )
+
                 self._building_owner_dirty = False
 
                 # Page indicator

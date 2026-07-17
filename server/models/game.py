@@ -111,6 +111,7 @@ class BackstageSlot(BaseModel):
     slot_number: int  # 1, 2, or 3
     occupied_by: str | None = None
     intrigue_card_played: IntrigueCard | None = None
+    placed_resources: dict[str, int] = Field(default_factory=dict)
 
 
 class BoardState(BaseModel):

@@ -698,6 +698,16 @@ class GameView(arcade.View):
                 s["occupied_by"] = pid
                 break
 
+        collected = msg.get("collected_placed_resources")
+        if collected:
+            self._apply_reward_to_player(pid, collected)
+            for s in board.get("backstage_slots", []):
+                if s.get("slot_number") == slot_num:
+                    s["placed_resources"] = {}
+                    break
+            if self.board_renderer:
+                self.board_renderer._building_owner_dirty = True
+
         for p in self.game_state.get("players", []):
             if p.get("player_id") == pid:
                 p["available_workers"] = max(0, p.get("available_workers", 0) - 1)
@@ -979,14 +989,25 @@ class GameView(arcade.View):
         rtype = msg.get("resource_type", "")
         qty = msg.get("quantity", 0)
         board = self.game_state.get("board", {})
-        spaces = board.get("action_spaces", {})
-        if space_id in spaces:
-            pr = spaces[space_id].get("placed_resources", {})
-            pr[rtype] = pr.get(rtype, 0) + qty
-            spaces[space_id]["placed_resources"] = pr
+        space_name = space_id
+        if space_id.startswith("backstage_slot_"):
+            slot_num = int(space_id.split("_")[-1])
+            for slot in board.get("backstage_slots", []):
+                if slot.get("slot_number") == slot_num:
+                    pr = slot.get("placed_resources", {})
+                    pr[rtype] = pr.get(rtype, 0) + qty
+                    slot["placed_resources"] = pr
+                    break
+            space_name = f"Backstage Slot {slot_num}"
+        else:
+            spaces = board.get("action_spaces", {})
+            if space_id in spaces:
+                pr = spaces[space_id].get("placed_resources", {})
+                pr[rtype] = pr.get(rtype, 0) + qty
+                spaces[space_id]["placed_resources"] = pr
+            space_name = spaces.get(space_id, {}).get("name", space_id)
         self.board_renderer._building_owner_dirty = True
         if self.tabbed_panel:
-            space_name = spaces.get(space_id, {}).get("name", space_id)
             self.tabbed_panel.add_entry(
                 f"{qty} {rtype.replace('_', ' ')} placed on {space_name}"
             )
@@ -3267,6 +3288,9 @@ class GameView(arcade.View):
         modifiers: int,
     ) -> None:
         """Handle clicks on the board to place or reassign workers."""
+        if button != arcade.MOUSE_BUTTON_LEFT:
+            return
+
         if self._show_final_screen:
             rect = getattr(self, "_fs_close_rect", None)
             if rect:

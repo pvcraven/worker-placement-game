@@ -428,3 +428,30 @@ def test_reassign_worker_to_green_room_without_intrigue_cards_rejected():
     assert state.board.backstage_slots[0].occupied_by == "p1"
     assert state.reassignment_queue == [1]
     assert state.pending_placement is None
+
+
+def test_cancel_reassignment_to_green_room_restores_backstage_slot():
+    """Regression: cancelling a Green Room reassignment (before the intrigue
+    card is played) must restore the backstage slot and reassignment queue,
+    not just clear the Green Room space. Otherwise the worker vanishes and
+    the game gets stuck in REASSIGNMENT phase with nothing left to do."""
+    state, player, green_room = _make_reassignment_state()
+    server = _make_server(state)
+    conn = _make_conn("p1")
+    reassign_msg = MagicMock()
+    reassign_msg.slot_number = 1
+    reassign_msg.target_space_id = "the_green_room"
+
+    asyncio.run(handle_reassign_worker(server, conn, reassign_msg))
+    workers_before_cancel = player.available_workers
+
+    cancel_msg = MagicMock()
+    asyncio.run(handle_cancel_quest_selection(server, conn, cancel_msg))
+
+    assert green_room.occupied_by is None
+    assert state.board.backstage_slots[0].occupied_by == "p1"
+    assert state.reassignment_queue == [1]
+    assert state.reassignment_active_player_id is None
+    assert state.pending_placement is None
+    assert state.pending_play_intrigue is None
+    assert player.available_workers == workers_before_cancel
