@@ -1803,7 +1803,9 @@ async def handle_place_worker(server: GameServer, conn: ClientConnection, msg) -
     # Handle Garage spots (quest selection)
     if space.space_type == "garage":
         state.pending_placement = _pending
-        await _handle_garage_placement(server, state, player, space, msg.space_id)
+        await _handle_garage_placement(
+            server, state, player, space, msg.space_id, reward_dict, collected_placed
+        )
         return
 
     # Handle Real Estate Listings (building purchase — deferred turn)
@@ -2257,7 +2259,10 @@ async def handle_resource_distribution_select(
         )
     else:
         state.pending_resource_distribution = None
-        await _check_quest_completion(server, state)
+        if state.pending_placement and state.pending_placement.get("is_reassignment"):
+            await _finish_reassignment(server, state)
+        else:
+            await _check_quest_completion(server, state)
 
 
 # ------------------------------------------------------------------
@@ -2266,7 +2271,13 @@ async def handle_resource_distribution_select(
 
 
 async def _handle_garage_placement(
-    server: GameServer, state, player, space, space_id: str
+    server: GameServer,
+    state,
+    player,
+    space,
+    space_id: str,
+    reward_dict: dict | None = None,
+    collected_placed: dict | None = None,
 ) -> None:
     """Handle placement on a Garage action space."""
     special = space.reward_special
@@ -2296,8 +2307,9 @@ async def _handle_garage_placement(
             WorkerPlacedResponse(
                 player_id=player.player_id,
                 space_id=space_id,
-                reward_granted={},
+                reward_granted=reward_dict or {},
                 next_player_id=None,
+                collected_placed_resources=collected_placed or None,
             ),
         )
 
@@ -2326,8 +2338,9 @@ async def _handle_garage_placement(
             WorkerPlacedResponse(
                 player_id=player.player_id,
                 space_id=space_id,
-                reward_granted={},
+                reward_granted=reward_dict or {},
                 next_player_id=None,
+                collected_placed_resources=collected_placed or None,
             ),
         )
 
@@ -4541,6 +4554,40 @@ async def handle_reassign_worker(
             "bonus_vp": 4,
         }
         return
+
+    # Resource distribution building: owner selects spaces to place resources
+    if (
+        target.space_type == "building"
+        and target.building_tile
+        and target.building_tile.distribute_resource_type
+    ):
+        tile = target.building_tile
+        selecting_id = target.owner_id if target.owner_id else player.player_id
+        eligible = _get_distribution_eligible_spaces(
+            state, msg.target_space_id, []
+        )
+        if eligible and tile.distribute_space_count > 0:
+            state.pending_placement = _pending_reassign
+            state.pending_resource_distribution = {
+                "player_id": selecting_id,
+                "building_space_id": msg.target_space_id,
+                "resource_type": tile.distribute_resource_type,
+                "per_space": tile.distribute_per_space,
+                "remaining_selections": tile.distribute_space_count,
+                "selected_spaces": [],
+            }
+            await server.broadcast_to_game(
+                state.game_code,
+                ResourceDistributionPromptResponse(
+                    player_id=selecting_id,
+                    resource_type=tile.distribute_resource_type,
+                    per_space=tile.distribute_per_space,
+                    remaining_selections=tile.distribute_space_count,
+                    eligible_spaces=eligible,
+                    selected_spaces=[],
+                ),
+            )
+            return
 
     await _finish_reassignment(server, state)
 
