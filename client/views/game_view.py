@@ -3267,6 +3267,9 @@ class GameView(arcade.View):
         modifiers: int,
     ) -> None:
         """Handle clicks on the board to place or reassign workers."""
+        if button != arcade.MOUSE_BUTTON_LEFT:
+            return
+
         if self._show_final_screen:
             rect = getattr(self, "_fs_close_rect", None)
             if rect:
